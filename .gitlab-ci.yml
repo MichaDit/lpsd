@@ -1,0 +1,79 @@
+---
+stages:
+  - build
+  - test
+  - build-test
+  - deploy
+  - deploy-test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip"
+
+image: lpsd:develop
+
+package:
+  stage: build
+  script:
+    - make compile
+    - make package
+  artifacts:
+    paths:
+      - dist
+      - lpsd/*.so
+    expire_in: 1 week
+
+test:
+  stage: test
+  script:
+    - make test
+  artifacts:
+    paths:
+      - htmlcov
+    expire_in: 30 days
+  needs: package
+
+mypy:
+  stage: test
+  script:
+    - make mypy
+  needs: []
+
+pylint:
+  stage: test
+  script:
+    - make pylint
+  needs: []
+
+black:
+  stage: test
+  script:
+    - black --check lpsd test
+  needs: []
+
+deploy production:
+  stage: deploy
+  script:
+    # Official PyPi server
+    - poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
+    - poetry publish
+  only:
+    - tags
+
+test wheel installation:
+  image: python:3.10
+  stage: build-test
+  script:
+    - pip3 install `ls dist/*.whl`
+    - python3 -c "import lpsd; print(openqlab.__path__)"
+    - python3 -c "import lpsd; print(openqlab.__version__)"
+    - python3 -c "from lpsd import lpsd"
+  cache:
+    key: lpsd:pip
+    paths:
+      - .pip/
+  needs:
+    - package
+  only:
+    - develop
+    - main
+    - tags
