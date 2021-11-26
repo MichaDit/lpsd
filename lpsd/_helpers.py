@@ -19,10 +19,6 @@ def c_core_available() -> bool:
     try:
         if not _ctypes_available:
             raise OSError()
-        # import shared library which contains dft algorithm implemented in C
-        # Windows: lib.dll,
-        # Linux/Mac: lib.so
-        # current implementation for win64
         _dft()
 
         return True
@@ -95,12 +91,12 @@ def _calc_lpsd_py(
     # TODO frequency resolution r not implemented
 
     # check window function
-    winKaiser = False
+    win_kaiser = False
     beta = 0
     alpha = 0
 
     if win is np.kaiser:
-        winKaiser = True
+        win_kaiser = True
         # calculate kaiser parameter
         alpha = _kaiser_alpha(psll)
         beta = alpha * np.pi
@@ -129,7 +125,7 @@ def _calc_lpsd_py(
         l = int(L[i])  # segment length
 
         if not minReached:
-            if not winKaiser:
+            if not win_kaiser:
                 window = win(l)
             else:
                 # adjust to make window asymmetric (consistent with LTPDA implementation)
@@ -365,11 +361,11 @@ def _calc_lpsd(
     olap *= 100
 
     # check window function
-    winKaiser = False
+    win_kaiser = False
     beta = 0
     alpha = 0
     if win is np.kaiser:
-        winKaiser = True
+        win_kaiser = True
         # calculate kaiser parameters
         alpha = _kaiser_alpha(psll)
         beta = alpha * np.pi
@@ -406,7 +402,7 @@ def _calc_lpsd(
         l = int(L[i])  # segment length
 
         if not minReached:
-            if not winKaiser:
+            if not win_kaiser:
                 window = win(l)
             else:
                 # adjust to make window asymmetric (consistent with LTPDA implementation)

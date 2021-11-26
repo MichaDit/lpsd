@@ -27,7 +27,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--verbose -x --log-level=INFO --cov lpsd --cov-report term-missing  --no-cov-on-fail --cov-report=html"
+addopts = "--verbose -x --log-level=INFO --cov lpsd --cov-report term-missing --no-cov-on-fail --cov-report=html --cov-report=xml"
 testpaths = [
     "test",
 ]
