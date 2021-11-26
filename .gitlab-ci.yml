@@ -30,7 +30,7 @@ test:
     paths:
       - htmlcov
     expire_in: 30 days
-  needs: package
+  needs: [package]
 
 mypy:
   stage: test
@@ -72,7 +72,7 @@ test wheel installation:
     paths:
       - .pip/
   needs:
-    - package
+    - [package]
   only:
     - develop
     - main
