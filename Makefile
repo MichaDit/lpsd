@@ -1,5 +1,6 @@
 BRANCH ?= develop
 DOCKER_IMAGE = gwdiexp/lpsd:${BRANCH}
+OLD_PY_VERSION = 3.7
 
 all: compile mypy test package
 
@@ -9,7 +10,10 @@ compile:
 		gcc -shared -o ltpda_dft.so ltpda_dft.o -Wl,--out-implib,ltpda_dft.a
 
 test:
-	PYTHONPATH=`pwd` poetry run py.test -x
+	PYTHONPATH=`pwd` poetry run py.test
+
+test-docker:
+	docker run -v `pwd`:/code --rm -it ${DOCKER_IMAGE} make test
 
 mypy:
 	poetry run mypy lpsd
@@ -29,10 +33,13 @@ upload:
 
 docker:
 	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE}
+	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE}-${OLD_PY_VERSION} \
+		--build-arg PYTHON_VERSION=${OLD_PY_VERSION}
 
 docker-push:
 	docker login
 	docker push ${DOCKER_IMAGE}
+	docker push ${DOCKER_IMAGE}-${OLD_PY_VERSION}
 
 clean:
 	@rm -r dist/

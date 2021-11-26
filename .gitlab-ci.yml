@@ -12,6 +12,8 @@ variables:
 
 image: gwdiexp/lpsd:develop
 
+## build
+
 compile:
   stage: build
   script:
@@ -21,15 +23,7 @@ compile:
       - lpsd/*.so
     expire_in: 1 week
 
-package:
-  stage: package
-  script:
-    - make package
-  artifacts:
-    paths:
-      - dist
-    expire_in: 1 week
-  needs: [compile]
+## test
 
 test:
   stage: test
@@ -40,6 +34,18 @@ test:
       - htmlcov
     expire_in: 30 days
   needs: [compile]
+
+test-3.7:
+  image: gwdiexp/lpsd:develop-3.7
+  stage: test
+  script:
+    - make test
+  artifacts:
+    paths:
+      - htmlcov
+    expire_in: 30 days
+  needs: [compile]
+  only: main
 
 mypy:
   stage: test
@@ -63,16 +69,21 @@ black:
     - black --check lpsd test
   needs: []
 
-deploy production:
-  stage: deploy
-  script:
-    # Official PyPi server
-    - poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
-    - poetry publish
-  only:
-    - tags
+## package
 
-test wheel installation:
+package:
+  stage: package
+  script:
+    - make package
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 week
+  needs: [compile]
+
+## test package
+
+test-package:
   image: python:3.10
   stage: package-test
   script:
@@ -90,3 +101,18 @@ test wheel installation:
     - develop
     - main
     - tags
+
+## deploy
+
+deploy production:
+  stage: deploy
+  script:
+    # Official PyPi server
+    - poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
+    - poetry publish
+  only:
+    - tags
+
+## deploy test
+
+# TODO
