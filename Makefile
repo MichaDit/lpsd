@@ -9,7 +9,7 @@ compile:
 		gcc -shared -o ltpda_dft.so ltpda_dft.o -Wl,--out-implib,ltpda_dft.a
 
 test:
-	poetry run py.test -x
+	PYTHONPATH=`pwd` poetry run py.test -x
 
 mypy:
 	poetry run mypy lpsd
@@ -18,7 +18,7 @@ pylint:
 	poetry run pylint lpsd
 
 black:
-	poetry run black
+	poetry run black lpsd test
 
 package:
 	poetry build
@@ -35,6 +35,6 @@ docker-push:
 	docker push ${DOCKER_IMAGE}
 
 clean:
-	@rm -r dist/ build/
+	@rm -r dist/
 
 .PHONY: compile mypy test package docker
