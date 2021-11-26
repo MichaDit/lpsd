@@ -1,8 +1,12 @@
 [tool.poetry]
 name = "lpsd"
 version = "0.1.0"
-description = ""
-authors = ["Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>"]
+description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
+authors = [
+    "Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
+    "Christoph Vorndamme <christoph.vorndamme@aei.mpg.de>",
+    "Gerhard Heinzel"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.7.1,<3.11"
