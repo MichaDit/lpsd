@@ -33,6 +33,8 @@ test:
     paths:
       - htmlcov
     expire_in: 30 days
+    reports:
+      cobertura: coverage.xml
   needs: [compile]
 
 test-3.7:
@@ -40,12 +42,8 @@ test-3.7:
   stage: test
   script:
     - make test
-  artifacts:
-    paths:
-      - htmlcov
-    expire_in: 30 days
   needs: [compile]
-  only: 
+  only:
     - main
 
 mypy:
