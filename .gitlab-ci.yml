@@ -46,6 +46,10 @@ mypy:
   script:
     - make mypy
   needs: []
+  cache:
+    key: lpsd:mypy
+    paths:
+      - .mypy_cache/
 
 pylint:
   stage: test
@@ -73,8 +77,8 @@ test wheel installation:
   stage: package-test
   script:
     - pip3 install `ls dist/*.whl`
-    - python3 -c "import lpsd; print(openqlab.__path__)"
-    - python3 -c "import lpsd; print(openqlab.__version__)"
+    - python3 -c "import lpsd; print(lpsd.__path__)"
+    - python3 -c "import lpsd; print(lpsd.__version__)"
     - python3 -c "from lpsd import lpsd"
   cache:
     key: lpsd:pip
