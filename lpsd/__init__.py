@@ -4,7 +4,7 @@ import sys
 from .wrapper import lpsd, lpsd_trad
 
 if sys.version_info >= (3, 8):
-    import importlib.metadata as metadata  # Python 3.8 pylint: disable=import-error,no-name-in-module
+    from importlib import metadata  # >= Python 3.8
 else:
     import importlib_metadata as metadata  # <= Python 3.7 pylint: disable=import-error
 
