@@ -3,3 +3,4 @@
 *.a
 __pycache__/
 *.pyc
+dist/

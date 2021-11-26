@@ -1,3 +1,7 @@
+BRANCH ?= develop
+
+all: compile mypy test package
+
 compile:
 	cd lpsd; \
 		gcc -c -fPIC ltpda_dft.c && \
@@ -22,7 +26,10 @@ upload:
 	poetry config pypi-token.pypi ${POETRY_PYPI_TOKEN_PYPI}
 	poetry publish
 
+docker:
+	docker build . -f docker/Dockerfile -t lpsd:${BRANCH}
+
 clean:
 	@rm -r dist/ build/
 
-.PHONY: compile mypy test package
+.PHONY: compile mypy test package docker
