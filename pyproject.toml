@@ -1,0 +1,55 @@
+[tool.poetry]
+name = "lpsd"
+version = "0.1.0"
+description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
+authors = [
+    "Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
+    "Christoph Vorndamme <christoph.vorndamme@aei.mpg.de>",
+    "Gerhard Heinzel"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7.1,<3.11"
+pandas = ">=1.0,<2.0"
+numpy = ">=1.18,<2.0"
+scipy = ">=1.5,<2.0"
+importlib-metadata = {version = "^1.1.3", python = "<=3.7"}
+
+[tool.poetry.dev-dependencies]
+black = "^21.11b1"
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+pre-commit = "^2.15.0"
+mypy = "^0.910"
+pylint = "^2.12.1"
+isort = "^5.10.1"
+seed-isort-config = "^2.2.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--verbose -x --log-level=INFO --cov lpsd --cov-report term-missing --no-cov-on-fail --cov-report=html --cov-report=xml"
+testpaths = [
+    "test",
+]
+
+[tool.coverage]
+    [tool.coverage.run]
+    omit =[]
+    [tool.coverage.report]
+    fail_under = 60
+    omit =[]
+
+    [tool.coverage.html]
+    directory = "htmlcov"
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88

@@ -1,0 +1,124 @@
+---
+stages:
+  - build
+  - test
+  - package
+  - package-test
+  - deploy
+  - deploy-test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip"
+
+image: gwdiexp/lpsd:develop
+
+## build
+
+compile:
+  stage: build
+  script:
+    - make compile
+  artifacts:
+    paths:
+      - lpsd/*.so
+    expire_in: 1 week
+
+## test
+
+test:
+  stage: test
+  script:
+    - make test
+  artifacts:
+    paths:
+      - htmlcov
+    expire_in: 30 days
+    reports:
+      cobertura: coverage.xml
+  needs: [compile]
+
+test-3.7:
+  image: gwdiexp/lpsd:develop-3.7
+  stage: test
+  script:
+    - make test
+  needs: [compile]
+  only:
+    - main
+
+mypy:
+  stage: test
+  script:
+    - make mypy
+  needs: []
+  cache:
+    key: lpsd:mypy
+    paths:
+      - .mypy_cache/
+
+pylint:
+  stage: test
+  script:
+    - make pylint
+  needs: []
+
+black:
+  stage: test
+  script:
+    - black --check lpsd test
+  needs: []
+
+## package
+
+package:
+  stage: package
+  script:
+    - make package
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 week
+  needs: [compile]
+
+## test package
+
+test-package:
+  image: python:3.10
+  stage: package-test
+  script:
+    - pip3 install `ls dist/*.whl`
+    - python3 -c "import lpsd; print(lpsd.__path__)"
+    - python3 -c "import lpsd; print(lpsd.__version__)"
+    - python3 -c "from lpsd import lpsd"
+  cache:
+    key: lpsd:pip
+    paths:
+      - .pip/
+  needs:
+    - [package]
+  only:
+    - develop
+    - main
+    - tags
+
+## deploy
+
+deploy production:
+  stage: deploy
+  script:
+    # Official PyPi server
+    - poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
+    - poetry publish
+  only:
+    - tags
+
+make version tag:
+  stage: deploy
+  script:
+    - sh bin/update_version_tag
+  only:
+    - main
+
+## deploy test
+
+# TODO
