@@ -1,0 +1,12 @@
+#!/bin/bash
+poetry_version=`poetry version | cut -f2 -d " "`
+
+if git tag | cut -f2 -d v | grep -q ^$poetry_version$
+then
+    echo Version $poetry_version unchanged
+else
+    echo Version $poetry_version is new.
+    echo Creating a new git tag...
+
+    curl --request POST --header "PRIVATE-TOKEN: $GL_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_NAMESPACE%2F$CI_PROJECT_NAME/repository/tags?tag_name=v$poetry_version&ref=main"
+fi
