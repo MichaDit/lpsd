@@ -1,4 +1,5 @@
 BRANCH ?= develop
+DOCKER_IMAGE = gwdiexp/lpsd:${BRANCH}
 
 all: compile mypy test package
 
@@ -27,7 +28,11 @@ upload:
 	poetry publish
 
 docker:
-	docker build . -f docker/Dockerfile -t lpsd:${BRANCH}
+	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE}
+
+docker-push:
+	docker login
+	docker push ${DOCKER_IMAGE}
 
 clean:
 	@rm -r dist/ build/
