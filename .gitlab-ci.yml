@@ -9,7 +9,7 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip"
 
-image: lpsdiexp/lpsd:develop
+image: gwdiexp/lpsd:develop
 
 package:
   stage: build
