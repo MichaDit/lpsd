@@ -7,3 +7,4 @@ dist/
 .coverage
 .isort.cfg
 coverage.xml
+.ipynb_checkpoints/
