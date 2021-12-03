@@ -13,20 +13,20 @@ repos:
 
   - repo: local
     hooks:
-      - id: seed-isort-config
-        name: seed-isort-config
-        stages: [commit]
-        language: system
-        entry: poetry run seed-isort-config
-        pass_filenames: false
-        types: [python]
+      #- id: seed-isort-config
+        #name: seed-isort-config
+        #stages: [commit]
+        #language: system
+        #entry: poetry run seed-isort-config
+        #pass_filenames: false
+        #types: [python]
 
-      - id: isort
-        name: isort
-        stages: [commit]
-        language: system
-        entry: poetry run isort
-        types: [python]
+      #- id: isort
+        #name: isort
+        #stages: [commit]
+        #language: system
+        #entry: poetry run isort
+        #types: [python]
 
       - id: black
         name: black

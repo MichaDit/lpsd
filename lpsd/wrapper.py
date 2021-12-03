@@ -7,7 +7,6 @@ Ref: Improved spectrum estimation from digitized time series
 on a logarithmic frequency axis
 https://doi.org/10.1016/j.measurement.2005.10.010
 """
-
 from typing import Callable, Optional, Union
 from warnings import warn
 
@@ -44,7 +43,7 @@ def lpsd(
     -------
     .. code-block:: python
 
-        from openqlab.analysis.lpsd import lpsd
+        from lpsd import lpsd
         result = lpsd(data["column"])
 
     Parameters

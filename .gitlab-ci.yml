@@ -112,13 +112,6 @@ deploy production:
   only:
     - tags
 
-make version tag:
-  stage: deploy
-  script:
-    - sh bin/update_version_tag
-  only:
-    - main
-
 ## deploy test
 
 # TODO
