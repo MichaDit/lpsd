@@ -3,8 +3,8 @@ name = "lpsd"
 version = "0.2.0"
 description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
 authors = [
-    "Christian Darsow-Fromm <cdarsowf at physnet.uni-hamburg.de>",
-    "Christoph Vorndamme <christoph.vorndamme at aei.mpg.de>",
+    "Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
+    "Christoph Vorndamme <christoph.vorndamme@aei.mpg.de>",
     "Gerhard Heinzel"
 ]
 readme = "README.md"
