@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lpsd"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
 authors = [
     "Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
@@ -8,7 +8,7 @@ authors = [
     "Gerhard Heinzel"
 ]
 readme = "README.md"
-repository = "https://gitlab.com/gwd/lpsd"
+repository = "https://gitlab.com/uhh-gwd/lpsd"
 documentation = "https://git.physnet.uni-hamburg.de/gwd/lpsd/-/blob/develop/README.md"
 include = ["**/*.so"]
 exclude = ["**/*.h", "**/*.c"]
