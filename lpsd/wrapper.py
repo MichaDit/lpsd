@@ -23,8 +23,11 @@ from ._helpers import (
 )
 
 
-def lpsd(
+def lpsd(  # pylint: disable=too-many-arguments
     data: Union[Series, DataFrame],
+    sample_rate: Optional[
+        float
+    ] = None,  # None: Use time series data from first column to calculate sampling rate
     window_function: Callable = np.kaiser,
     overlap: Optional[float] = None,  # None: use default overlap
     detrending_order: Optional[int] = 0,
@@ -53,6 +56,8 @@ def lpsd(
         or a whole `DataFrame`. If multiple columns are provided, it will calculate
         the spectrum for each column and return a dict of `DataFrame`s with all
         results.
+    sample_rate: :obj:`float` (optional)
+        Sampling rate of the data. Defaults to calculating the mean difference of the first columns elements.
     window_function: :obj:`Callable` (optional)
         Define a window function, defaults to :obj:`np.kaiser`.
     overlap: :obj:`float` (optional)
@@ -116,7 +121,8 @@ def lpsd(
         dc.index.name = "frequency"
         return dc
 
-    sample_rate = 1 / np.diff(data.index).mean()
+    if sample_rate is None:
+        sample_rate = 1 / np.diff(data.index).mean()
 
     if use_c_core and not c_core_available():
         warn(

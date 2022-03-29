@@ -104,6 +104,15 @@ class TestLPSD(TestCase):
         self.assertIn("asd", out["col2"].columns)
         self.assertIn("asd", out[0].columns)
 
+    def test_with_manual_sample_rate(self):
+        for c in (True, False):
+            result_auto = lpsd.lpsd(self.data_y[0], use_c_core=c)
+            result_manual = lpsd.lpsd(self.data_y[0], sample_rate=self.fs, use_c_core=c)
+
+            np.testing.assert_array_almost_equal(
+                result_auto["psd"], result_manual["psd"]
+            )
+
     def test_old_wrapper(self):
         # Test data parameters
 
