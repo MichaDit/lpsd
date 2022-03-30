@@ -122,7 +122,17 @@ def lpsd(  # pylint: disable=too-many-arguments
         return dc
 
     if sample_rate is None:
-        sample_rate = 1 / np.diff(data.index).mean()
+        index_diff = np.diff(data.index)
+        period_time = np.median(index_diff)
+        sample_rate = 1 / period_time
+        std = index_diff.std()
+
+        if std / period_time > 1e-6:
+            warn(
+                "Length of some time steps deviates a lot from the median. Some data maybe corrupt!\n"
+                f"Period time: {period_time}, standard deviation: {std}",
+                UserWarning,
+            )
 
     if use_c_core and not c_core_available():
         warn(
