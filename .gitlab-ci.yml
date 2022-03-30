@@ -111,6 +111,8 @@ deploy production:
     - poetry publish
   only:
     - tags
+  when:
+    - manual
 
 ## deploy test
 
