@@ -2,14 +2,12 @@
 name = "lpsd"
 version = "0.2.1"
 description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
-authors = [
-    "Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
+authors = ["Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
     "Christoph Vorndamme <christoph.vorndamme@aei.mpg.de>",
-    "Gerhard Heinzel"
-]
+    "Gerhard Heinzel"]
 readme = "README.md"
 repository = "https://gitlab.com/uhh-gwd/lpsd"
-documentation = "https://git.physnet.uni-hamburg.de/gwd/lpsd/-/blob/develop/README.md"
+documentation = "https://gitlab.com/uhh-gwd/lpsd/-/blob/main/README.md"
 include = ["**/*.so"]
 exclude = ["**/*.h", "**/*.c"]
 
@@ -29,6 +27,7 @@ mypy = "^0.910"
 pylint = "^2.12.1"
 isort = "^5.10.1"
 seed-isort-config = "^2.2.0"
+pytest-watch = "^4.2.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -36,10 +35,8 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--verbose -x --log-level=INFO --cov lpsd --cov-report term-missing --no-cov-on-fail --cov-report=html --cov-report=xml"
-testpaths = [
-    "test",
-]
+addopts = "--verbose -x --log-level=INFO --cov lpsd --cov-report term-missing --no-cov-on-fail --cov-report=html --cov-report=xml --last-failed --new-first"
+testpaths = ["test"]
 
 [tool.coverage]
     [tool.coverage.run]

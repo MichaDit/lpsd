@@ -12,6 +12,9 @@ compile:
 test:
 	PYTHONPATH=`pwd` poetry run py.test
 
+test-watch:
+	PYTHONPATH=`pwd` poetry run ptw
+
 test-docker:
 	docker run -v `pwd`:/code --rm -it ${DOCKER_IMAGE} make test
 
