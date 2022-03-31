@@ -112,6 +112,7 @@ def _calc_lpsd_py(
     ENBW = np.zeros(nf, dtype=np.float64)
     devxx = np.zeros(nf, dtype=np.float64)
     dev = np.zeros(nf, dtype=np.float64)
+    asd = np.zeros(nf, dtype=np.float64)
 
     # disp_each = _myround(nf / 100) * 10
 
@@ -203,7 +204,7 @@ def _calc_lpsd_py(
         ENBW[i] = fs * S2 / S12
         Sxx[i] = A2ns / fs / S2
         S[i] = A2ns / S12
-        asd = np.sqrt(Sxx)
+        asd[i] = np.sqrt(Sxx[i])
 
     return [S, Sxx, dev, devxx, ENBW, asd]
 
@@ -383,6 +384,7 @@ def _calc_lpsd(
     ENBW = np.zeros(nf, dtype=np.float64)
     devxx = np.zeros(nf, dtype=np.float64)
     dev = np.zeros(nf, dtype=np.float64)
+    asd = np.zeros(nf, dtype=np.float64)
 
     # disp_each = _myround(nf / 100) * 10
     minReached = False
@@ -445,6 +447,6 @@ def _calc_lpsd(
         # Scale sqrt(variance)
         devxx[i] = np.sqrt(B2ns / fs ** 2 / S2 ** 2)
         dev[i] = np.sqrt(B2ns / S12 ** 2)
-        asd = np.sqrt(Sxx)
+        asd[i] = np.sqrt(Sxx[i])
 
     return [S, Sxx, dev, devxx, ENBW, asd]
