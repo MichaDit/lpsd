@@ -206,7 +206,9 @@ def _calc_lpsd_py(
         S[i] = A2ns / S12
         asd[i] = np.sqrt(Sxx[i])
 
-    return [S, Sxx, dev, devxx, ENBW, asd]
+    asdrms, _ = _asdrms(asd, f)
+
+    return [S, Sxx, dev, devxx, ENBW, asd, asdrms]
 
 
 def _kaiser_alpha(psll):
@@ -449,4 +451,44 @@ def _calc_lpsd(
         dev[i] = np.sqrt(B2ns / S12 ** 2)
         asd[i] = np.sqrt(Sxx[i])
 
-    return [S, Sxx, dev, devxx, ENBW, asd]
+    asdrms, _ = _asdrms(asd, f)
+
+    return [S, Sxx, dev, devxx, ENBW, asd, asdrms]
+
+
+def _asdrms(asd_in, freq_in, f_start=None):  # TODO: allow user to specify f_start here
+    """
+    Calculates the high-to-low RMS of an ASD.
+
+    Conor Mow-Lowry June 20 2016, updated November 13 2017 (original MATLAB code)
+    Artem Basalaev 20 April 2022 (python version)
+
+    Parameters
+    ----------
+     asd_in: array_like
+        input amplitude spectra density, from low-to-high frequency
+     freq_in: array_like
+        linearly-spaced frequency vector for ASD [Hz]
+     f_start: float
+        frequency to begin accumulating RMS (optional)
+
+    Returns
+    -------
+    rms_out: numpy::Array
+        high-to-low frequency cumulative RMS
+    freq_out: numpy::Array
+        (cropped) output frequency vector (optional)
+    """
+
+    freq_out = freq_in
+    if f_start is not None:  # Cutting away data above f_start
+        n_cut = np.where(freq_in > f_start)[0][0]  # Index for start frequency
+        freq_out = freq_in[0:n_cut]
+        asd_in = asd_in[0:n_cut]
+
+    bin_widths = np.diff(freq_out)
+    bin_widths = np.append(
+        bin_widths[0], bin_widths
+    )  # add an extra "bin" of the same size as first one
+    rms_out = np.sqrt(np.flip(np.cumsum(np.flip(asd_in * asd_in * bin_widths))))
+    return rms_out, freq_out
