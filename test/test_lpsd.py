@@ -168,6 +168,7 @@ class TestLPSD(TestCase):
                 raw_devxx[0],
                 raw_ENBW[0],
                 _,
+                _,
             ) = lpsd.lpsd_trad(
                 y, fs, olap, bmin, Lmin, Jdes, Kdes, order, win, psll, use_c_core=c
             )
@@ -178,6 +179,7 @@ class TestLPSD(TestCase):
                 raw_dev[1],
                 raw_devxx[1],
                 raw_ENBW[1],
+                _,
                 _,
             ) = lpsd.lpsd_trad(
                 x,
@@ -199,3 +201,12 @@ class TestLPSD(TestCase):
             self.assertAlmostEqual(
                 np.sqrt(2) * max(np.sqrt(raw_S[1])), amp, delta=self.amp / 5
             )
+
+    def test_asdrms(self):
+        spec = lpsd.lpsd(self.data_x)
+        asdrms = spec["asdrms"].to_numpy()
+        asd = spec["asd"].to_numpy()
+        freq = spec.index
+        asdrms2, freq_out = lpsd._helpers._asdrms(asd, freq)
+        np.testing.assert_array_almost_equal(freq, freq_out)
+        np.testing.assert_array_almost_equal(asdrms, asdrms2)

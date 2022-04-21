@@ -115,6 +115,7 @@ def lpsd(  # pylint: disable=too-many-arguments
                 psd_std=result[3],
                 enbw=result[4],
                 asd=result[5],
+                asdrms=result[6],
             ),
             index=f,
         )
