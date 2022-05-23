@@ -200,7 +200,7 @@ def _calc_lpsd_py(
         A2ns = 2.0 * Mr.real
         S1 = np.sum(window)
         S12 = S1 * S1
-        S2 = np.sum(window ** 2)
+        S2 = np.sum(window**2)
         ENBW[i] = fs * S2 / S12
         Sxx[i] = A2ns / fs / S2
         S[i] = A2ns / S12
@@ -441,14 +441,14 @@ def _calc_lpsd(
         B2ns = 4.0 * Vr.value / nsegs.value
         S1 = sum(window)
         S12 = S1 * S1
-        S2 = sum(window ** 2)
+        S2 = sum(window**2)
         ENBW[i] = fs * S2 / S12
         # Scale PS/PSD
         Sxx[i] = A2ns / fs / S2
         S[i] = A2ns / S12
         # Scale sqrt(variance)
-        devxx[i] = np.sqrt(B2ns / fs ** 2 / S2 ** 2)
-        dev[i] = np.sqrt(B2ns / S12 ** 2)
+        devxx[i] = np.sqrt(B2ns / fs**2 / S2**2)
+        dev[i] = np.sqrt(B2ns / S12**2)
         asd[i] = np.sqrt(Sxx[i])
 
     asdrms, _ = _asdrms(asd, f)
