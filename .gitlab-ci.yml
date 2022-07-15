@@ -34,7 +34,9 @@ test:
       - htmlcov
     expire_in: 30 days
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
   needs: [compile]
 
 test-3.7:
