@@ -12,6 +12,7 @@ from warnings import warn
 
 import numpy as np
 from pandas import DataFrame, Series
+from pandas.core.indexes.datetimes import DatetimeIndex
 
 from ._helpers import (
     _calc_lpsd,
@@ -123,10 +124,15 @@ def lpsd(  # pylint: disable=too-many-arguments
         return dc
 
     if sample_rate is None:
-        index_diff = np.diff(data.index)
-        period_time = np.median(index_diff)
+        if isinstance(data.index, DatetimeIndex):
+            index_diff = data.index.to_series().diff()
+            period_time = index_diff.median().total_seconds()
+            std = index_diff.std().total_seconds()
+        else:
+            index_diff = np.diff(data.index)
+            period_time = np.median(index_diff)
+            std = index_diff.std()
         sample_rate = 1 / period_time
-        std = index_diff.std()
 
         if std / period_time > 1e-6:
             warn(
