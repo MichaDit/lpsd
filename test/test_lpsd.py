@@ -3,12 +3,14 @@ from pathlib import Path
 from unittest import TestCase
 
 import numpy as np
+import pandas as pd
 from pandas import DataFrame
 
 import lpsd
 from lpsd.flattop import HFT248D, olap_dict
 
 filedir = Path(__file__).parent
+datadir = filedir / "data"
 
 
 class TestLPSD(TestCase):
@@ -210,3 +212,9 @@ class TestLPSD(TestCase):
         asdrms2, freq_out = lpsd._helpers._asdrms(asd, freq)
         np.testing.assert_array_almost_equal(freq, freq_out)
         np.testing.assert_array_almost_equal(asdrms, asdrms2)
+
+    def test_datetimeindex(self):
+        data = pd.read_csv(datadir / "datetimeindex.csv", index_col=0, parse_dates=True)
+        results = lpsd.lpsd(data)
+        self.assertAlmostEqual(results["temperature"].index[-1], 9.83 / 2, places=2)
+        self.assertAlmostEqual(results["temperature"].index[0], 0.00413, places=5)

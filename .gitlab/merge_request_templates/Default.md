@@ -1,3 +1,2 @@
 - [ ] Implementation
 - [ ] Testing
-- [ ] Changelog
