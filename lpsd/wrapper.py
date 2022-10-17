@@ -24,7 +24,7 @@ from ._helpers import (
 )
 
 
-def lpsd(  # pylint: disable=too-many-arguments
+def lpsd(  # pylint: disable=too-many-arguments,disable=too-many-branches
     data: Union[Series, DataFrame],
     sample_rate: Optional[
         float
@@ -140,6 +140,11 @@ def lpsd(  # pylint: disable=too-many-arguments
                 f"Period time: {period_time}, standard deviation: {std}",
                 UserWarning,
             )
+
+    if data.isna().any().any():
+        warn("Removing NaN values ...", UserWarning)
+        data.dropna(inplace=True)
+    assert not data.isna().any().any(), "Bug: There should not be any NaN data!"
 
     if use_c_core and not c_core_available():
         warn(
