@@ -218,3 +218,9 @@ class TestLPSD(TestCase):
         results = lpsd.lpsd(data)
         self.assertAlmostEqual(results["temperature"].index[-1], 9.83 / 2, places=2)
         self.assertAlmostEqual(results["temperature"].index[0], 0.00413, places=5)
+
+    def test_removing_nan(self):
+        data = pd.read_csv(datadir / "nan.csv", index_col=0, parse_dates=True)
+        assert data.isna().any().any()
+        results = lpsd.lpsd(data)
+        self.assertFalse(results["temperature"]["psd"].isna().any().any())
