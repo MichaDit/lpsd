@@ -52,24 +52,28 @@ def _dft() -> Callable:
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_long),
         ndpointer(ct.c_double, flags="C_CONTIGUOUS"),
+        ndpointer(ct.c_double, flags="C_CONTIGUOUS"),
         ct.c_long,
         ct.c_long,
         ndpointer(ct.c_double, flags="C_CONTIGUOUS"),
         ndpointer(ct.c_double, flags="C_CONTIGUOUS"),
         ct.c_double,
         ct.c_int,
+        ct.c_bool,
     ]
     return dft
 
 
-def _calc_lpsd_py(
-    x, f, r, m, L, fs, win, psll, order, olap, Lmin
+def _calc_lcsd_py(
+    x1, x2, f, r, m, L, fs, win, psll, order, olap, Lmin, csd
 ):  # pylint: disable=too-many-arguments,unused-argument,too-many-branches
     """
-    Computes the LPSD algorithm like in the Matlab LTPDA implementation
+    Computes the LCSD algorithm like in the Matlab LTPDA implementation,
+    generalized to CSD
 
     Parameters:
-        x (list of float): The length of the time-series to be processed
+        x1 (list of float): first time-series to be processed
+        x2 (list of float): second time-series to be processed
         f (list of float): The frequency
         r (list of float): Frequency resolution (not implemented)
         m (int): Bin number
@@ -80,6 +84,7 @@ def _calc_lpsd_py(
         order (int): Order
         olap (float): Overlap (<=1)
         Lmin (int): The minimum segment length
+        csd (bool): whether calculating CSD (True) or PSD (False)
 
     Returns:
         S (list of float): Power spectrum
@@ -116,7 +121,8 @@ def _calc_lpsd_py(
 
     # disp_each = _myround(nf / 100) * 10
 
-    xdata = np.array(x)
+    x1data = np.array(x1)
+    x2data = np.array(x2)
 
     minReached = False
 
@@ -136,6 +142,12 @@ def _calc_lpsd_py(
 
         p = 1j * twopi * m[i] / l * np.arange(0, l)
         C = window * np.exp(p)
+        if i == 0:
+            C_r = np.array(C.real, dtype=np.float64)
+            C_i = np.array(C.imag, dtype=np.float64)
+        else:
+            C_r = np.append(C_r, C.real)
+            C_i = np.append(C_i, C.imag)
 
         # do segments
         Xr = 0.0
@@ -145,7 +157,7 @@ def _calc_lpsd_py(
 
         # Compute the number of averages we want here
         segLen = l  # Segment length
-        nData = len(xdata)
+        nData = len(x1data)
         ovfact = 1 / (1 - olap)
 
         davg = (((nData - segLen)) * ovfact) / segLen + 1
@@ -167,32 +179,26 @@ def _calc_lpsd_py(
             start = start + shift
 
             # get segment
-            xs = xdata[istart : istart + l]
+            x1s = x1data[istart : istart + l]
+            x2s = x2data[istart : istart + l]
 
             # detrend segment
-            if order == -1:
-                pass  # do nothing
-            elif order == 0:
-                xs = xs - np.mean(xs)
-            elif order == 1:
-                detrend(xs, overwrite_data=True)
-            else:
-                # TODO implement scipy detrending
-                # xs = polydetrend(xs, order)
-                warn(
-                    "Polynomial detrending is not implemented in Python, yet. Try the C version.",
-                    UserWarning,
-                )
+            _detrend(x1s, order)
+            if csd:
+                _detrend(x2s, order)
+            else:  # x1s is the same data as x2s in this case - simply copy detrending result
+                x2s = x1s.copy()
 
             # make DFT
-            a = np.dot(C, xs)
+            a1 = np.dot(C, x1s)
+            a2 = np.dot(C, x2s)
 
             # Welford's algorithm to update mean and variance (see C code)
 
             if j == 0:
-                Mr = a * np.conj(a)
+                Mr = a1 * np.conj(a2)
             else:
-                Xr = a * np.conj(a)
+                Xr = a1 * np.conj(a2)
                 Qr = Xr - Mr
                 Mr += Qr / j
                 M2 += Qr * (Xr - Mr)
@@ -201,6 +207,7 @@ def _calc_lpsd_py(
         S1 = np.sum(window)
         S12 = S1 * S1
         S2 = np.sum(window**2)
+
         ENBW[i] = fs * S2 / S12
         Sxx[i] = A2ns / fs / S2
         S[i] = A2ns / S12
@@ -335,8 +342,8 @@ def _ltf_plan(Ndata, fs, olap, bmin, Lmin, Jdes, Kdes):
     return [f, r, m, L, K]
 
 
-def _calc_lpsd(
-    x, f, r, m, L, fs, win, psll, order, olap, Lmin
+def _calc_lcsd(
+    x1, x2, f, r, m, L, fs, win, psll, order, olap, Lmin, csd
 ):  # pylint: disable=too-many-arguments,unused-argument
     """
     Computes the LPSD algorithm like in the Matlab LTPDA implementation
@@ -373,8 +380,7 @@ def _calc_lpsd(
         alpha = _kaiser_alpha(psll)
         beta = alpha * np.pi
 
-    # define constants
-    twopi = 2 * np.pi
+    # number of frequency bins
     nf = len(f)
 
     # get C core
@@ -389,7 +395,7 @@ def _calc_lpsd(
     asd = np.zeros(nf, dtype=np.float64)
 
     # disp_each = _myround(nf / 100) * 10
-    minReached = False
+    min_reached = False
 
     # initialize dft outputs
     Pr = ct.c_double(0)
@@ -397,44 +403,45 @@ def _calc_lpsd(
     nsegs = ct.c_long(0)
 
     # pointer to data
-    xdata = np.array(x)
-    nData = ct.c_long(len(x))
+    x1data = np.array(x1)
+    # length should be the same for both inputs
+    nData = ct.c_long(len(x1))
+    x2data = np.array(x2)
 
     for i in range(nf):
 
         # compute DFT exponent and window
         l = int(L[i])  # segment length
 
-        if not minReached:
+        if not min_reached:
             if not win_kaiser:
                 window = win(l)
             else:
                 # adjust to make window asymmetric (consistent with LTPDA implementation)
                 window = win(l + 1, beta)[0:-1]
         if l == Lmin:
-            minReached = True
+            min_reached = True
 
-        p = 1j * twopi * m[i] / l * np.arange(0, l)
+        p = 1j * 2 * np.pi * m[i] / l * np.arange(0, l)
         C = window * np.exp(p)
 
-        segLen1 = ct.c_long(l)  # Segment length
         Cr = np.array(C.real, dtype=np.float64)  # Real part of DFT coefficients
         Ci = np.array(C.imag, dtype=np.float64)  # Imag part of DFT coefficients
-        olap1 = ct.c_double(olap)  # Overlap percentage
-        order1 = ct.c_int(order)  # Order of detrending
 
         # Core DFT part implemented in C file
         dft(
             ct.byref(Pr),
             ct.byref(Vr),
             ct.byref(nsegs),
-            xdata,
+            x1data,
+            x2data,
             nData,
-            segLen1,
+            ct.c_long(l),
             Cr,
             Ci,
-            olap1,
-            order1,
+            ct.c_double(olap),
+            ct.c_int(order),
+            ct.c_bool(csd),
         )
 
         A2ns = 2.0 * Pr.value
@@ -492,3 +499,31 @@ def _asdrms(asd_in, freq_in, f_start=None):  # TODO: allow user to specify f_sta
     )  # add an extra "bin" of the same size as first one
     rms_out = np.sqrt(np.flip(np.cumsum(np.flip(asd_in * asd_in * bin_widths))))
     return rms_out, freq_out
+
+
+def _detrend(data, order):
+    """
+    Detrend time series segment. Overwrites input `data` with detrended version
+
+    Parameters
+    ----------
+     data: array_like
+        input time series segment
+     order: float
+        detrending order
+    """
+
+    if order == -1:
+        return  # do nothing
+    elif order == 0:
+        data = data - np.mean(data)
+    elif order == 1:
+        detrend(data, overwrite_data=True)
+    else:
+        # TODO implement scipy detrending
+        # data = polydetrend(data, order)
+        warn(
+            "Polynomial detrending is not implemented in Python, yet. Try the C version.",
+            UserWarning,
+        )
+        return
