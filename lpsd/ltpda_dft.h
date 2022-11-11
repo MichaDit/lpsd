@@ -7,14 +7,16 @@
 void  print_usage(char *version);
 
 void dft(double *Mr, double *Vr, long int *Navs,
-        double *xdata, long int nData, long int segLen, double *Cr, double *Ci, double olap, int order);
+        double *xdata1, double* xdata2, long int nData, long int segLen,
+        double *Cr, double *Ci, double olap, int order, bool csd);
 
-void xdft(double *Mr, double *Mi, double *XX, double *YY, double *M2, long int *Navs,
-        double *xdata, double *ydata, long int nData, long int segLen, double *Cr, double *Ci, double olap, int order);
+void lpcd_c(double* Sxx, double* S, double* ENBW, double *devxx, double *dev, double *asd, // outputs
+                double* x1data, double* x2data, long int nData, //input data, its length
+                double olap, int order,  //overlap percentage, detrending order,
+                int nf, double fs,       //number of frequency bins, sampling frequency
+                double* Cr, double* Ci, //DFT coefficients,
+                long int* segLen, double *S1, double *S2, //segment lengths, window norms
+                bool csd //whether to do CSD (true) or PSD (false)
+                );
 
-/*void xdft(double *XBARr, double *XBARi, double *S2, double *XYr, double *XYi, double *XX, double *YY, long int *Navs,
- *    double *xdata, double *ydata, long int nData, long int segLen,
- *    double *Cr, double *Ci, double olap, int order);
- */
-
-void remove_linear_drift(double *segm, double *data, int nfft);
+void detrend(int order, double *px, int segLen, double *x, double *a);

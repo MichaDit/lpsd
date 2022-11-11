@@ -30,6 +30,16 @@ class TestLPSD(TestCase):
         self.data_x = DataFrame(self.x, index=self.tt)
         self.data_y = DataFrame(self.y, index=self.tt)
 
+    def _max_value_in_window(
+        self, values, frequencies, input_frequency, window_size=0.001
+    ):
+        freq_window = np.where(abs(frequencies - input_frequency) < window_size)
+        max_value_index = np.argmax(
+            abs(values[freq_window[0][0] : freq_window[0][-1] + 1])
+        )
+        max_value_index = max_value_index + freq_window[0][0]
+        return values[max_value_index]
+
     def test_c_core_available(self):
         self.assertTrue(
             lpsd._helpers.c_core_available(),
@@ -38,6 +48,7 @@ class TestLPSD(TestCase):
 
     def test_lpsd_wrapper_default(self):
         for c in (True, False):
+            print("Use C core:", c)
             result = lpsd.lpsd(self.data_y[0], use_c_core=c)
             self.assertAlmostEqual(
                 np.mean(result["psd"]) * self.fs / 2,
@@ -45,8 +56,53 @@ class TestLPSD(TestCase):
                 delta=self.avg_pow / 10,
             )
 
+    def test_lcsd_wrapper_default(self):
+        t = np.arange(10000)
+        # define two waves, each with two frequencies, one of which is the same (f1)
+        f1 = 0.01
+        f2 = 0.1
+        f3 = 0.02
+
+        x = 20 * np.sin(2 * np.pi * f1 * t) + 10 * np.sin(2 * np.pi * f2 * t)
+        y = 20 * np.sin(2 * np.pi * f1 * t) + 10 * np.sin(2 * np.pi * f3 * t)
+
+        df = DataFrame()
+        df["x"] = x
+        df["y"] = y
+
+        for c in (True, False):
+            print("Use C core:", c)
+            result = lpsd.lcsd(df, use_c_core=c)
+
+            # check f1 - the common frequency
+            max_csd = self._max_value_in_window(
+                result["psd"].to_numpy(), result.index.to_numpy(), f1
+            )
+            np.testing.assert_allclose(max_csd, 152721.014525, rtol=0.01)
+
+            # with detrending
+            result = lpsd.lcsd(df, detrending_order=1, use_c_core=c)
+            max_csd = self._max_value_in_window(
+                result["psd"].to_numpy(), result.index.to_numpy(), f1
+            )
+            if not c:  # for python detrending, the result is slightly different,
+                check_val = 144984.70236044083  # see https://gitlab.com/uhh-gwd/lpsd/-/issues/26
+            else:
+                check_val = 152721.014525
+            np.testing.assert_allclose(max_csd, check_val, rtol=0.01)
+
+    def test_lcsd_wrapper_invalid_inputs(self):
+        x = [1.0, 2.0, 3.0]
+        df = DataFrame()
+        df["x"] = x
+        self.assertRaises(ValueError, lpsd.lcsd, df)  # wrong input: one time series
+        df["y"] = x
+        df["z"] = x
+        self.assertRaises(ValueError, lpsd.lcsd, df)  # wrong input: 3 time series
+
     def test_lpsd_wrapper_other_window(self):
         for c in (True, False):
+            print("Use C core:", c)
             result = lpsd.lpsd(
                 self.data_x[0],
                 window_function=HFT248D,
@@ -63,6 +119,7 @@ class TestLPSD(TestCase):
         self.data_y[0] += 0.001 * self.data_y.index - 10
 
         for c in (True, False):
+            print("Use C core:", c)
             result = lpsd.lpsd(self.data_y[0], detrending_order=1, use_c_core=c)
             self.assertAlmostEqual(
                 result["psd"].mean() * self.fs / 2,
@@ -84,7 +141,8 @@ class TestLPSD(TestCase):
         # add some offset and linear curve
         self.data_y[0] += 0.001 * self.data_y.index - 10
 
-        for c in (True, False):
+        for c in (False, True):
+            print("Use C core:", c)
             result = lpsd.lpsd(self.data_y[0], detrending_order=None, use_c_core=c)
             self.assertGreater(result["psd"].mean() * self.fs / 2, self.avg_pow * 10)
 
@@ -108,6 +166,7 @@ class TestLPSD(TestCase):
 
     def test_with_manual_sample_rate(self):
         for c in (True, False):
+            print("Use C core:", c)
             result_auto = lpsd.lpsd(self.data_y[0], use_c_core=c)
             result_manual = lpsd.lpsd(self.data_y[0], sample_rate=self.fs, use_c_core=c)
 
@@ -117,6 +176,7 @@ class TestLPSD(TestCase):
 
     def test_with_wrong_manual_sample_rate(self):
         for c in (True, False):
+            print("Use C core:", c)
             result_auto = lpsd.lpsd(self.data_y[0], use_c_core=c)
             result_manual = lpsd.lpsd(
                 self.data_y[0], sample_rate=self.fs * 1.1, use_c_core=c
@@ -129,80 +189,6 @@ class TestLPSD(TestCase):
         data = DataFrame(self.y, index=self.tt)
         with self.assertWarns(UserWarning):
             _ = lpsd.lpsd(data)
-
-    def test_old_wrapper(self):
-        # Test data parameters
-
-        fs = self.fs
-        y = self.y
-        x = self.x
-        avg_pow = self.avg_pow
-        amp = self.amp
-
-        # LPSD parameters
-
-        # For Kaiser window use "default" as overlap to calculate it automatically. For windows in flattop the olap_dict can be used, to use optimized overlap.
-        # (Kaiser window uses psll parameter to determine alpha/olap value)
-
-        olap = "default"
-        bmin = 1
-        Lmin = 0
-        Jdes = 500
-        Kdes = 100
-        order = 0
-        win = np.kaiser
-        psll = 200
-
-        raw_f = [[], []]
-        raw_S = [[], []]
-        raw_Sxx = [[], []]
-        raw_dev = [[], []]
-        raw_devxx = [[], []]
-        raw_ENBW = [[], []]
-
-        for c in (True, False):
-            # lpsd method
-            (
-                raw_f[0],
-                raw_S[0],
-                raw_Sxx[0],
-                raw_dev[0],
-                raw_devxx[0],
-                raw_ENBW[0],
-                _,
-                _,
-            ) = lpsd.lpsd_trad(
-                y, fs, olap, bmin, Lmin, Jdes, Kdes, order, win, psll, use_c_core=c
-            )
-            (
-                raw_f[1],
-                raw_S[1],
-                raw_Sxx[1],
-                raw_dev[1],
-                raw_devxx[1],
-                raw_ENBW[1],
-                _,
-                _,
-            ) = lpsd.lpsd_trad(
-                x,
-                fs,
-                olap_dict["HFT248D"],
-                bmin,
-                Lmin,
-                Jdes,
-                Kdes,
-                order,
-                HFT248D,
-                psll,
-                use_c_core=c,
-            )
-
-            self.assertAlmostEqual(
-                np.mean(raw_Sxx[0]) * fs / 2, avg_pow, delta=avg_pow / 10
-            )
-            self.assertAlmostEqual(
-                np.sqrt(2) * max(np.sqrt(raw_S[1])), amp, delta=self.amp / 5
-            )
 
     def test_asdrms(self):
         spec = lpsd.lpsd(self.data_x)

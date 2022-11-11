@@ -1,7 +1,7 @@
 import logging as log
 import sys
 
-from .wrapper import lpsd, lpsd_trad
+from .wrapper import lpsd, lcsd, lpsd_trad
 
 if sys.version_info >= (3, 8):
     from importlib import metadata  # >= Python 3.8
