@@ -6,7 +6,7 @@ all: compile mypy test package
 
 compile:
 	cd lpsd; \
-		gcc -c -fPIC ltpda_dft.c && \
+		gcc -c -fPIC -O3 ltpda_dft.c && \
 		gcc -shared -o ltpda_dft.so ltpda_dft.o -Wl,--out-implib,ltpda_dft.a
 
 test:
