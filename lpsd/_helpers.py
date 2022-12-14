@@ -50,6 +50,8 @@ def _dft() -> Callable:
     dft.argtypes = [
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double),
+        ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_long),
         ndpointer(ct.c_double, flags="C_CONTIGUOUS"),
         ndpointer(ct.c_double, flags="C_CONTIGUOUS"),
@@ -112,12 +114,12 @@ def _calc_lcsd_py(
     # nx = len(x)
     nf = len(f)
     # initialize outputs
-    Sxx = np.zeros(nf, dtype=np.float64)
-    S = np.zeros(nf, dtype=np.float64)
-    ENBW = np.zeros(nf, dtype=np.float64)
-    devxx = np.zeros(nf, dtype=np.float64)
-    dev = np.zeros(nf, dtype=np.float64)
-    asd = np.zeros(nf, dtype=np.float64)
+    Sxx = np.zeros(nf, dtype=np.complex64)
+    S = np.zeros(nf, dtype=np.complex64)
+    ENBW = np.zeros(nf, dtype=np.complex64)
+    devxx = np.zeros(nf, dtype=np.complex64)
+    dev = np.zeros(nf, dtype=np.complex64)
+    asd = np.zeros(nf, dtype=np.complex64)
 
     # disp_each = _myround(nf / 100) * 10
 
@@ -142,12 +144,6 @@ def _calc_lcsd_py(
 
         p = 1j * twopi * m[i] / l * np.arange(0, l)
         C = window * np.exp(p)
-        if i == 0:
-            C_r = np.array(C.real, dtype=np.float64)
-            C_i = np.array(C.imag, dtype=np.float64)
-        else:
-            C_r = np.append(C_r, C.real)
-            C_i = np.append(C_i, C.imag)
 
         # do segments
         Xr = 0.0
@@ -203,7 +199,7 @@ def _calc_lcsd_py(
                 Mr += Qr / j
                 M2 += Qr * (Xr - Mr)
 
-        A2ns = 2.0 * Mr.real
+        A2ns = 2.0 * Mr
         S1 = np.sum(window)
         S12 = S1 * S1
         S2 = np.sum(window**2)
@@ -214,6 +210,14 @@ def _calc_lcsd_py(
         asd[i] = np.sqrt(Sxx[i])
 
     asdrms, _ = _asdrms(asd, f)
+    #  trim zero imaginary part
+    if not np.iscomplex(Sxx).any():
+        S = S.real
+        Sxx = Sxx.real
+        dev = dev.real
+        devxx = devxx.real
+        asd = asd.real
+        asdrms = asdrms.real
 
     return [S, Sxx, dev, devxx, ENBW, asd, asdrms]
 
@@ -387,19 +391,21 @@ def _calc_lcsd(
     dft = _dft()
 
     # initialize outputs
-    Sxx = np.zeros(nf, dtype=np.float64)
-    S = np.zeros(nf, dtype=np.float64)
-    ENBW = np.zeros(nf, dtype=np.float64)
-    devxx = np.zeros(nf, dtype=np.float64)
-    dev = np.zeros(nf, dtype=np.float64)
-    asd = np.zeros(nf, dtype=np.float64)
+    Sxx = np.zeros(nf, dtype=np.complex64)
+    S = np.zeros(nf, dtype=np.complex64)
+    ENBW = np.zeros(nf, dtype=np.complex64)
+    devxx = np.zeros(nf, dtype=np.complex64)
+    dev = np.zeros(nf, dtype=np.complex64)
+    asd = np.zeros(nf, dtype=np.complex64)
 
     # disp_each = _myround(nf / 100) * 10
     min_reached = False
 
     # initialize dft outputs
-    Pr = ct.c_double(0)
-    Vr = ct.c_double(0)
+    Pr_r = ct.c_double(0)
+    Vr_r = ct.c_double(0)
+    Pr_i = ct.c_double(0)
+    Vr_i = ct.c_double(0)
     nsegs = ct.c_long(0)
 
     # pointer to data
@@ -430,8 +436,10 @@ def _calc_lcsd(
 
         # Core DFT part implemented in C file
         dft(
-            ct.byref(Pr),
-            ct.byref(Vr),
+            ct.byref(Pr_r),
+            ct.byref(Pr_i),
+            ct.byref(Vr_r),
+            ct.byref(Vr_i),
             ct.byref(nsegs),
             x1data,
             x2data,
@@ -443,9 +451,8 @@ def _calc_lcsd(
             ct.c_int(order),
             ct.c_bool(csd),
         )
-
-        A2ns = 2.0 * Pr.value
-        B2ns = 4.0 * Vr.value / nsegs.value
+        A2ns = 2.0 * (Pr_r.value + 1j * Pr_i.value)
+        B2ns = 4.0 * (Vr_r.value + 1j * Vr_i.value) / nsegs.value
         S1 = sum(window)
         S12 = S1 * S1
         S2 = sum(window**2)
@@ -459,6 +466,14 @@ def _calc_lcsd(
         asd[i] = np.sqrt(Sxx[i])
 
     asdrms, _ = _asdrms(asd, f)
+    #  trim zero imaginary part
+    if not np.iscomplex(Sxx).any():
+        S = S.real
+        Sxx = Sxx.real
+        dev = dev.real
+        devxx = devxx.real
+        asd = asd.real
+        asdrms = asdrms.real
 
     return [S, Sxx, dev, devxx, ENBW, asd, asdrms]
 

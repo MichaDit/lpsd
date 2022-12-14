@@ -91,6 +91,47 @@ class TestLPSD(TestCase):
                 check_val = 152721.014525
             np.testing.assert_allclose(max_csd, check_val, rtol=0.01)
 
+    def test_coherence(self):
+        t = np.arange(10000)
+        # define two waves, each with two frequencies, one of which is the same (f1)
+        f1 = 0.01
+        f2 = 0.1
+        f3 = 0.02
+
+        x = 20 * np.sin(2 * np.pi * f1 * t) + 10 * np.sin(2 * np.pi * f2 * t)
+        y = 20 * np.sin(2 * np.pi * f1 * t) + 10 * np.sin(2 * np.pi * f3 * t)
+
+        df = DataFrame()
+        df["x"] = x
+        df["y"] = y
+
+        coherence = []
+        for c in (True, False):
+            print("Use C core:", c)
+            psd = lpsd.lpsd(
+                df, use_c_core=c, detrending_order=None
+            )  # no detrending such that results
+            csd = lpsd.lcsd(
+                df, use_c_core=c, detrending_order=None
+            )  # for c and py are very close
+            coh = np.abs(csd["psd"]) ** 2 / psd["x"]["psd"] / psd["y"]["psd"]
+            np.testing.assert_array_less(coh, 1.001)
+            coherence.append(coh)
+
+            max_coh = self._max_value_in_window(
+                coh.to_numpy(), coh.index.to_numpy(), f1
+            )
+            # common frequency = good coherence
+            np.testing.assert_allclose(max_coh, 1.0, rtol=0.01)
+
+            max_coh = self._max_value_in_window(
+                coh.to_numpy(), coh.index.to_numpy(), f2
+            )
+            # frequency only in one signal = poor coherence
+            np.testing.assert_allclose(max_coh, 0.0, atol=0.01)
+
+        np.testing.assert_allclose(coherence[0], coherence[1], rtol=0.01)
+
     def test_lcsd_wrapper_invalid_inputs(self):
         x = [1.0, 2.0, 3.0]
         df = DataFrame()
