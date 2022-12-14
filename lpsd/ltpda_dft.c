@@ -29,83 +29,20 @@ int myround(double x)
 }
 
 /*
- * Compute LPSD
- *
- */
-void lcsd_c(double* Sxx, double* S, double* ENBW, double *devxx, double *dev, double *asd, // outputs
-                double* x1data, double* x2data, long int nData, //input data, its length
-                double olap, int order,  //overlap percentage, detrending order,
-                int nf, double fs,       //number of frequency bins, sampling frequency
-                double* Cr, double* Ci, //DFT coefficients,
-                long int* segLen, double *S1, double *S2, //segment lengths, window norms
-                bool csd //whether to do CSD (true) or PSD (false)
-                )
-{
-    double Pr, Vr, A2ns, B2ns, S12;
-    long int nsegs, ii, jj, shift;
-
-    Pr = 0;
-    Vr = 0;
-    nsegs = 0;
-    shift = 0;
-
-    for (ii = 0; ii < nf; ii++) {
-        double *Cr_bin;
-        double *Ci_bin;
-        Cr_bin = (double *)calloc(segLen[ii], sizeof(double));
-        Ci_bin = (double *)calloc(segLen[ii], sizeof(double));
-
-        for(jj=0; jj<segLen[ii]; jj++){
-            Cr_bin[jj] = Cr[shift+jj];
-            Ci_bin[jj] = Ci[shift+jj];
-        }
-
-        dft(
-            &Pr,
-            &Vr,
-            &nsegs,
-            x1data,
-            x2data,
-            nData,
-            segLen[ii],
-            Cr_bin,
-            Ci_bin,
-            olap,
-            order,
-            csd
-        );
-
-        A2ns = 2.0 * Pr;
-        B2ns = 4.0 * Vr / (double)(nsegs);
-        S12 = S1[ii] * S1[ii];
-        ENBW[ii] = fs * S2[ii] / S12;
-        // Scale PS / PSD
-        Sxx[ii] = A2ns / fs / S2[ii];
-        S[ii] = A2ns / S12;
-        // Scale sqrt(variance)
-        devxx[ii] = sqrt(B2ns / pow(fs, 2) / pow(S2[ii], 2));
-        dev[ii] = sqrt(B2ns / pow(S12, 2));
-        asd[ii] = sqrt(Sxx[ii]);
-
-        shift += segLen[ii];
-        free(Cr_bin);
-        free(Ci_bin);
-    }
-}
-
-/*
  * Short routine to compute the DFT at a single frequency
  *
  */
-void dft(double *Pr, double *Vr, long int *Navs,
-         double *x1data, double* x2data, long int nData, long int segLen,
-         double *Cr, double *Ci, double olap, int order, bool csd)
+void dft(double *Pr_r, double *Pr_i, double *Vr_r,  double *Vr_i, long int *Navs, // outputs
+         double *x1data, double* x2data, long int nData, long int segLen, //input data, its length, length of segment
+         double *Cr, double *Ci, double olap, int order, // DFT coefficients, overlap percentage, detrending order
+         bool csd) //whether to do CSD (true) or PSD (false)
 {
   long int istart;
   double shift, start;
   double *px1, *px2, *cr, *ci;
-  double rxsum, ixsum;
-  double Xr, Mr, M2, Qr;
+  double rxsum1, ixsum1;
+  double rxsum2, ixsum2;
+  double Xr_r, Xr_i, Mr_r, Mr_i, XM_diff_i, XM_diff_r, M2_r, M2_i, Qr_i, Qr_r;
   double p1, p2, *x1, *x2, *a1, *a2;
   long int jj, ii;
 
@@ -133,10 +70,16 @@ void dft(double *Pr, double *Vr, long int *Navs,
 
   /* Loop over segments */
   start = 0.0;
-  Xr = 0.0;
-  Qr = 0.0;
-  Mr = 0.0;
-  M2 = 0.0;
+  Xr_r = 0.0;
+  Qr_r = 0.0;
+  Mr_r = 0.0;
+  M2_r = 0.0;
+  Xr_i = 0.0;
+  Qr_i = 0.0;
+  Mr_i = 0.0;
+  M2_i = 0.0;
+  XM_diff_r = 0.0;
+  XM_diff_i = 0.0;
 
   for (ii = 0; ii < navg; ii++)
   {
@@ -161,13 +104,18 @@ void dft(double *Pr, double *Vr, long int *Navs,
     }
 
     /* Go over all samples in this segment */
-    rxsum = ixsum = 0.0;
+    rxsum1 = ixsum1 = rxsum2 = ixsum2 = 0.0;
     for (jj = 0; jj < segLen; jj++)
     {
+      // dot(C[segment], x1[segment])
       p1 = x1[jj];
+      rxsum1 += (*cr) * p1; /* cos term */
+      ixsum1 += (*ci) * p1; /* sin term */
+
+      // dot(C[segment], x2[segment])
       p2 = x2[jj];
-      rxsum += (*cr) * p1; /* cos term */
-      ixsum += (*ci) * p2; /* sin term */
+      rxsum2 += (*cr) * p2; /* cos term */
+      ixsum2 += (*ci) * p2; /* sin term */
 
       /* increment pointers */
       cr++;
@@ -177,14 +125,34 @@ void dft(double *Pr, double *Vr, long int *Navs,
     /* Welford's algorithm to update mean and variance */
     if (ii == 0)
     {
-      Mr = (rxsum * rxsum + ixsum * ixsum);
+      //M = dot(C[segment], x1[segment]) *  conj(dot(C[segment],x2[segment]))
+      // conjugate x2
+      ixsum2 = -1.0 * ixsum2;
+      // multiply real and imaginary parts
+      // (x+yi)(u+vi) = (xu-yv)+(xv+yu)i
+      Mr_r = (rxsum1 * rxsum2 - ixsum2 * ixsum1);
+      Mr_i = (rxsum1 * ixsum2 + ixsum1 * rxsum2);
     }
     else
     {
-      Xr = (rxsum * rxsum + ixsum * ixsum);
-      Qr = Xr - Mr;
-      Mr += Qr / ii;
-      M2 += Qr * (Xr - Mr);
+      // for Xr same calculation as above
+      ixsum2 = -1.0 * ixsum2;
+      // multiply real and imaginary parts
+      // (x+yi)(u+vi) = (xu-yv)+(xv+yu)i
+      Xr_r = (rxsum1 * rxsum2 - ixsum2 * ixsum1);
+      Xr_i = (rxsum1 * ixsum2 + ixsum1 * rxsum2);
+
+      Qr_r = Xr_r - Mr_r;
+      Qr_i = Xr_i - Mr_i;
+
+      Mr_r += Qr_r / ii;
+      Mr_i += Qr_i / ii;
+
+      // M2 += Qr * (Xr - Mr)
+      XM_diff_r = Xr_r - Mr_r;
+      XM_diff_i = Xr_i - Mr_i;
+      M2_r = Qr_r*XM_diff_r - Qr_i*XM_diff_i;
+      M2_i = Qr_r*XM_diff_i + Qr_i*XM_diff_r;
     }
   }
 
@@ -195,14 +163,17 @@ void dft(double *Pr, double *Vr, long int *Navs,
   free(a2);
 
   /* Outputs */
-  *Pr = Mr;
+  *Pr_r = Mr_r;
+  *Pr_i = Mr_i;
   if (navg == 1)
   {
-    *Vr = Mr * Mr;
+    *Vr_r = Mr_r * Mr_r - Mr_i * Mr_i;
+    *Vr_i = 2 * Mr_i * Mr_r;
   }
   else
   {
-    *Vr = M2 / (navg - 1);
+    *Vr_r = M2_r / (navg - 1);
+    *Vr_i = M2_i / (navg - 1);
   }
   *Navs = navg;
 }
