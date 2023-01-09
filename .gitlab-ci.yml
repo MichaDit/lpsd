@@ -74,6 +74,7 @@ black:
 ## package
 
 package:
+  image: gwdiexp/lpsd:develop-old
   stage: package
   script:
     - make package
