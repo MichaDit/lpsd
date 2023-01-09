@@ -1,6 +1,7 @@
 BRANCH ?= develop
 DOCKER_IMAGE = gwdiexp/lpsd:${BRANCH}
-OLD_PY_VERSION = 3.7
+OLD_PY_VERSION = 3.8
+NEW_PY_VERSION = 3.11
 
 all: compile mypy test package
 
@@ -35,14 +36,15 @@ upload:
 	poetry publish
 
 docker:
-	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE}
-	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE}-${OLD_PY_VERSION} \
+	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE} \
+		--build-arg PYTHON_VERSION=${NEW_PY_VERSION}
+	docker build . -f docker/Dockerfile -t ${DOCKER_IMAGE}-old \
 		--build-arg PYTHON_VERSION=${OLD_PY_VERSION}
 
 docker-push:
 	docker login
 	docker push ${DOCKER_IMAGE}
-	docker push ${DOCKER_IMAGE}-${OLD_PY_VERSION}
+	docker push ${DOCKER_IMAGE}-old
 
 clean:
 	@rm -r dist/
