@@ -74,7 +74,7 @@ black:
 ## package
 
 package:
-  image: gwdiexp/lpsd:develop-old
+  image: gwdiexp/lpsd:develop
   stage: package
   script:
     - make package
@@ -87,7 +87,7 @@ package:
 ## test package
 
 test-package:
-  image: python:3.10
+  image: python:3.11
   stage: package-test
   script:
     - pip3 install `ls dist/*.whl`
