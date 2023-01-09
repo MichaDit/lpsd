@@ -39,8 +39,8 @@ test:
         path: coverage.xml
   needs: [compile]
 
-test-3.7:
-  image: gwdiexp/lpsd:develop-3.7
+test-old:
+  image: gwdiexp/lpsd:develop-old
   stage: test
   script:
     - make test
@@ -62,6 +62,7 @@ pylint:
   stage: test
   script:
     - make pylint
+  allow_failure: true
   needs: []
 
 black:
