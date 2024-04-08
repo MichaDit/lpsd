@@ -100,10 +100,6 @@ test-package:
       - .pip/
   needs:
     - [package]
-  only:
-    - develop
-    - main
-    - tags
 
 ## deploy
 
@@ -115,7 +111,6 @@ deploy production:
     - poetry publish
   only:
     - tags
-
 ## deploy test
 
 # TODO
