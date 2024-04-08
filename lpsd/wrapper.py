@@ -7,6 +7,7 @@ Ref: Improved spectrum estimation from digitized time series
 on a logarithmic frequency axis
 https://doi.org/10.1016/j.measurement.2005.10.010
 """
+
 from typing import Union
 from pandas import DataFrame
 

@@ -2,6 +2,7 @@
 This module contains LCSD class which holds all necessary parameters for logarithmic spectral density (LCSD/LPSD)
 calculation
 """
+
 from typing import Callable, Optional, Union
 from warnings import warn
 
