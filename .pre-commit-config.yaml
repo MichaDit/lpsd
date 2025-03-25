@@ -30,14 +30,14 @@ repos:
 
       - id: black
         name: black
-        stages: [commit]
+        stages: [pre-commit]
         language: system
         entry: poetry run black
         types: [python]
 
       - id: mypy
         name: mypy
-        stages: [commit]
+        stages: [pre-commit]
         language: system
         entry: poetry run mypy
         types: [python]

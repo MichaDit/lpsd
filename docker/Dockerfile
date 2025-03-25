@@ -7,13 +7,11 @@ ENV PYTHONUNBUFFERED 1
 RUN mkdir /code
 WORKDIR /code
 
-ENV BUILD_PACKAGES build-essential python3-distutils
+ENV BUILD_PACKAGES build-essential python3-distutils python3-poetry python3-setuptools
 
 RUN apt-get update -y && apt-get install -y $BUILD_PACKAGES
 
-RUN pip install --no-cache --upgrade poetry setuptools
-
 RUN poetry config virtualenvs.create false
 
-COPY pyproject.toml poetry.lock /code/
+COPY README.md pyproject.toml poetry.lock /code/
 RUN poetry install -vvv --no-interaction

@@ -1,7 +1,7 @@
 BRANCH ?= develop
 DOCKER_IMAGE = gwdiexp/lpsd:${BRANCH}
-OLD_PY_VERSION = 3.8
-NEW_PY_VERSION = 3.11
+OLD_PY_VERSION = 3.10
+NEW_PY_VERSION = 3.13
 
 all: compile mypy test package
 
