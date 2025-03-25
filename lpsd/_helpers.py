@@ -409,10 +409,10 @@ def _calc_lcsd(
     nsegs = ct.c_long(0)
 
     # pointer to data
-    x1data = np.array(x1)
+    x1data = np.array(x1, dtype=np.float64)
     # length should be the same for both inputs
     nData = ct.c_long(len(x1))
-    x2data = np.array(x2)
+    x2data = np.array(x2, dtype=np.float64)
 
     for i in range(nf):
 
