@@ -251,3 +251,15 @@ class TestLPSD(TestCase):
         assert data.isna().any().any()
         results = lpsd.lpsd(data)
         self.assertFalse(results["temperature"]["psd"].isna().any().any())
+
+    def test_int_input_data(self):
+        for c in (True, False):
+            print("Use C core:", c)
+            self.data_y[0] = np.int64(self.data_y[0])
+            self.assertEqual(self.data_y[0].dtypes, "int64")
+            result = lpsd.lpsd(self.data_y[0], use_c_core=c)
+            self.assertAlmostEqual(
+                np.mean(result["psd"]) * self.fs / 2,
+                self.avg_pow,
+                delta=1,
+            )

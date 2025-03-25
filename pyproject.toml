@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lpsd"
-version = "1.0.4"
+version = "1.0.5"
 description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
 authors = ["Christoph Bode <christoph.bode@aei.mpg.de>",
     "Gerhard Heinzel",
