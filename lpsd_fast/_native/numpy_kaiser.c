@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * C adaptation of the i0/Chebyshev and Kaiser algorithms in
+ * C adaptation of the i0/Chebyshev, Kaiser and symmetric window algorithms in
  * NumPy 2.3.5, numpy/lib/_function_base_impl.py.
  * That source identifies its i0 approximation as originating in Cephes.
  * The approximation coefficients and arithmetic recurrence are retained.
@@ -215,6 +215,50 @@ int generate_kaiser(double *window, long int length, double beta)
                 window[mirror] = value;
             }
         }
+    }
+    return 0;
+}
+
+int generate_window(double *window, long int length, int kind, double beta)
+{
+    if (kind == LPSD_WINDOW_KAISER) {
+        return generate_kaiser(window, length, beta);
+    }
+    if (window == NULL || length < 1 || length > INT_MAX ||
+        kind < LPSD_WINDOW_HANN || kind > LPSD_WINDOW_BOXCAR) {
+        return 1;
+    }
+    if (kind == LPSD_WINDOW_BOXCAR || length == 1) {
+        #pragma omp simd
+        for (long int j = 0; j < length; ++j) {
+            window[j] = 1.0;
+        }
+        return 0;
+    }
+    const double pi = 3.141592653589793238462643383279502884;
+    const double denominator = (double)(length - 1);
+    const long int half = (length - 1) / 2;
+    for (long int j = 0; j <= half; ++j) {
+        /* Keep NumPy's centered sample grid and arithmetic order; using
+         * 2*pi*j/(L-1) is equivalent but rounds differently at endpoints. */
+        const double n = (double)(1 - length + 2 * j);
+        double value;
+        if (kind == LPSD_WINDOW_BARTLETT) {
+            value = 1.0 + n / denominator;
+        } else {
+            const double phase = pi * n / denominator;
+            const double c = cos(phase);
+            if (kind == LPSD_WINDOW_HANN) {
+                value = 0.5 + 0.5 * c;
+            } else if (kind == LPSD_WINDOW_HAMMING) {
+                value = 0.54 + 0.46 * c;
+            } else {
+                const double phase2 = (2.0 * pi) * n / denominator;
+                value = (0.42 + 0.5 * c) + 0.08 * cos(phase2);
+            }
+        }
+        window[j] = value;
+        window[length - 1 - j] = value;
     }
     return 0;
 }
