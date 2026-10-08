@@ -7,7 +7,18 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.3`; this is not an official upstream release.
+Its package version is `1.0.6+fast.4`; this is not an official upstream release.
+
+Version `fast.4` adds bounded FP64 FMA segment projections to single-worker
+`kernel="fast"` calls on supported AVX-512 CPUs, plus shared coefficient
+loads for projected CSD segments. The initial projections and inherited
+statistics remain unchanged; scalar, automatic and parallel PSD paths
+retain their established arithmetic. See the
+[fused segment implementation](docs/fused-segments.md),
+[CSD comparison](docs/csd-segments.md) and the
+[complete fast.4 measurements](docs/performance-fast4.md).
+The build and benchmark reports now bind native binaries to their project
+source hashes, including recursively included C files and headers.
 
 Version `fast.3` accelerates the segment calculation itself. Supported
 64-bit AVX-512 CPUs share projected coefficients across eight auto-spectrum

@@ -5,7 +5,7 @@ FP64 projections with explicit fused multiply-add instructions. It retains every
 frequency, Fourier/window coefficient, segment start and sample. Each
 accumulator belongs to one segment, and every inherited mean update still
 runs in the original order. The existing scalar, SIMD and selected native
-entry points retain their prior arithmetic.
+entry points do not opt into this fused arithmetic.
 
 This changes rounding within eligible projections. It does not change the
 spectral estimator or repair the inherited 1.0.6 mean/variance defects.
