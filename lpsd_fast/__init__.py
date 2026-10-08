@@ -1,2 +1,6 @@
-"""Optional native acceleration for the lpsd estimator."""
+"""Parallel native implementation of the LPSD 1.0.6 estimator."""
 __version__ = "1.0.6+fast.1"
+
+from .api import available_workers, lcsd, lpsd
+
+__all__ = ["lpsd", "lcsd", "available_workers"]
