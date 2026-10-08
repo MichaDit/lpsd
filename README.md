@@ -7,22 +7,33 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.1`; this is not an official upstream release.
+Its package version is `1.0.6+fast.2`; this is not an official upstream release.
 
-For the recorded ten-million-sample noise input, the original public API took
-151.412 s and the optimized eight-worker API took a median of 2.937 s across
-three calls: approximately **51.6 times faster** on that machine. The
-single-worker optimized call, with profiling enabled, took 15.476 s. These are historical measurements
-on an eight-CPU-quota Linux environment, not a speed guarantee for other
-signals or hardware. See [measurements and reproduction](docs/performance.md)
-and [numerical behavior](docs/numerics.md).
+Version `fast.2` adds selected PSD/NSD outputs, direct `lnsd`, native built-in
+and flat-top windows, a SIMD Kaiser series, bounded phase blocks, shared
+segment projections and portable SIMD dispatch. In the final local native
+measurements, ten million samples took **1.888 s versus 3.976 s** for the
+previous `fast.1` version; thirty million took **7.913 s versus 14.449 s**.
+These are medians on the same eight-CPU Linux environment, comparing
+`fast.1` auto/all with `fast.2` fast/PSD. Selecting PSD alone did not establish
+an additional wall-time gain.
+
+See [the performance report](docs/performance.md),
+[final measurements](benchmarks/results_fast2_final.json) and
+[numerical notes](docs/numerics.md) for conditions, individual timings,
+profiles and limitations. Historical original-versus-fast timings are
+retained separately from this new incremental comparison. The final code
+passed [all eight native CI jobs](https://github.com/MichaDit/lpsd/actions/runs/37803974329),
+including real ARM64 Linux and Apple Silicon runners.
 
 ## Install from source
 
-The tested target is **Linux x86-64 with GCC**. Python 3.10 or newer, NumPy,
-pandas and SciPy are required; pip installs the Python dependencies. No FFTW,
-Python development headers or NumPy C headers are required by the native build.
-Other operating systems and toolchains need their own build validation.
+Python 3.10 or newer, NumPy, pandas and SciPy are required; pip installs
+the Python dependencies. The native build needs a C11 compiler and `libm`;
+it does not require FFTW, Python development headers or NumPy C headers.
+The build supports GCC/Clang on Linux x86-64 and AArch64, and Apple Clang on
+Apple Silicon. See [platform validation and build options](docs/platforms.md)
+for the actual CI evidence and remaining limits.
 
 ```bash
 git clone https://github.com/MichaDit/lpsd.git
@@ -40,7 +51,8 @@ python -m lpsd_fast.build --native
 ```
 
 Rebuild that CPU-specific library before moving it to a different CPU. Ordinary
-builds omit `-march=native`. Native files are generated locally and are not new
+builds omit host-only ISA flags and use runtime AVX2/AVX512F dispatch on
+supported x86 ELF systems. Native files are generated locally and are not new
 Git-tracked artifacts. Compiler failures stop installation instead of leaving
 a silent Python fallback.
 
@@ -91,16 +103,79 @@ for the actual number of frequency points.
 | `workers=1` | Sequential frequencies, useful for isolating computational bottlenecks |
 | `max_working_mb` | Budget for concurrent temporary work; not a hard limit on total process RSS |
 | `window_cache_mb=128` | Bounded cache for repeated window lengths |
+| `kernel="fast"` | Enable additional coefficient/window acceleration with extra floating-point rounding |
+| `outputs="psd"` | Return only PSD; skip variance updates and unused derived columns |
+| `outputs="nsd"` | Return only noise spectral density, with the same square root and rounding as ASD |
 | `profile=True` | Add per-frequency preparation and segment timings to `result.attrs["lpsd_profile"]` |
 
 Input storage, caches, allocator overhead and an individual frequency larger
 than the concurrency budget can take process RSS above `max_working_mb`.
 
+### Request only the data you need
+
+```python
+from lpsd_fast import lpsd, lnsd
+
+psd = lpsd(samples, sample_rate=1_000.0, kernel="fast", outputs="psd")
+nsd = lnsd(samples, sample_rate=1_000.0, kernel="fast")
+both = lpsd(samples, sample_rate=1_000.0, outputs=("psd", "nsd"))
+```
+
+`lnsd` returns a frequency-indexed DataFrame with one `nsd` column. If the
+samples have units V and the sample rate is in Hz, PSD has units V²/Hz and
+NSD has units V/√Hz. NSD is the existing `asd` calculation under an explicit
+name: the square root is taken after the inherited complex64 PSD rounding.
+It is available for auto spectra; `lcsd` retains the existing complex `asd`
+behavior instead.
+
+`outputs=None` or `outputs="all"` keeps the original seven-column result.
+Any ordered selection of `ps`, `psd`, `ps_std`, `psd_std`, `enbw`, `asd`,
+`asdrms` and `nsd` is accepted. Names must be unique. Each selected column
+matches that column in the same kernel's full result; `nsd` matches `asd`.
+Omitting both deviation columns skips native variance updates. Requesting
+only `enbw` needs no DFT at all. The frequency plan, input samples and
+number of segments used for an actual spectrum are unchanged.
+
+### Standard and custom windows
+
+```python
+hann_psd = lpsd(
+    samples, sample_rate=1_000.0,
+    window_function="hann", overlap=0.5, outputs="psd",
+)
+```
+
+Known names are `kaiser`, `hann`/`hanning`, `hamming`, `blackman`, `bartlett`
+and `boxcar`. The corresponding NumPy functions (`np.kaiser`, `np.hanning`,
+`np.hamming`, `np.blackman`, `np.bartlett`, `np.ones`) are accepted too.
+Fast kernels generate these windows in native code without serializing
+Python callbacks. Kaiser keeps the original periodic definition
+`np.kaiser(L + 1, beta)[:-1]`; Hann, Hamming, Blackman and Bartlett match
+NumPy's symmetric length-L definitions. Boxcar contains ones. Supply an
+explicit overlap for every non-Kaiser window.
+
+All 19 periodic functions from `lpsd.flattop` also have a native path,
+including `SFT3F`–`SFT5F`, `SFT3M`–`SFT5M`, `FTNI`, `FTHP`, `FTSR`,
+`Matlab` and the `HFT` family through `HFT248D`. Pass the original function
+or its name, for example `window_function="HFT248D", overlap=0.841`.
+Their original cosine-series coefficients and periodic sample grid are
+retained. Fast generation computes harmonics with a SIMD Chebyshev
+recurrence from one cosine, which changes rounding but avoids separate
+large temporary arrays for every harmonic. The scalar kernel continues
+to call the original implementation.
+
+Arbitrary window callables remain supported. The implementation calls the
+function with the requested segment length and copies its result under a
+lock, so a callback that reuses its own work buffer remains safe. Wrapping
+a known NumPy function in a custom callable keeps that generic path. This
+also preserves user-defined periodic/symmetric conventions.
+
 ### Kernel choice and numerical limits
 
 | Kernel | Behavior |
 | --- | --- |
-| `auto` | Projected mean removal for detrending order 0; original residual detrending plus SIMD for other orders |
+| `fast` | Blockwise Fourier coefficients and SIMD Kaiser series with direct fallbacks; compensated order-0 preparation above 64 long-double mantissa bits; additional rounding differences |
+| `auto` | Projected mean removal when C long double has more than 53 bits; original residual detrending plus SIMD on 53-bit targets and for other orders |
 | `scalar` | Original window/coefficient route and serial Fourier accumulation; closest original-C compatibility |
 | `simd` | Original long-double polynomial detrending with vectorized Fourier reductions |
 | `projected` | Explicit projection for orders 0 and 1; order 1 is experimental for large ramps with tiny residuals |
@@ -109,7 +184,10 @@ The fast modes keep the LPSD plan and intended calculation, but they change
 floating-point evaluation. Tests found relative differences near deep tone
 nulls despite tiny absolute errors. `scalar` matched all 350 output-column
 arrays in the recorded 49-case suite bitwise; this is not a universal
-cross-platform equality guarantee.
+cross-platform equality guarantee. `fast` does not enforce an error tolerance
+at runtime. The audit can apply an explicit relative limit and separate
+PSD/NSD absolute limits, while keeping all relative violations visible.
+No arbitrary-signal 1% guarantee is implied.
 
 **Inherited statistics:** all modes deliberately preserve two defects in the
 original mean/second-moment recurrence. In particular, `ps_std` and `psd_std`
@@ -146,7 +224,10 @@ separate. Profiling uses an additional instrumented call; per-worker elapsed
 times overlap and must not be summed as wall time.
 
 - [Performance, bottlenecks and complexity](docs/performance.md)
-- [Recorded timings and validation summaries](benchmarks/results.json)
+- [Final fast.2 timings and accuracy](benchmarks/results_fast2_final.json)
+- [First fast.2 integration measurements](benchmarks/results_fast2.json)
+- [Historical original-versus-fast measurements](benchmarks/results.json)
+- [Native platforms and installed-wheel validation](docs/platforms.md)
 - [Numerical analysis and compatibility](docs/numerics.md)
 - [Source provenance and licenses](docs/provenance.md)
 
