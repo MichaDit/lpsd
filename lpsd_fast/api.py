@@ -25,7 +25,7 @@ from ._windows import COSINE_WINDOWS, COSINE_WINDOW_NAMES
 _LIB = None
 _LIB_LOCK = threading.Lock()
 _CHUNK = 262144
-_KERNELS = {'scalar': 0, 'simd': 1, 'projected': 2, 'auto': 2}
+_KERNELS = {'scalar': 0, 'simd': 1, 'projected': 2, 'auto': 2, 'fast': 2}
 _DEFAULT_OUTPUTS = ('ps', 'psd', 'ps_std', 'psd_std', 'enbw', 'asd', 'asdrms')
 _BASE_OUTPUTS = ('ps', 'psd', 'ps_std', 'psd_std', 'enbw')
 _WINDOW_FUNCTIONS = (np.kaiser, np.hanning, np.hamming, np.blackman, np.bartlett, np.ones)
@@ -137,6 +137,10 @@ def _native():
             _LIB.generate_cosine_window.restype = ct.c_int
             _LIB.generate_coefficients.argtypes = [dp, dp, dp, ct.c_long, ct.c_double]
             _LIB.generate_coefficients.restype = ct.c_int
+            _LIB.generate_coefficients_blocked.argtypes = _LIB.generate_coefficients.argtypes
+            _LIB.generate_coefficients_blocked.restype = ct.c_int
+            _LIB.native_long_double_mantissa_bits.argtypes = []
+            _LIB.native_long_double_mantissa_bits.restype = ct.c_int
         return _LIB.fast_dft
 
 
@@ -187,12 +191,13 @@ def _kaiser_window(length, beta):
     return result
 
 
-def _coefficients(window, frequency_bin, length, strict=False):
+def _coefficients(window, frequency_bin, length, strict=False, blocked=False):
     cr = np.empty(length, dtype=np.float64)
     ci = np.empty(length, dtype=np.float64)
     if not strict:
         _native()
-        status = _LIB.generate_coefficients(_pointer(cr), _pointer(ci), _pointer(window), length, frequency_bin)
+        generate = _LIB.generate_coefficients_blocked if blocked else _LIB.generate_coefficients
+        status = generate(_pointer(cr), _pointer(ci), _pointer(window), length, frequency_bin)
         if status:
             raise RuntimeError('Native Fourier coefficient generation failed.')
         return cr, ci
@@ -267,7 +272,12 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     f, r, m, lengths, counts = plan
     nf = len(f)
     n = len(x1)
-    mode = (2 if order == 0 else 1) if kernel == 'auto' else _KERNELS[kernel]
+    mode = (2 if order == 0 else 1) if kernel in ('auto', 'fast') else _KERNELS[kernel]
+    mantissa_bits = _LIB.native_long_double_mantissa_bits()
+    if kernel == 'fast' and order == 0 and mantissa_bits > 64:
+        # Compensated FP64 preparation avoids expensive wider long-double
+        # arithmetic on targets such as the Linux AArch64 ABI.
+        mode = 3
     statistics = 'ps_std' in outputs or 'psd_std' in outputs
     spectrum = any(name != 'enbw' for name in outputs)
     # PSD also controls upstream's real/complex output convention. Keep its
@@ -348,9 +358,10 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     def one(j):
         length = int(lengths[j])
         temporary_bytes = min(length, _CHUNK) * 96 if kernel == 'scalar' else 8192
-        # Mode 2 projects our private coefficients in place; there are no
+        # Modes 2/3 project our private coefficients in place; there are no
         # extra projected arrays. Detrending in modes 0/1 needs residuals.
-        bytes_per_sample = 24 if mode == 2 or order < 0 else (40 if csd else 32)
+        bytes_per_sample = 24 if mode >= 2 or order < 0 else (40 if csd else 32)
+        wait_started = time.perf_counter() if profile else 0.0
         reserved = gate.acquire(length * (bytes_per_sample if spectrum else 8) + temporary_bytes)
         t0 = time.perf_counter()
         try:
@@ -360,7 +371,8 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
             navg = ct.c_long()
             prep_s, segments_s = ct.c_double(), ct.c_double()
             if spectrum:
-                cr, ci = _coefficients(w, m[j], length, strict=(kernel == 'scalar'))
+                cr, ci = _coefficients(w, m[j], length, strict=(kernel == 'scalar'),
+                                       blocked=(kernel == 'fast'))
                 t2 = time.perf_counter()
                 extra = (ct.byref(prep_s), ct.byref(segments_s)) if profile else ()
                 status = fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
@@ -396,6 +408,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                            'coefficients_s': t2 - t1,
                            'c_kernel_s': t3 - t2, 'c_preparation_s': prep_s.value,
                            'c_segments_s': segments_s.value,
+                           'memory_gate_wait_s': t0 - wait_started,
                            'worker_elapsed_s': time.perf_counter() - t0}
             return values
         finally:
@@ -427,7 +440,9 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                 'native_mode': mode, 'estimator': 'lpsd-1.0.6',
                                 'legacy_statistics': True, 'outputs': list(outputs),
                                 'variance_computed': statistics,
-                                'native_window': kernel != 'scalar' and known_window}
+                                'native_window': kernel != 'scalar' and known_window,
+                                'coefficient_method': 'blocked' if kernel == 'fast' else 'direct',
+                                'native_long_double_mantissa_bits': mantissa_bits}
     if profile:
         result.attrs['lpsd_profile'] = {'channel_wall_s': time.perf_counter() - start_all,
                                        'frequencies': rows, 'workers': workers, 'kernel': kernel,
@@ -473,6 +488,12 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     ``projected`` moves order-0/1 detrending into the coefficients and uses
     per-segment centering for small signals with a large DC offset. ``auto``
     selects projected for order 0 and SIMD for other supported orders.
+    ``fast`` additionally uses blockwise Fourier coefficients and, when C
+    long double has more than 64 mantissa bits, compensated FP64 preparation
+    for order 0. Independent block phases avoid unbounded recurrence drift.
+    Small additional rounding differences are accepted to reduce wall time;
+    there is no universal relative-error bound at spectral nulls. Compare
+    with ``scalar`` using relative and application-specific absolute limits.
     Explicit projected/order-1 can lose accuracy for large ramps plus tiny
     residual noise; auto retains the original long-double linear detrending.
     Fast kernels also evaluate the same Kaiser formula in native code.
