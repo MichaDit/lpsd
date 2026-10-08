@@ -43,10 +43,19 @@ are not validated by the supplied CI.
 For x86 ELF targets with glibc 2.23 or newer, the fast builder compiles and
 links a `target_clones("default", "avx2", "avx512f")` probe. Success defines
 `LPSD_HAVE_TARGET_CLONES=1`, which enables the corresponding guarded native
-annotations. The compiler keeps a default implementation and selects a
-compatible clone through its runtime resolver. This is not a global AVX2 or
-AVX-512 requirement for the library. The capability probe alone does not
-establish a performance benefit.
+annotations. The native implementation applies them to `fast_dft_impl` and
+the Kaiser, general-window and Fourier-coefficient generators. Their hot
+private helpers are inlined into the clones, so the selected instruction set
+applies to the actual computation loops. See the
+[native declarations](../lpsd_fast/_native/fast_dft.h) and
+[implementation](../lpsd_fast/_native/fast_dft.c).
+
+The compiler keeps the default, AVX2 and AVX512F implementations and selects
+a compatible clone through its runtime resolver. Selection is at the
+frequency or generator call boundary; there is no resolver call per segment.
+The default implementation preserves the library's baseline ISA requirement.
+The build probe and the presence of clones do not establish a performance
+benefit on a particular CPU.
 
 Use `LPSD_TARGET_CLONES=0` to build without the macro, `auto` for the default
 probe/fallback behavior, or `1` to require successful probing. Explicit
@@ -89,9 +98,43 @@ from the CPU name. Detrending, projected coefficient preparation and reduction
 rounding can therefore have different costs and numerical behavior on these
 platforms. The [numerical limits](numerics.md) still apply.
 
+### Opt-in compensated mean projection
+
+For mean removal (`detrending_order=0`), `kernel="fast"` selects native mode 3
+only when `native_long_double_mantissa_bits()` reports `LDBL_MANT_DIG > 64`.
+That query returns the compiled C type's precision. It identifies neither
+the processor's execution mechanism nor the cost of long-double operations;
+the threshold is a selection rule, not proof of software arithmetic.
+In particular, the ordinary x86-64/GCC and Apple arm64 formats in the table
+above do not activate mode 3 through this rule.
+
+Mode 3 prepares the same order-0 mean projector using compensated pairs of
+FP64 values, then uses the existing anchored segment dot products. The
+[compensated implementation](../lpsd_fast/_native/projected_dd.c) includes
+two explicit `fma` operations per frequency to recover division residuals.
+They are intentional parts of this arithmetic; general multiply-add
+contraction remains disabled. Extreme coefficients can fall back to the
+long-double preparation before any coefficient is modified.
+
+This is a separate numerical path, with no guarantee of binary128's 113-bit
+significand or bitwise equality to the long-double projector. Compensated
+arithmetic assumes the usual IEEE rounding environment. The existing `auto`
+mode retains mode 2 for order-0 projection, and the original residual
+detrending and scalar paths remain available. Mode 3 does not extend the
+experimental order-1 projector.
+
+An x86 build forced to use software binary128 is an arithmetic/build
+surrogate. Its timings are not ARM measurements and do not establish an ARM
+speedup. Native Linux AArch64 measurements must show whether preparation
+improves, while the numerical gates check the resulting spectra. Apple
+Silicon requires its own measurements and validation as well.
+
 ## Native CI matrix and small measurements
 
-The workflow executes numerical tests on these native runners:
+The workflow is configured to execute numerical tests on these native runners.
+**The new Linux ARM64, Apple Silicon and Clang jobs are still awaiting their
+first successful native CI run at this documentation update.** The table
+describes the configured checks, not completed platform validation.
 
 | Runner | Compiler | Python | Numerical tests | Installed wheel | Small benchmark |
 |---|---|---|---|---|---|
@@ -112,9 +155,10 @@ The new build path was locally checked on Linux x86-64 with GCC 13.3.0:
 93 existing tests passed, two known numerical/statistical limits remained
 expected failures, three new build-policy checks passed, and the sdist-built
 wheel passed its isolated installation smoke test. This describes the build
-change's local validation before other feature branches were integrated.
-The newly added ARM, Apple and Clang CI jobs still require a successful run;
-this document does not claim their completion or an ARM speedup.
+change's local validation before dispatch, compensated preparation and other
+feature branches were integrated. These historical counts do not validate
+the later native changes or the additional architectures. Successful native
+jobs and their artifacts are required before reporting those results.
 
 To reproduce the small native-runner measurements:
 
