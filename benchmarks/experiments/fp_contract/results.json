@@ -1,0 +1,518 @@
+{
+  "schema_version": 1,
+  "status": "rejected_global_fp_contraction",
+  "production_changed": false,
+  "source_commit": "f97b8b8",
+  "measurement_date": "2026-10-08",
+  "configuration": {
+    "n": 10000000,
+    "workers": [
+      1,
+      8
+    ],
+    "outputs": [
+      "psd"
+    ],
+    "kernel": "fast",
+    "window": "kaiser",
+    "max_working_mb": 4096,
+    "calls_per_process": 1,
+    "warmups": 1,
+    "pairs": 3,
+    "pair_order": [
+      "baseline,fma",
+      "fma,baseline",
+      "baseline,fma"
+    ]
+  },
+  "timings": [
+    {
+      "variant": "baseline",
+      "workers": 1,
+      "pair": 0,
+      "source_report": "baseline_n10000000_w1_pair0.json",
+      "source_report_sha256": "fff7b1e696f5fc2246afacf5ef9ab8f01f9284aadfc969eb115082de7a8c1ab5",
+      "median_wall_s": 8.302508354001475,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 8.302508354001475,
+          "cpu_s": 8.30118535,
+          "process_max_rss_bytes": 433946624,
+          "actual_frequencies": 651,
+          "output_sha256": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "float32"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "baseline",
+      "workers": 1,
+      "pair": 1,
+      "source_report": "baseline_n10000000_w1_pair1.json",
+      "source_report_sha256": "627df05ff4f7afb05d9254b01dc11f7acaa697b7436a0ca1823599fabbf98b6a",
+      "median_wall_s": 8.202904559999297,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 8.202904559999297,
+          "cpu_s": 8.20194698,
+          "process_max_rss_bytes": 433836032,
+          "actual_frequencies": 651,
+          "output_sha256": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "float32"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "baseline",
+      "workers": 1,
+      "pair": 2,
+      "source_report": "baseline_n10000000_w1_pair2.json",
+      "source_report_sha256": "fe4ad545235b31f61e7f762e7c46ef27daca55f3f7b333a45ba305d9b51056bb",
+      "median_wall_s": 8.243432536997716,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 8.243432536997716,
+          "cpu_s": 8.240698428,
+          "process_max_rss_bytes": 433811456,
+          "actual_frequencies": 651,
+          "output_sha256": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "float32"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "fma",
+      "workers": 1,
+      "pair": 0,
+      "source_report": "fma_n10000000_w1_pair0.json",
+      "source_report_sha256": "85aab4e4804dd1d5ce9d34211264d23f9f2accff0c8762bd27879af49edf9159",
+      "median_wall_s": 8.158822536002845,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 8.158822536002845,
+          "cpu_s": 8.157373473,
+          "process_max_rss_bytes": 433934336,
+          "actual_frequencies": 651,
+          "output_sha256": "8aac05e4d6f850d69b81b8a54902e2570e50c679afab72e81efcd5f9f2c0b35b"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "complex64"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "fma",
+      "workers": 1,
+      "pair": 1,
+      "source_report": "fma_n10000000_w1_pair1.json",
+      "source_report_sha256": "37209be1ce0616eec3a821a598fde60973c96a70ae687a0be0ef453c725a0c5c",
+      "median_wall_s": 8.198348181002075,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 8.198348181002075,
+          "cpu_s": 8.196364167999999,
+          "process_max_rss_bytes": 434008064,
+          "actual_frequencies": 651,
+          "output_sha256": "8aac05e4d6f850d69b81b8a54902e2570e50c679afab72e81efcd5f9f2c0b35b"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "complex64"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "fma",
+      "workers": 1,
+      "pair": 2,
+      "source_report": "fma_n10000000_w1_pair2.json",
+      "source_report_sha256": "c37599ffc3706fe199e1089252bbc1d222a5274691fa900543c5d28bbb059791",
+      "median_wall_s": 7.881191976000991,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 7.881191976000991,
+          "cpu_s": 7.8799573270000005,
+          "process_max_rss_bytes": 433913856,
+          "actual_frequencies": 651,
+          "output_sha256": "8aac05e4d6f850d69b81b8a54902e2570e50c679afab72e81efcd5f9f2c0b35b"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "complex64"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "baseline",
+      "workers": 8,
+      "pair": 0,
+      "source_report": "baseline_n10000000_w8_pair0.json",
+      "source_report_sha256": "c467f55fdfa171c4b2c3dfb5bbd2dea5dd6b9334226c6f57f694aac55ec7c1b3",
+      "median_wall_s": 2.171789643998636,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 2.171789643998636,
+          "cpu_s": 16.680268045,
+          "process_max_rss_bytes": 1454444544,
+          "actual_frequencies": 651,
+          "output_sha256": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "float32"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "baseline",
+      "workers": 8,
+      "pair": 1,
+      "source_report": "baseline_n10000000_w8_pair1.json",
+      "source_report_sha256": "cfcab9a3115c78faaa3b073d07d0f87faf098a8e4760caa36840ee2672c90853",
+      "median_wall_s": 2.999671590001526,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 2.999671590001526,
+          "cpu_s": 22.849579052,
+          "process_max_rss_bytes": 1595789312,
+          "actual_frequencies": 651,
+          "output_sha256": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "float32"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "baseline",
+      "workers": 8,
+      "pair": 2,
+      "source_report": "baseline_n10000000_w8_pair2.json",
+      "source_report_sha256": "589c00fc852f7399ba7b2dba01ed9375a360f8919fa9ca78263e8238028ed0d9",
+      "median_wall_s": 2.696814943999925,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 2.696814943999925,
+          "cpu_s": 20.757596312,
+          "process_max_rss_bytes": 1531338752,
+          "actual_frequencies": 651,
+          "output_sha256": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "float32"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "fma",
+      "workers": 8,
+      "pair": 0,
+      "source_report": "fma_n10000000_w8_pair0.json",
+      "source_report_sha256": "3c005621290da5142996be82421ccdace2789f3c74956b3431b55e25610aaa49",
+      "median_wall_s": 1.9467446749986266,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 1.9467446749986266,
+          "cpu_s": 14.965178095999999,
+          "process_max_rss_bytes": 1539379200,
+          "actual_frequencies": 651,
+          "output_sha256": "8aac05e4d6f850d69b81b8a54902e2570e50c679afab72e81efcd5f9f2c0b35b"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "complex64"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "fma",
+      "workers": 8,
+      "pair": 1,
+      "source_report": "fma_n10000000_w8_pair1.json",
+      "source_report_sha256": "5d1581c942f2a4557cceb4cbeee9b28ac1ca6b72aaa31a967f151b260966c125",
+      "median_wall_s": 2.840220259000489,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 2.840220259000489,
+          "cpu_s": 21.465874324999998,
+          "process_max_rss_bytes": 1462071296,
+          "actual_frequencies": 651,
+          "output_sha256": "8aac05e4d6f850d69b81b8a54902e2570e50c679afab72e81efcd5f9f2c0b35b"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "complex64"
+      },
+      "actual_frequencies": 651
+    },
+    {
+      "variant": "fma",
+      "workers": 8,
+      "pair": 2,
+      "source_report": "fma_n10000000_w8_pair2.json",
+      "source_report_sha256": "5838ccff2745a81fa41f6e9420e3c976e9e0acbac344d67cf9a779e3a86be272",
+      "median_wall_s": 1.589146892001736,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 1.589146892001736,
+          "cpu_s": 12.300728133000002,
+          "process_max_rss_bytes": 1487233024,
+          "actual_frequencies": 651,
+          "output_sha256": "8aac05e4d6f850d69b81b8a54902e2570e50c679afab72e81efcd5f9f2c0b35b"
+        }
+      ],
+      "output_dtypes": {
+        "psd": "complex64"
+      },
+      "actual_frequencies": 651
+    }
+  ],
+  "profiles": {
+    "baseline": {
+      "wall_s": 8.181624095002917,
+      "summary": {
+        "sample_iterations": 27072536884,
+        "window_cache_hits": 2,
+        "sum_worker_stage_seconds": {
+          "window_and_sums_s": 0.7863997280146577,
+          "coefficients_s": 0.3434368509624619,
+          "c_kernel_s": 7.001759038088494,
+          "c_preparation_s": 0.6389024539785169,
+          "c_segments_s": 6.29528774701248,
+          "worker_elapsed_s": 8.142693901991152,
+          "window_generation_s": 0.5761651390384941,
+          "window_sums_s": 0.20028085904414183,
+          "memory_gate_wait_s": 0.004699006967712194
+        },
+        "channel_phase_seconds": {
+          "planning_s": 0.0007207599992398173,
+          "input_conversion_s": 0.004071105002367403,
+          "output_assembly_s": 0.0008751640016271267
+        },
+        "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+      }
+    },
+    "fma": {
+      "wall_s": 8.212770997000916,
+      "summary": {
+        "sample_iterations": 27072536884,
+        "window_cache_hits": 2,
+        "sum_worker_stage_seconds": {
+          "window_and_sums_s": 0.7866287979632034,
+          "coefficients_s": 0.3408482090635516,
+          "c_kernel_s": 7.034240704917465,
+          "c_preparation_s": 0.6607592399996065,
+          "c_segments_s": 6.292852030921495,
+          "worker_elapsed_s": 8.172967218008125,
+          "window_generation_s": 0.5846048889870872,
+          "window_sums_s": 0.19257142502101487,
+          "memory_gate_wait_s": 0.004673252005886752
+        },
+        "channel_phase_seconds": {
+          "planning_s": 0.0007447459975082893,
+          "input_conversion_s": 0.004597491999447811,
+          "output_assembly_s": 0.0011096770031144843
+        },
+        "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+      }
+    }
+  },
+  "audit_attempts": [
+    {
+      "n": 32769,
+      "status": "aborted_before_complete_report",
+      "returncode": 1,
+      "reason": "ValueError: This audit is for real auto spectra, not complex CSD.",
+      "log_sha256": "f3010d250da41f690a8802df3395730dfaff681c900cd48fc2ff42dfc832b6fd",
+      "relative_limit": 0.01,
+      "psd_absolute_limit": 1e-24,
+      "nsd_absolute_limit": 1e-12
+    },
+    {
+      "n": 131073,
+      "status": "aborted_before_complete_report",
+      "returncode": 1,
+      "reason": "ValueError: This audit is for real auto spectra, not complex CSD.",
+      "log_sha256": "f3010d250da41f690a8802df3395730dfaff681c900cd48fc2ff42dfc832b6fd",
+      "relative_limit": 0.01,
+      "psd_absolute_limit": 1e-24,
+      "nsd_absolute_limit": 1e-12
+    }
+  ],
+  "notes": [
+    "Three interleaved pairs are not a confidence interval. W8 varied substantially.",
+    "Profile calls are additional separate calls, not subdivisions of the ordinary timing calls.",
+    "All FMA timed calls returned complex64 PSD instead of the baseline float32.",
+    "Audits aborted on complex auto spectra. No complete 1%-accuracy result exists for this variant.",
+    "Global contraction also affects statistics, windows and coefficient generation; this experiment does not isolate only segment-loop contraction."
+  ],
+  "build_reports": {
+    "baseline": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "baseline-final.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": true,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": false,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "binary_sha256": "b0ab2e54a6231bd54b8d01c9c364efadb924c8e41dcc0398ef637f29d3e9e623"
+    },
+    "fma": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "experimental-fma.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=fast",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": true,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": false,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "binary_sha256": "4ec423046695c19d8b78ac6516982b97f2dd5e156b8cc78390dc2b0a726a2d0b",
+      "experimental": true,
+      "source_commit": "f97b8b8",
+      "baseline_sha256": "b0ab2e54a6231bd54b8d01c9c364efadb924c8e41dcc0398ef637f29d3e9e623",
+      "compile_command": [
+        "cc",
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=fast",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd",
+        "/workspace/scratch/1a083f70b5d7/lpsd_headroom_opt/lpsd_fast/_native/fast_dft.c",
+        "-o",
+        "/workspace/scratch/1a083f70b5d7/lpsd_headroom_opt/experiments/fp_contract/experimental-fma.so",
+        "-shared",
+        "-lm"
+      ]
+    }
+  },
+  "original_script_sha256": {
+    "replay.py": "366fee890d948875e53e6ae0b917183bed1ad2fb42c4dd8b0c2f66624ecf84f5"
+  },
+  "environment": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "lpsd_distribution": "1.0.6+fast.1",
+    "lpsd_module_version": "1.0.6+fast.1",
+    "lpsd_fast_module_version": "1.0.6+fast.2",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "cpu_affinity_count": 9,
+    "cgroup_cpu_max": "800000 100000",
+    "cgroup_memory_max": "8589934592"
+  },
+  "summary": {
+    "w1": {
+      "baseline_median_s": 8.243432536997716,
+      "fma_median_s": 8.158822536002845,
+      "baseline_range_s": [
+        8.202904559999297,
+        8.302508354001475
+      ],
+      "fma_range_s": [
+        7.881191976000991,
+        8.198348181002075
+      ],
+      "median_ratio": 1.0103703690846944,
+      "paired_ratios": [
+        1.0176110973568282,
+        1.0005557679299082,
+        1.045962661752154
+      ]
+    },
+    "w8": {
+      "baseline_median_s": 2.696814943999925,
+      "fma_median_s": 1.9467446749986266,
+      "baseline_range_s": [
+        2.171789643998636,
+        2.999671590001526
+      ],
+      "fma_range_s": [
+        1.589146892001736,
+        2.840220259000489
+      ],
+      "median_ratio": 1.3852946298681041,
+      "paired_ratios": [
+        1.1156006598554935,
+        1.05614048082917,
+        1.69702055711347
+      ]
+    }
+  }
+}
