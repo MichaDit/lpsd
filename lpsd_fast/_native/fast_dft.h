@@ -45,6 +45,8 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
  * inplace=true lets mode 2 replace Cr/Ci with projected coefficients. These
  * arrays must be writable, distinct, nonoverlapping and private to the call.
  * The input samples remain unchanged. Modes 0/1 do not modify Cr/Ci.
+ * Mode 2 PSD may process four segments together to share coefficient loads;
+ * its means are still updated in the original segment order.
  * Existing fast_dft[_profile] retain their original read-only contract. */
 int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                       long int *Navs,
@@ -103,6 +105,15 @@ int generate_cosine_window(double *window, long int length,
  * Returns 0 on success, 1 for invalid arguments. */
 int generate_coefficients(double *Cr, double *Ci, const double *window,
                            long int length, double frequency_bin);
+
+/* SIMD block rotations with a directly evaluated phase every 64 samples.
+ * There is no accumulating phase recurrence or change of frequency. Small
+ * vectors and unusually large total phases retain independent sin/cos.
+ * A small rotation correction recovers independently rounded sample phases.
+ * Coefficient rounding can still differ from generate_coefficients; the
+ * original function remains available as the independent-phase reference. */
+int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
+                                   long int length, double frequency_bin);
 
 #ifdef __cplusplus
 }

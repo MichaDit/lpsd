@@ -47,6 +47,19 @@ standard-deviation columns are not validated statistical uncertainties.
   saving two length-L double buffers (16L bytes) per active frequency. It
   never changes the input samples. Variance outputs may be NULL when not
   requested; supplied variance outputs are then NAN.
+- Selected mode 2 PSD shares coefficient loads across four segments when
+  L is at least 2048. It retains separate anchors, every input sample, the
+  original repeated segment-start updates, and the original mean order.
+- Only the final assignment to the legacy M2 is computed, since earlier
+  M2 assignments are overwritten. This speeds up full-output calls too;
+  it deliberately preserves the original variance defect.
+- `generate_coefficients_blocked` is an optional faster coefficient path.
+  It directly evaluates one phase per 64-sample block and rotates a short
+  offset table with SIMD. A per-sample correction recovers the independently
+  rounded phase. Lengths below 256 and total phase above 8192 radians use
+  the original independent sine/cosine path. Floating-point multiplication
+  can still change very deep spectral sidelobes; use the original generator
+  when those differences matter. There is no unbounded phase recurrence.
 
 Signatures and return codes are documented in `fast_dft.h`. Argument errors,
 unsupported dimensions and failed allocations are returned to the caller.
