@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-08",
+  "reason": "All 43 original fork commits contained codex@openai.com trailers, but GitHub did not render Codex in their author list. Use the official @codex account's verified ID-based noreply address.",
+  "upstream_unchanged": "2fd15da6930d19f5978f7e37b7b0785ce560f7d3",
+  "archived_head": "9660688981312b9020d2c4faac531f15b9dc7f3c",
+  "archive_branch": "archive/pre-linked-coauthors-2026-10-08",
+  "linked_head": "88b5166e60e9d3ff135b9cb105e096bdda656f9a",
+  "trailers_changed": 43,
+  "commits_recreated": 44,
+  "all_file_trees_identical": true,
+  "authors_and_committers": "MichaDit <github@fuchks.de>",
+  "timestamp_note": "GitHub connector recreation assigns new author and committer timestamps; original objects and timestamps remain on the archive branch and are recorded below.",
+  "commits": [
+    {
+      "old_sha": "04c120353e7d354cd139ab8409ce8a2d2999e034",
+      "new_sha": "5a0a14a7f2bad92b59b432723e2f5e1316ada273",
+      "tree_sha": "b6e81f519afd368934c77749f88122f5de63e677",
+      "subject": "build: compile ctypes libraries from source in platform wheels",
+      "original_author_date": "2026-10-08T16:04:15+02:00",
+      "original_committer_date": "2026-10-08T16:04:15+02:00",
+      "recreated_author_date": "2026-10-08T17:58:20Z",
+      "recreated_committer_date": "2026-10-08T17:58:20Z"
+    },
+    {
+      "old_sha": "eedb5ed33f1f01f3c6a8bfb86a59b5f75612b215",
+      "new_sha": "2bb665b721cdbe00d31b97fb08e24edad0617420",
+      "tree_sha": "1dcaaa31cd4537f04d8462b1206685895f50b68e",
+      "subject": "perf(native): add scalar, SIMD and projected LPSD kernels",
+      "original_author_date": "2026-10-08T16:04:26+02:00",
+      "original_committer_date": "2026-10-08T16:04:26+02:00",
+      "recreated_author_date": "2026-10-08T17:58:20Z",
+      "recreated_committer_date": "2026-10-08T17:58:20Z"
+    },
+    {
+      "old_sha": "7ea28459fd2996c92c510f9cc55467fef42c9425",
+      "new_sha": "2f9c25616481132f51ddbf0967b3a3d70047c193",
+      "tree_sha": "29b811cf75003bcf274b07c9d721c9cec4848bca",
+      "subject": "feat(api): add memory-budgeted parallel lpsd_fast interface",
+      "original_author_date": "2026-10-08T16:04:36+02:00",
+      "original_committer_date": "2026-10-08T16:04:36+02:00",
+      "recreated_author_date": "2026-10-08T17:58:21Z",
+      "recreated_committer_date": "2026-10-08T17:58:21Z"
+    },
+    {
+      "old_sha": "3fcb1d97e108d1bc58d53b215b641af8ebfb1df7",
+      "new_sha": "c7eee9daab01566c758034e6f55a0d795f2fcfa4",
+      "tree_sha": "ad68a1bca350f285b2d3c6df8ab02cf3f210f1eb",
+      "subject": "test: add numerical regression and isolated wheel gates",
+      "original_author_date": "2026-10-08T16:04:49+02:00",
+      "original_committer_date": "2026-10-08T16:04:49+02:00",
+      "recreated_author_date": "2026-10-08T17:58:21Z",
+      "recreated_committer_date": "2026-10-08T17:58:21Z"
+    },
+    {
+      "old_sha": "5cfc7ba5daa829d3bea68093d144382f32da1a91",
+      "new_sha": "7700bd0717c0af483f4f49bfac3bdd1f4c7f5015",
+      "tree_sha": "be9c3176221ab5a413b2ee895455693bf5fa03e7",
+      "subject": "bench: add reproducible API wall-time and stage profiling tools",
+      "original_author_date": "2026-10-08T16:05:02+02:00",
+      "original_committer_date": "2026-10-08T16:05:02+02:00",
+      "recreated_author_date": "2026-10-08T17:58:22Z",
+      "recreated_committer_date": "2026-10-08T17:58:22Z"
+    },
+    {
+      "old_sha": "83f8f3ba30f78ef24d9a33d2b61d42cb3e5a018d",
+      "new_sha": "3c43293dba9774860becc90c1b54ed5835aeeabf",
+      "tree_sha": "60d5df7247c3bbdce22413cf854715cd142efaf8",
+      "subject": "docs: explain fast API, measured bottlenecks and numerical limits",
+      "original_author_date": "2026-10-08T16:05:13+02:00",
+      "original_committer_date": "2026-10-08T16:05:13+02:00",
+      "recreated_author_date": "2026-10-08T17:58:23Z",
+      "recreated_committer_date": "2026-10-08T17:58:23Z"
+    },
+    {
+      "old_sha": "8eb1558b97175bff8afeef264dea9c7e71f78b1d",
+      "new_sha": "22dd18ac4dfa368cf9532a8a10d9b47c87aaf610",
+      "tree_sha": "de844eef5135dd7c22b424de091fd51b178e396a",
+      "subject": "feat(native): add selected outputs and built-in window kernels",
+      "original_author_date": "2026-10-08T17:20:43+02:00",
+      "original_committer_date": "2026-10-08T17:20:43+02:00",
+      "recreated_author_date": "2026-10-08T17:58:23Z",
+      "recreated_committer_date": "2026-10-08T17:58:23Z"
+    },
+    {
+      "old_sha": "4d4cfdd2aaaa2bfa3d92e3c8bcfd653e2dde5761",
+      "new_sha": "e03b3837638735ea97a0cf730edd45315121ece3",
+      "tree_sha": "9610f6fb0907ee5c4a9dcf5a63f610c9e5e138ed",
+      "subject": "feat(api): add selective spectral outputs and direct NSD",
+      "original_author_date": "2026-10-08T17:22:38+02:00",
+      "original_committer_date": "2026-10-08T17:22:38+02:00",
+      "recreated_author_date": "2026-10-08T17:58:24Z",
+      "recreated_committer_date": "2026-10-08T17:58:24Z"
+    },
+    {
+      "old_sha": "17aac321082cb080efb5704c74badccb98fd01b1",
+      "new_sha": "568ecb63af3143420b05fe545b7f4d65fba88568",
+      "tree_sha": "de0be8ae089e5202a01170f72c8784c8753e58e5",
+      "subject": "test: verify selected outputs and accelerated window semantics",
+      "original_author_date": "2026-10-08T17:22:58+02:00",
+      "original_committer_date": "2026-10-08T17:22:58+02:00",
+      "recreated_author_date": "2026-10-08T17:58:25Z",
+      "recreated_committer_date": "2026-10-08T17:58:25Z"
+    },
+    {
+      "old_sha": "12e43258f97f34e6926af6944e28142bcdfecc78",
+      "new_sha": "ed5546b4fc7fb3ac09a2c18aad46436a770ab276",
+      "tree_sha": "5aa8909ae8a927f2da40e0863c65b396e94dc66e",
+      "subject": "bench: measure selected outputs and alternative windows",
+      "original_author_date": "2026-10-08T17:23:19+02:00",
+      "original_committer_date": "2026-10-08T17:23:19+02:00",
+      "recreated_author_date": "2026-10-08T17:58:25Z",
+      "recreated_committer_date": "2026-10-08T17:58:25Z"
+    },
+    {
+      "old_sha": "d8fc0cada478ef8b3f44d6b3620b1c11b0c5568a",
+      "new_sha": "8c6467c32b20ffc63305980c12e9877360276c6d",
+      "tree_sha": "14da3e076124d1e822b482883eb766f1f853fc74",
+      "subject": "perf(windows): accelerate all upstream flat-top cosine windows",
+      "original_author_date": "2026-10-08T17:23:40+02:00",
+      "original_committer_date": "2026-10-08T17:23:40+02:00",
+      "recreated_author_date": "2026-10-08T17:58:27Z",
+      "recreated_committer_date": "2026-10-08T17:58:27Z"
+    },
+    {
+      "old_sha": "ced856b83f32d2bc0fa19fb463c680382dd46036",
+      "new_sha": "d5c18b2dbcfbcc004b0ad07f0b1bb04638a26faf",
+      "tree_sha": "31c1d467e05e9250a247eb9ce53729cbe7ea23fc",
+      "subject": "build: make native compiler policy portable and auditable",
+      "original_author_date": "2026-10-08T17:24:03+02:00",
+      "original_committer_date": "2026-10-08T17:24:03+02:00",
+      "recreated_author_date": "2026-10-08T17:58:27Z",
+      "recreated_committer_date": "2026-10-08T17:58:27Z"
+    },
+    {
+      "old_sha": "2251e4f131a07028a5d28adaf6a079de382b0011",
+      "new_sha": "df1031a0029d8547b27d45ff277c6d6c2886f703",
+      "tree_sha": "47e8add2fb9a8def2bf4801c3bdc9509dc8fc176",
+      "subject": "ci: validate native ARM and Apple builds with reproducible profiles",
+      "original_author_date": "2026-10-08T17:24:25+02:00",
+      "original_committer_date": "2026-10-08T17:24:25+02:00",
+      "recreated_author_date": "2026-10-08T17:58:38Z",
+      "recreated_committer_date": "2026-10-08T17:58:38Z"
+    },
+    {
+      "old_sha": "ce1aac3d740669173c04e8b0cafb1f5095c92969",
+      "new_sha": "43e682e1cb53aef98df8d8eef94ac6fa0c76a160",
+      "tree_sha": "84b168d22b5ca2a57fb744d71e659a2aadaa54d0",
+      "subject": "bench: audit candidate PSD and NSD accuracy against scalar",
+      "original_author_date": "2026-10-08T17:24:45+02:00",
+      "original_committer_date": "2026-10-08T17:24:45+02:00",
+      "recreated_author_date": "2026-10-08T17:58:38Z",
+      "recreated_committer_date": "2026-10-08T17:58:38Z"
+    },
+    {
+      "old_sha": "80f86e8871fbc734df39c2e6ca208e2026b59514",
+      "new_sha": "04ef6bc75c212400da371eb617ffe68d6914b408",
+      "tree_sha": "8a2ecf2702be23a434da70149d26ffe15228b941",
+      "subject": "perf(native): batch projections and rotate bounded phase blocks",
+      "original_author_date": "2026-10-08T17:25:05+02:00",
+      "original_committer_date": "2026-10-08T17:25:05+02:00",
+      "recreated_author_date": "2026-10-08T17:58:39Z",
+      "recreated_committer_date": "2026-10-08T17:58:39Z"
+    },
+    {
+      "old_sha": "c610bf1e734156955fc380d9434ef55606667f4d",
+      "new_sha": "358907a55e0619725964303bf99a48ace3f35108",
+      "tree_sha": "a1910c0de379fc359765050cf7295fcade68a498",
+      "subject": "fix(native): bound the final phase-block increment",
+      "original_author_date": "2026-10-08T17:25:28+02:00",
+      "original_committer_date": "2026-10-08T17:25:28+02:00",
+      "recreated_author_date": "2026-10-08T17:58:39Z",
+      "recreated_committer_date": "2026-10-08T17:58:39Z"
+    },
+    {
+      "old_sha": "3f990d90c29da57cf6547fb5c82d4d4c7e48e5b1",
+      "new_sha": "68dd1d037a28ecf79b39b31d6715442356a648ae",
+      "tree_sha": "6c2c5c43a798a520b2cf63aa7da4f58faa98baeb",
+      "subject": "perf(native): dispatch SIMD loops and add compensated projection",
+      "original_author_date": "2026-10-08T17:25:52+02:00",
+      "original_committer_date": "2026-10-08T17:25:52+02:00",
+      "recreated_author_date": "2026-10-08T17:58:40Z",
+      "recreated_committer_date": "2026-10-08T17:58:40Z"
+    },
+    {
+      "old_sha": "d7b7adcfca895e8fe3656da0befc621fbee689a7",
+      "new_sha": "729026f2098bfc3e4f0f08c5ab4d573401e517dc",
+      "tree_sha": "98eba4ad1d7b6fe71d02c6ea9e8b57a25d017fa7",
+      "subject": "feat(api): expose faster coefficients and compensated preparation",
+      "original_author_date": "2026-10-08T17:26:17+02:00",
+      "original_committer_date": "2026-10-08T17:26:17+02:00",
+      "recreated_author_date": "2026-10-08T17:58:41Z",
+      "recreated_committer_date": "2026-10-08T17:58:41Z"
+    },
+    {
+      "old_sha": "8065b43db46facc3b434bf1391f0b8578e7eed3d",
+      "new_sha": "464777a38a99dfbb7f74b3f411634c87b954310d",
+      "tree_sha": "53b71fec74a8d5770e0cbcf16805d62786df466c",
+      "subject": "build: prepare fast.2 and verify selected native outputs in wheels",
+      "original_author_date": "2026-10-08T17:26:40+02:00",
+      "original_committer_date": "2026-10-08T17:26:40+02:00",
+      "recreated_author_date": "2026-10-08T17:58:42Z",
+      "recreated_committer_date": "2026-10-08T17:58:42Z"
+    },
+    {
+      "old_sha": "1a8c8d9c039dfe38eea5201d7788a62f9390996a",
+      "new_sha": "7d6a8a6921c0249b9c2d34237b50037fad2639a5",
+      "tree_sha": "b6cc0638031447534c4df2ce6fec61a8f34466bf",
+      "subject": "docs: clarify runtime dispatch and compensated projector limits",
+      "original_author_date": "2026-10-08T17:27:02+02:00",
+      "original_committer_date": "2026-10-08T17:27:02+02:00",
+      "recreated_author_date": "2026-10-08T17:58:43Z",
+      "recreated_committer_date": "2026-10-08T17:58:43Z"
+    },
+    {
+      "old_sha": "98e52dcfa5b6f38575ebf0fd1dde92ae46e18a77",
+      "new_sha": "d273cbfccfeaace71d8848305624ae3a48a6eea6",
+      "tree_sha": "86b51624ab2fe5befa7f5a3df04a1ed3db65382f",
+      "subject": "bench: report explicit absolute accuracy allowances",
+      "original_author_date": "2026-10-08T17:27:23+02:00",
+      "original_committer_date": "2026-10-08T17:27:23+02:00",
+      "recreated_author_date": "2026-10-08T17:58:43Z",
+      "recreated_committer_date": "2026-10-08T17:58:43Z"
+    },
+    {
+      "old_sha": "3908eade83e1ae43183acbdde765ca54da957087",
+      "new_sha": "4aada56886751d71085b50c6b5ecd285912a93e1",
+      "tree_sha": "3a38fefa86e0721deecdfe8f756715650e615d54",
+      "subject": "fix(memory): account for reclaimable cgroup file cache",
+      "original_author_date": "2026-10-08T17:30:09+02:00",
+      "original_committer_date": "2026-10-08T17:30:09+02:00",
+      "recreated_author_date": "2026-10-08T17:58:44Z",
+      "recreated_committer_date": "2026-10-08T17:58:44Z"
+    },
+    {
+      "old_sha": "e9408c68e84b6faa8ee51e73b02b1d513f5c7714",
+      "new_sha": "7b212810c9304179521de80561ce9dfc4d2ff3ce",
+      "tree_sha": "c84b4ec5ab287d2c68547b2935c73418fa3d5f2d",
+      "subject": "docs: explain fast arithmetic and explicit accuracy limits",
+      "original_author_date": "2026-10-08T17:48:03+02:00",
+      "original_committer_date": "2026-10-08T17:48:03+02:00",
+      "recreated_author_date": "2026-10-08T17:58:45Z",
+      "recreated_committer_date": "2026-10-08T17:58:45Z"
+    },
+    {
+      "old_sha": "021b4c15dc3f72b2beaab1a9a7c66d32d21838bb",
+      "new_sha": "96080cd3b6d8c4885da1908cc80ceae5a88cdf9c",
+      "tree_sha": "8562b1a747389ae486b515b40b5be3e4f992e162",
+      "subject": "fix(numerics): preserve residual detrending on 53-bit long-double targets",
+      "original_author_date": "2026-10-08T17:48:32+02:00",
+      "original_committer_date": "2026-10-08T17:48:32+02:00",
+      "recreated_author_date": "2026-10-08T17:58:45Z",
+      "recreated_committer_date": "2026-10-08T17:58:45Z"
+    },
+    {
+      "old_sha": "6e6b56cf7bdfd6ba786ca2aa0dbfc48c86b38fe1",
+      "new_sha": "21eb307d8400a76399607dbbbbeb2245cd032a85",
+      "tree_sha": "b9888c6727e2ccd9d864d008b744eb152a1b8a85",
+      "subject": "fix(build): match clone declarations and definitions for Clang",
+      "original_author_date": "2026-10-08T17:49:03+02:00",
+      "original_committer_date": "2026-10-08T17:49:03+02:00",
+      "recreated_author_date": "2026-10-08T17:58:46Z",
+      "recreated_committer_date": "2026-10-08T17:58:46Z"
+    },
+    {
+      "old_sha": "068e93b3b0024de27c19dd5390f1d802239234c0",
+      "new_sha": "3b7ea5095045ceac9d1b6959f547648e0fb3e568",
+      "tree_sha": "e89742a28bb931650bac98da059349053a83cb41",
+      "subject": "perf(native): add positive-series Kaiser generator",
+      "original_author_date": "2026-10-08T17:49:17+02:00",
+      "original_committer_date": "2026-10-08T17:49:17+02:00",
+      "recreated_author_date": "2026-10-08T17:58:47Z",
+      "recreated_committer_date": "2026-10-08T17:58:47Z"
+    },
+    {
+      "old_sha": "b03f32bcef2b542aa7708b4fbca7437d289ea0ea",
+      "new_sha": "33bc95af22fe9eb0c4724848bf7198121464d864",
+      "tree_sha": "593d023e7a6cecd45a55019327d680b38dbef9e0",
+      "subject": "fix(packaging): tag macOS wheels for the compiled architecture",
+      "original_author_date": "2026-10-08T17:49:31+02:00",
+      "original_committer_date": "2026-10-08T17:49:31+02:00",
+      "recreated_author_date": "2026-10-08T17:58:48Z",
+      "recreated_committer_date": "2026-10-08T17:58:48Z"
+    },
+    {
+      "old_sha": "0d80d10872fd0a6d632a272b31d356b28e15feb3",
+      "new_sha": "1cd597a995c2a2e85c256e9ed02eaf3bd78ea2dc",
+      "tree_sha": "8db9e8553af74a203b579a8189fa35bfc601e071",
+      "subject": "perf(api): use SIMD Kaiser series in the optional fast path",
+      "original_author_date": "2026-10-08T17:49:50+02:00",
+      "original_committer_date": "2026-10-08T17:49:50+02:00",
+      "recreated_author_date": "2026-10-08T17:58:48Z",
+      "recreated_committer_date": "2026-10-08T17:58:48Z"
+    },
+    {
+      "old_sha": "3f4e066e83ff6bb15197c420fc37494403995daf",
+      "new_sha": "31329a2e044b2eb79be2c64598681e78ea3b623a",
+      "tree_sha": "df8485fb40a450028c69208fa79618aff7d24920",
+      "subject": "bench: archive first fast.2 timing and accuracy evidence",
+      "original_author_date": "2026-10-08T18:06:34+02:00",
+      "original_committer_date": "2026-10-08T18:06:34+02:00",
+      "recreated_author_date": "2026-10-08T17:59:10Z",
+      "recreated_committer_date": "2026-10-08T17:59:10Z"
+    },
+    {
+      "old_sha": "c81a52f71dc95a38eb27e3caf5646c470ed556f1",
+      "new_sha": "411145822d431b84d85775a9924944deb6c57aca",
+      "tree_sha": "0b1f2a9f69922181052cecb8019bda8540db1e4b",
+      "subject": "docs: record successful native CI and architecture measurements",
+      "original_author_date": "2026-10-08T18:06:55+02:00",
+      "original_committer_date": "2026-10-08T18:06:55+02:00",
+      "recreated_author_date": "2026-10-08T17:59:11Z",
+      "recreated_committer_date": "2026-10-08T17:59:11Z"
+    },
+    {
+      "old_sha": "fa11b882311f4b24ac742e244f6526af2fc11dac",
+      "new_sha": "6f28c7d1f99254ce8bd282060741c0a581ebb8f8",
+      "tree_sha": "669045be8559cc00ffc1aaf6b78c8c1059bf48fd",
+      "subject": "docs: distinguish final accuracy totals and absolute-only exceptions",
+      "original_author_date": "2026-10-08T18:07:14+02:00",
+      "original_committer_date": "2026-10-08T18:07:14+02:00",
+      "recreated_author_date": "2026-10-08T17:59:11Z",
+      "recreated_committer_date": "2026-10-08T17:59:11Z"
+    },
+    {
+      "old_sha": "dd816f8a1658b542fccc4c3f14c486e010f9cb51",
+      "new_sha": "1c2da0c24134594c3d94bf5d9da3d565f04b45eb",
+      "tree_sha": "e166ee6bc4199e5a8a7d90766545aec1726c48e2",
+      "subject": "docs: publish fast.2 wall-time results and usage guidance",
+      "original_author_date": "2026-10-08T18:07:34+02:00",
+      "original_committer_date": "2026-10-08T18:07:34+02:00",
+      "recreated_author_date": "2026-10-08T17:59:12Z",
+      "recreated_committer_date": "2026-10-08T17:59:12Z"
+    },
+    {
+      "old_sha": "f97b8b8515249d305fe0b8f520d91dd93c2b453e",
+      "new_sha": "6b84fb09384a6eaf1a9e939ce1587e22fe6b8b80",
+      "tree_sha": "abc235ff043dafc94bfd93e4645865c36242aea7",
+      "subject": "bench: archive final fast.2 Kaiser-series evidence",
+      "original_author_date": "2026-10-08T18:07:56+02:00",
+      "original_committer_date": "2026-10-08T18:07:56+02:00",
+      "recreated_author_date": "2026-10-08T17:59:13Z",
+      "recreated_committer_date": "2026-10-08T17:59:13Z"
+    },
+    {
+      "old_sha": "a3ca1a4a4bf16f05e324b8734a7aa5f020d8b929",
+      "new_sha": "8782339b1d7d9f27a9f6d5fce17859aa614cb5da",
+      "tree_sha": "f3593480cdac00c0fd4f52e1cf633bd897595878",
+      "subject": "bench: compare FFTW plans and complete spectral pipelines",
+      "original_author_date": "2026-10-08T19:24:02+02:00",
+      "original_committer_date": "2026-10-08T19:24:02+02:00",
+      "recreated_author_date": "2026-10-08T17:59:13Z",
+      "recreated_committer_date": "2026-10-08T17:59:13Z"
+    },
+    {
+      "old_sha": "1e00452e3db7c8b87bc62f14251f64be1bffd9e9",
+      "new_sha": "8cf35e2ce5012bbb4c41ff19b22fb479aad64664",
+      "tree_sha": "8fa265acb68de07b3387f59dcc97f46da3a3dc90",
+      "subject": "bench: allow full problem warm-up for matched API comparisons",
+      "original_author_date": "2026-10-08T19:24:04+02:00",
+      "original_committer_date": "2026-10-08T19:24:04+02:00",
+      "recreated_author_date": "2026-10-08T17:59:14Z",
+      "recreated_committer_date": "2026-10-08T17:59:14Z"
+    },
+    {
+      "old_sha": "7a000dd61bd47b1100bec3ffe1509ddc6c933299",
+      "new_sha": "f095fde5c0ed63473b7a980a37573642c07d0c5d",
+      "tree_sha": "441f5b156c5029404795af1faf44498fc8dd2421",
+      "subject": "bench: compare LPSD and FFTW log-periodogram estimators",
+      "original_author_date": "2026-10-08T19:24:05+02:00",
+      "original_committer_date": "2026-10-08T19:24:05+02:00",
+      "recreated_author_date": "2026-10-08T17:59:15Z",
+      "recreated_committer_date": "2026-10-08T17:59:15Z"
+    },
+    {
+      "old_sha": "0dcf8fb13eb8912710882205c66c9b64d0b27459",
+      "new_sha": "c93e220ff87d6221d858d4af98f080763e406f45",
+      "tree_sha": "790f53cc10ccef9e3608776b88a5bdbd8a3df3f3",
+      "subject": "bench: preserve official FFTW kernel measurements and provenance",
+      "original_author_date": "2026-10-08T19:24:07+02:00",
+      "original_committer_date": "2026-10-08T19:24:07+02:00",
+      "recreated_author_date": "2026-10-08T17:59:15Z",
+      "recreated_committer_date": "2026-10-08T17:59:15Z"
+    },
+    {
+      "old_sha": "8307fde75c28c79aafbe82c7adc8f98f6480648f",
+      "new_sha": "521f58660bf51a7a2b25b56941d8ea7a75e620a6",
+      "tree_sha": "a886dfcde0efc264ba9865bc5058141aabf0ceb6",
+      "subject": "ci: require FFTW adapter validation on Linux x64",
+      "original_author_date": "2026-10-08T19:24:08+02:00",
+      "original_committer_date": "2026-10-08T19:24:08+02:00",
+      "recreated_author_date": "2026-10-08T17:59:16Z",
+      "recreated_committer_date": "2026-10-08T17:59:16Z"
+    },
+    {
+      "old_sha": "f6e4aa5e78fea58747399d3f713e22863ca7c980",
+      "new_sha": "0454213cef076551aff0093938432ab878e213e6",
+      "tree_sha": "7767bc5f93294891ad293c568f3e2d1e2b0ef45a",
+      "subject": "bench: archive rejected global FMA contraction experiment",
+      "original_author_date": "2026-10-08T19:24:10+02:00",
+      "original_committer_date": "2026-10-08T19:24:10+02:00",
+      "recreated_author_date": "2026-10-08T17:59:17Z",
+      "recreated_committer_date": "2026-10-08T17:59:17Z"
+    },
+    {
+      "old_sha": "6c7ff06758ce705fb9707f52e761205374cae4aa",
+      "new_sha": "e9bb8713207ecc2af6df1f329ffa502b603ce07e",
+      "tree_sha": "e8b8742e1bbc7711d5cb76e52b6ea75fcec9aedc",
+      "subject": "bench: build FMA reproduction pair from a shared source snapshot",
+      "original_author_date": "2026-10-08T19:24:11+02:00",
+      "original_committer_date": "2026-10-08T19:24:11+02:00",
+      "recreated_author_date": "2026-10-08T17:59:17Z",
+      "recreated_committer_date": "2026-10-08T17:59:17Z"
+    },
+    {
+      "old_sha": "23dbb2fe2216b215ad3e8ff3fd7efcc9f4defb0e",
+      "new_sha": "946adc7d18ab463e4900c7f7e2d6957ff7be8037",
+      "tree_sha": "c27bac4e10366438286c5ce6cb90f9d87418bd95",
+      "subject": "bench: record matched LPSD and FFTW wall-time evidence",
+      "original_author_date": "2026-10-08T19:24:14+02:00",
+      "original_committer_date": "2026-10-08T19:24:14+02:00",
+      "recreated_author_date": "2026-10-08T17:59:18Z",
+      "recreated_committer_date": "2026-10-08T17:59:18Z"
+    },
+    {
+      "old_sha": "e7248d4d16d92327277cfc2577e4d9840e8b20f7",
+      "new_sha": "02f31aba64b170e54eeda5b229bc8a03fc9d606d",
+      "tree_sha": "9547bce281ebc1c6515f20eda39841419cc9cdae",
+      "subject": "docs: plot FFTW runtime and estimator comparisons",
+      "original_author_date": "2026-10-08T19:24:18+02:00",
+      "original_committer_date": "2026-10-08T19:24:18+02:00",
+      "recreated_author_date": "2026-10-08T17:59:19Z",
+      "recreated_committer_date": "2026-10-08T17:59:19Z"
+    },
+    {
+      "old_sha": "b8b921b5cabc808fc9ccab0157f7cc7030fa43f7",
+      "new_sha": "3f2864391db3bfb22942d99106026358fef5fe96",
+      "tree_sha": "58329dc6178ee2c54e8fec7c9b7484ce178cdb07",
+      "subject": "docs: explain FFTW comparison and remaining LPSD headroom",
+      "original_author_date": "2026-10-08T19:24:20+02:00",
+      "original_committer_date": "2026-10-08T19:24:20+02:00",
+      "recreated_author_date": "2026-10-08T17:59:20Z",
+      "recreated_committer_date": "2026-10-08T17:59:20Z"
+    },
+    {
+      "old_sha": "9660688981312b9020d2c4faac531f15b9dc7f3c",
+      "new_sha": "88b5166e60e9d3ff135b9cb105e096bdda656f9a",
+      "tree_sha": "27120651e3ac901a7624f339fec6f51d4734d3a2",
+      "subject": "chore: use GitHub-linked Codex coauthor identity [skip ci]",
+      "original_author_date": "2026-10-08T19:56:16+02:00",
+      "original_committer_date": "2026-10-08T19:56:16+02:00",
+      "recreated_author_date": "2026-10-08T17:59:20Z",
+      "recreated_committer_date": "2026-10-08T17:59:20Z"
+    }
+  ],
+  "message_verification": "Only the Codex coauthor email and trailing newline normalization differ; all subjects and body text are preserved."
+}
