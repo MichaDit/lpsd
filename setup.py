@@ -17,14 +17,19 @@ def load_build_module(path, name):
 
 class BuildNative(build_py):
     def run(self):
+        native = os.environ.get("LPSD_NATIVE") == "1"
+        if native and not self.editable_mode:
+            raise RuntimeError(
+                "LPSD_NATIVE=1 is only for editable/local builds. "
+                "Build redistributable wheels with LPSD_NATIVE=0."
+            )
         super().run()
         root = Path(__file__).resolve().parent
         destination = root if self.editable_mode else Path(self.build_lib)
         legacy = load_build_module(root / "build_native.py", "lpsd_legacy_build")
         legacy.build_legacy(destination / "lpsd")
         fast = load_build_module(root / "lpsd_fast" / "build.py", "lpsd_fast_build")
-        fast.build(native=os.environ.get("LPSD_NATIVE") == "1",
-                   output_directory=destination / "lpsd_fast" / "_native")
+        fast.build(native=native, output_directory=destination / "lpsd_fast" / "_native")
 
 
 class NativeDistribution(Distribution):
@@ -38,6 +43,10 @@ class PlatformWheel(bdist_wheel):
         _, _, platform = super().get_tag()
         return "py3", "none", platform
 
+
+# This precedes wheel tag calculation as well as the actual compiler call.
+load_build_module(Path(__file__).resolve().parent / "lpsd_fast" / "build.py",
+                  "lpsd_platform_config").configure_macos_target()
 
 setup(
     distclass=NativeDistribution,

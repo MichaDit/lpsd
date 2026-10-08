@@ -1,38 +1,22 @@
-"""Build the original ctypes library from source, failing on compiler errors."""
+"""Build the unchanged original ctypes library with the shared FP policy."""
+import importlib.util
 import os
 from pathlib import Path
-import shlex
-import subprocess
-import tempfile
 
 
 def build_legacy(output_directory=None):
-    root = Path(__file__).resolve().parent / "lpsd"
-    destination = Path(output_directory or root)
-    destination.mkdir(parents=True, exist_ok=True)
-    suffix = ".dll" if os.name == "nt" else ".so"
-    target = destination / ("ltpda_dft" + suffix)
-    compiler = shlex.split(os.environ.get("CC", "gcc"))
-    flags = ["-O3"]
-    if os.name != "nt":
-        flags.append("-fPIC")
-    descriptor, temporary = tempfile.mkstemp(
-        prefix="lpsd-build-", suffix=suffix, dir=destination
+    repository = Path(__file__).resolve().parent
+    # Do not import lpsd_fast.__init__: isolated builds need no NumPy/Pandas.
+    spec = importlib.util.spec_from_file_location(
+        "lpsd_native_builder", repository / "lpsd_fast" / "build.py"
     )
-    os.close(descriptor)
-    try:
-        subprocess.run(
-            compiler + flags + ["-shared", str(root / "ltpda_dft.c"),
-                                "-o", temporary, "-lm"],
-            check=True,
-        )
-        os.chmod(temporary, 0o755)
-        os.replace(temporary, target)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
-    return target
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    root = repository / "lpsd"
+    suffix = ".dll" if os.name == "nt" else ".so"
+    target = Path(output_directory or root) / ("ltpda_dft" + suffix)
+    return builder.build_shared(root / "ltpda_dft.c", target)
 
 
 if __name__ == "__main__":
-    print("Built", build_legacy())
+    build_legacy()
