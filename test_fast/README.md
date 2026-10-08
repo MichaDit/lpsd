@@ -9,8 +9,9 @@ python -m pytest -o addopts='' -q -ra test_fast
 python -m pytest -o addopts='' -q -ra test
 ```
 
-The small fast suite uses at most 2,049 samples per signal. It is a numerical
-regression suite; performance measurements belong in `benchmarks/` and are not
+The suite uses deterministic small and moderate-size signals, including
+longer native segment and overlap-reuse cases. It is a numerical regression
+suite; performance measurements belong in `benchmarks/` and are not
 timing assertions in shared CI. GitHub Actions runs the suite on Linux with
 Python 3.10 and 3.12 and portable GCC code generation. Dependency versions are
 resolved from package requirements, without pinning a particular NumPy build.
@@ -134,6 +135,29 @@ overlap changes the estimator's work. Use a small input with a dense requested
 grid to expose Python/output overhead, then large inputs for the segment and
 memory costs. Do not present the sum of concurrent worker timers as wall time.
 
+## Segment batching and overlap reuse
+
+`test_segment_batches.py` checks native projected auto spectra across batch
+thresholds, fractional segment shifts, eight/four/single remainders, PSD-only
+and legacy deviation outputs. Constant and DC-offset signals, tones,
+nonfinite native inputs and overflow cases retain their own checks. A separate
+large-first-periodogram fixture tests the cancellation-sensitive inherited
+`P0 + (P1-P0)` update; an ordinary well-conditioned noise comparison would
+not expose that risk. Tests run against the actual loaded native build, so
+portable GCC and Clang builds exercise their own reduction order.
+
+`test_rolling_boxcar.py` checks the recognized-window selection, exact start
+arithmetic, PSD/NSD and full-output relationships, input immutability, profiles,
+parallel determinism and scalar-reference results. Large initial and departed
+transients, severe cancellation and exponent limits exercise whole-frequency
+fallbacks. Longer cases use 131,073 samples. The safeguards select a more
+conservative algorithm; they are not a universal arbitrary-signal error proof.
+
+`test_accelerator_probe.py` checks the inventory/payload reporter using
+controlled inputs. Finding a device or package is never counted as a successful
+GPU computation. The normal native and wheel CI jobs archive actual exposed
+accelerator prerequisites independently of the numerical tests.
+
 ## Accuracy audit beyond small regressions
 
 `benchmarks/check_accuracy.py` produces a compact JSON comparison against
@@ -151,7 +175,7 @@ python benchmarks/check_accuracy.py --n 131073 --kernel auto --workers 8 \
   --output benchmark-results/accuracy-auto-131073.json
 ```
 
-The default 18 cases use 96 target frequencies and 16 target averages: white
+The default 19 cases use 96 target frequencies and 16 target averages: white
 and pink noise, tone plus noise, 10 V DC plus 1 nV noise, a -10..10 V ramp plus
 1 nV noise, full-record on-bin and off-bin tones, and a weak tone beside a
 strong one with Kaiser 200. White noise and the off-bin tone are also checked
