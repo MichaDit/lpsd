@@ -140,6 +140,11 @@ def _native():
             selected.restype = ct.c_int
             _LIB.fast_dft_selected_profile.argtypes = selected.argtypes + [dp, dp]
             _LIB.fast_dft_selected_profile.restype = ct.c_int
+            _LIB.fast_dft_boxcar.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
+                                            dp, ct.c_long, ct.c_long, dp, dp,
+                                            ct.c_double, ct.c_double, ct.c_int, ct.c_bool,
+                                            dp, dp, ct.POINTER(ct.c_long)]
+            _LIB.fast_dft_boxcar.restype = ct.c_int
             _LIB.window_sums.argtypes = [dp, ct.c_long, dp, dp]
             _LIB.window_sums.restype = ct.c_int
             _LIB.generate_kaiser.argtypes = [dp, ct.c_long, ct.c_double]
@@ -320,6 +325,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     cache_lock = threading.Lock()
     custom_window_lock = threading.Lock()
     rows = [None] * nf
+    rolling_boxcar = [False] * nf
     x1p, x2p = _pointer(x1), _pointer(x2)
 
     def window_for(length):
@@ -396,9 +402,20 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                        blocked=(kernel == 'fast'))
                 t2 = time.perf_counter()
                 extra = (ct.byref(prep_s), ct.byref(segments_s)) if profile else ()
-                status = fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
-                            x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
-                            order, csd, mode, statistics, True, *extra)
+                rebase_count = ct.c_long(-1)
+                if (kernel == 'fast' and window_kind == 5 and not csd and order == 0
+                        and overlap >= .8 and length >= 256 and counts[j] >= 32):
+                    status = _LIB.fast_dft_boxcar(
+                        ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
+                        x1p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
+                        m[j], mode, statistics,
+                        ct.byref(prep_s) if profile else None,
+                        ct.byref(segments_s) if profile else None, ct.byref(rebase_count))
+                    rolling_boxcar[j] = rebase_count.value >= 0
+                else:
+                    status = fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
+                                x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
+                                order, csd, mode, statistics, True, *extra)
                 t3 = time.perf_counter()
                 if status:
                     errors = {1: 'invalid native arguments', 2: 'unsafe segment bounds',
@@ -429,6 +446,8 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                            'coefficients_s': t2 - t1,
                            'c_kernel_s': t3 - t2, 'c_preparation_s': prep_s.value,
                            'c_segments_s': segments_s.value,
+                           'segment_method': 'rolling_boxcar' if rolling_boxcar[j] else 'direct',
+                           'rolling_rebases': rebase_count.value if spectrum else 0,
                            'memory_gate_wait_s': t0 - wait_started,
                            'worker_elapsed_s': time.perf_counter() - t0}
             return values
@@ -461,6 +480,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                 'native_mode': mode, 'estimator': 'lpsd-1.0.6',
                                 'legacy_statistics': True, 'outputs': list(outputs),
                                 'variance_computed': statistics,
+                                'rolling_boxcar_frequencies': sum(rolling_boxcar),
                                 'native_window': kernel != 'scalar' and known_window,
                                 'kaiser_method': ('series_with_fallback' if kernel == 'fast'
                                                   else 'direct') if window_kind == 0 else None,
@@ -517,6 +537,11 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     for order 0. Long Kaiser windows with beta <= 32 use a positive Bessel
     series evaluated by SIMD Horner steps; short/out-of-range cases use the
     direct generator. Independent block phases avoid unbounded recurrence drift.
+    For known Boxcar windows, order-zero auto spectra with overlap >= .8
+    can reuse incoming/outgoing samples between overlapping segments. This
+    path requires length >= 256 and at least 32 segments; it rebuilds all
+    anchored sums every 32 segments and retains the original segment starts.
+    Other windows, detrending orders and CSD retain direct segment projections.
     Small additional rounding differences are accepted to reduce wall time;
     there is no universal relative-error bound at spectral nulls. Compare
     with ``scalar`` using relative and application-specific absolute limits.
