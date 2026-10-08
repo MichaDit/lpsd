@@ -118,7 +118,7 @@ LPSD_TARGET_CLONES int generate_window(double *window, long int length, int kind
  * Uses one cosine per position and a SIMD Chebyshev harmonic recurrence.
  * count must lie in [1,32]. Rounding differs from independent cosine calls.
  * Returns 0 on success, 1 for invalid arguments. */
-int generate_cosine_window(double *window, long int length,
+LPSD_TARGET_CLONES int generate_cosine_window(double *window, long int length,
                             const double *coefficients, int count);
 
 /* Coefficients for the supplied (possibly fractional) frequency bin:
