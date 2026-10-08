@@ -36,6 +36,7 @@ CASES = {f"{signal}_kaiser200": (signal, "kaiser200") for signal in SIGNALS}
 CASES.update({f"{signal}_{window}": (signal, window)
               for window in tuple(WINDOWS)[1:]
               for signal in ("white", "offbin_tone")})
+CASES["onbin_tone_hft248d"] = ("onbin_tone", "hft248d")
 
 
 def digest(values):
@@ -74,8 +75,11 @@ def make_signal(kind, n, sample_rate, base_seed):
     return values, seed
 
 
-def error_metrics(reference, candidate, frequencies, relative_limit=.01, worst_points=5):
-    """Evaluate actual output values in float64; no scale-dependent floor."""
+def error_metrics(reference, candidate, frequencies, relative_limit=.01, worst_points=5,
+                  *, absolute_limit=0.):
+    """Keep raw errors and separately apply an explicit absolute allowance."""
+    if not np.isfinite(absolute_limit) or absolute_limit < 0:
+        raise ValueError("The absolute limit must be finite and nonnegative.")
     reference = np.asarray(reference, dtype=np.float64)
     candidate = np.asarray(candidate, dtype=np.float64)
     frequencies = np.asarray(frequencies, dtype=np.float64)
@@ -90,6 +94,12 @@ def error_metrics(reference, candidate, frequencies, relative_limit=.01, worst_p
     absolute = np.abs(candidate[finite_indices] - reference[finite_indices])
     relative = np.abs(candidate[nonzero_indices] - reference[nonzero_indices]) / np.abs(reference[nonzero_indices])
     changed_zeros = zero_indices[candidate[zero_indices] != 0]
+    relative_or_exact = ((absolute < relative_limit * np.abs(reference[finite_indices]))
+                         | (absolute == 0))
+    absolute_pass = absolute <= absolute_limit
+    combined_pass = relative_or_exact | absolute_pass
+    absolute_only = finite_indices[absolute_pass & ~relative_or_exact]
+    combined_failures = finite_indices[~combined_pass]
 
     def point(index):
         error = abs(candidate[index] - reference[index])
@@ -102,9 +112,12 @@ def error_metrics(reference, candidate, frequencies, relative_limit=.01, worst_p
     worst_rel = int(nonzero_indices[np.argmax(relative)]) if len(relative) else None
     top_relative = nonzero_indices[np.argsort(relative)[::-1][:worst_points]]
     top_zero = changed_zeros[np.argsort(np.abs(candidate[changed_zeros]))[::-1][:worst_points]]
+    top_absolute_only = absolute_only[np.argsort(np.abs(candidate[absolute_only] - reference[absolute_only]))[::-1][:worst_points]]
+    top_combined_failures = combined_failures[np.argsort(np.abs(candidate[combined_failures] - reference[combined_failures]))[::-1][:worst_points]]
     reference_nonfinite = int(np.count_nonzero(~np.isfinite(reference)))
     candidate_nonfinite = int(np.count_nonzero(~np.isfinite(candidate)))
     at_or_above = int(np.count_nonzero(relative >= relative_limit))
+    combined_failure_count = len(combined_failures) + int(np.count_nonzero(~finite))
     return {
         "count": len(reference),
         "finite_pair_count": int(np.count_nonzero(finite)),
@@ -122,12 +135,19 @@ def error_metrics(reference, candidate, frequencies, relative_limit=.01, worst_p
         "count_at_or_above_relative_limit": at_or_above,
         "relative_limit": relative_limit,
         "strict_limit_satisfied": not (reference_nonfinite or candidate_nonfinite or at_or_above or len(changed_zeros)),
+        "absolute_limit": float(absolute_limit),
+        "count_accepted_by_absolute_limit_only": len(absolute_only),
+        "count_not_meeting_combined_limit": combined_failure_count,
+        "combined_limit_satisfied": combined_failure_count == 0,
         "worst_relative_points": [point(int(index)) for index in top_relative],
         "worst_changed_zero_points": [point(int(index)) for index in top_zero],
+        "worst_absolute_only_points": [point(int(index)) for index in top_absolute_only],
+        "worst_combined_failure_points": [point(int(index)) for index in top_combined_failures],
     }
 
 
-def compare_outputs(reference, candidate, relative_limit=.01, worst_points=5):
+def compare_outputs(reference, candidate, relative_limit=.01, worst_points=5,
+                    *, psd_absolute_limit=0., nsd_absolute_limit=0.):
     expected_f = reference.index.to_numpy()
     actual_f = candidate.index.to_numpy()
     exact = expected_f.dtype == actual_f.dtype and expected_f.tobytes() == actual_f.tobytes()
@@ -140,12 +160,15 @@ def compare_outputs(reference, candidate, relative_limit=.01, worst_points=5):
         return result
     result["status"] = "compared"
     result["metrics"] = {}
-    for label, ref_name, candidate_name in (("psd", "psd", "psd"), ("nsd", "asd", "nsd")):
+    for label, ref_name, candidate_name, absolute_limit in (
+            ("psd", "psd", "psd", psd_absolute_limit),
+            ("nsd", "asd", "nsd", nsd_absolute_limit)):
         ref_values = reference[ref_name].to_numpy()
         candidate_values = candidate[candidate_name].to_numpy()
         if np.iscomplexobj(ref_values) or np.iscomplexobj(candidate_values):
             raise ValueError("This audit is for real auto spectra, not complex CSD.")
-        metrics = error_metrics(ref_values, candidate_values, expected_f, relative_limit, worst_points)
+        metrics = error_metrics(ref_values, candidate_values, expected_f, relative_limit, worst_points,
+                                absolute_limit=absolute_limit)
         metrics.update({"reference_dtype": str(ref_values.dtype),
                         "candidate_dtype": str(candidate_values.dtype),
                         "reference_sha256": digest(ref_values),
@@ -163,7 +186,7 @@ def source_evidence():
     if original_hashes != manifest["sha256"]:
         raise RuntimeError("The original reference sources differ from the pinned upstream commit.")
     fast_root = Path(lpsd_fast.__file__).resolve().parent
-    paths = [fast_root / "api.py", fast_root / "planning.py"]
+    paths = sorted(fast_root.glob("*.py"))
     paths += sorted((fast_root / "_native").glob("*.c"))
     paths += sorted((fast_root / "_native").glob("*.h"))
     api._native()
@@ -210,6 +233,10 @@ def main(argv=None):
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--cases", nargs="+", choices=tuple(CASES))
     parser.add_argument("--relative-limit", type=float, default=.01)
+    parser.add_argument("--psd-absolute-limit", type=float, default=0.,
+                        help="Absolute PSD allowance in the output's squared-signal-unit/Hz; default 0.")
+    parser.add_argument("--nsd-absolute-limit", type=float, default=0.,
+                        help="Absolute NSD allowance in the output's signal-unit/sqrt(Hz); default 0.")
     parser.add_argument("--worst-points", type=int, default=5)
     parser.add_argument("--label", default="")
     parser.add_argument("--fail-on-limit", action="store_true")
@@ -221,6 +248,9 @@ def main(argv=None):
         parser.error("The fixed signal cases require a sample rate above 16.08 Hz.")
     if not np.isfinite(args.relative_limit) or args.relative_limit <= 0 or not 0 <= args.worst_points <= 20:
         parser.error("Require a positive finite relative limit and 0..20 saved worst points.")
+    if any(not np.isfinite(limit) or limit < 0
+           for limit in (args.psd_absolute_limit, args.nsd_absolute_limit)):
+        parser.error("Absolute PSD/NSD limits must be finite and nonnegative.")
     names = args.cases or list(CASES)
     if len(set(names)) != len(names):
         parser.error("Case names must not be repeated.")
@@ -234,6 +264,8 @@ def main(argv=None):
                           "base_seed": args.seed, "case_names": names,
                           "saved_worst_points_per_metric": args.worst_points},
         "relative_limit": args.relative_limit, "criterion": "strictly less than the relative limit",
+        "absolute_limits": {"psd": args.psd_absolute_limit, "nsd": args.nsd_absolute_limit},
+        "combined_criterion": "abs(candidate-reference) < relative_limit*abs(reference) OR abs(candidate-reference) <= absolute_limit",
         "environment": {"python": platform.python_version(), "numpy": np.__version__,
                         "pandas": pd.__version__, "platform": platform.platform(),
                         "lpsd_fast_version": lpsd_fast.__version__,
@@ -241,9 +273,13 @@ def main(argv=None):
         "source_evidence": source_evidence(), "scalar_anchor": scalar_anchor(),
         "notes": [
             "No DC-scaled, peak-scaled or other amplitude floor is applied.",
+            "Absolute allowances are explicit output-unit values, default to zero, and do not modify the raw error metrics.",
             "Relative errors use abs(candidate-reference)/abs(reference) at exactly nonzero finite references.",
-            "Maxima use finite pairs; nonfinite values are counted separately and fail the strict criterion.",
-            "Changed exact zeros are reported separately; their relative error is undefined and they fail --fail-on-limit.",
+            "Maxima use finite pairs; nonfinite values are counted separately and fail both criteria.",
+            "Changed exact zeros retain an undefined relative error and fail the strict criterion; an explicit absolute allowance can accept them.",
+            "Identical zeros pass both criteria. Points accepted only by the absolute allowance are counted and shown separately.",
+            "--fail-on-limit uses the combined criterion when an absolute allowance is set; with zero allowances it retains the strict criterion.",
+            "The saved absolute-only and combined-failure points are sorted by decreasing absolute error.",
             "The 1% default is strict: exactly 1% does not pass. Both > and >= counts are recorded.",
             "Native scalar uses the strict coefficient/window path; an independent small original-C anchor gates it.",
             "Source and binary fingerprints are recorded before the audit; do not rebuild during the run.",
@@ -266,7 +302,9 @@ def main(argv=None):
             raise RuntimeError("Scalar reference unexpectedly selected another native mode.")
         candidate = lpsd_fast.lpsd(data, kernel=args.kernel, workers=args.workers,
                                   outputs=("psd", "nsd"), **kwargs)
-        result = compare_outputs(reference, candidate, args.relative_limit, args.worst_points)
+        result = compare_outputs(reference, candidate, args.relative_limit, args.worst_points,
+                                 psd_absolute_limit=args.psd_absolute_limit,
+                                 nsd_absolute_limit=args.nsd_absolute_limit)
         result.update({"name": name, "signal": kind, "input_sha256": digest(values),
                        "parameters": dict(kwargs, window_function=window, n=args.n, seed=seed,
                            resolved_overlap=overlap if overlap is not None else _kaiser_rov(_kaiser_alpha(psll))),
@@ -275,13 +313,18 @@ def main(argv=None):
     mismatches = [row["name"] for row in report["cases"] if not row["frequency_index_exact"]]
     outside = [row["name"] for row in report["cases"] if "metrics" in row
                and not all(metric["strict_limit_satisfied"] for metric in row["metrics"].values())]
+    combined_outside = [row["name"] for row in report["cases"] if "metrics" in row
+                        and not all(metric["combined_limit_satisfied"] for metric in row["metrics"].values())]
     report["summary"] = {"cases": len(names), "frequency_mismatch_cases": mismatches,
                           "cases_not_meeting_strict_limit": outside,
-                          "all_cases_meet_strict_limit": not mismatches and not outside}
+                          "all_cases_meet_strict_limit": not mismatches and not outside,
+                          "cases_not_meeting_combined_limit": combined_outside,
+                          "all_cases_meet_combined_limit": not mismatches and not combined_outside}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     print(json.dumps(dict(report["summary"], output=str(args.output))))
-    return int(bool(mismatches) or (args.fail_on_limit and bool(outside)))
+    outside_for_exit = combined_outside if args.psd_absolute_limit or args.nsd_absolute_limit else outside
+    return int(bool(mismatches) or (args.fail_on_limit and bool(outside_for_exit)))
 
 
 if __name__ == "__main__":
