@@ -65,17 +65,24 @@ even when the residual is numerically small.
 ## Reproduction
 
 Use an installed isolated checkout with the ordinary original and fast native
-libraries already built. Rebuild the fast baseline for the current CPU:
+libraries already built. Its fast build report supplies the compiler and flags:
 
 ```bash
 python -m lpsd_fast.build --native
 python benchmarks/experiments/fp_contract/prepare.py
 ```
 
-`prepare.py` copies the built baseline into the ignored `artifacts/` directory
-and compiles the candidate there. It verifies the baseline sidecar, compiler
-version/target, and retained strict floating-point flags. It records source
-hashes and the exact compiler command. No production binary is replaced.
+`prepare.py` captures the current native C/H sources into a private directory,
+preserving the relative include layout. It builds **both** the strict reference
+and FMA candidate from that one snapshot, then keeps the snapshot and both
+binaries in the ignored `artifacts/` directory. It verifies the existing build
+sidecar, compiler version/target, and retained strict floating-point flags.
+Both private build reports record identical source hashes, a snapshot-manifest
+hash and their exact compiler commands. The existing production binary supplies
+compiler/flags provenance only; it is not used as the new strict reference.
+Thus editing source files after the installed build cannot silently compare an
+old reference against a newly compiled candidate. The loader verifies both
+binary hashes and the retained source snapshot. No production binary is changed.
 `--replace` is only for rebuilding private artifacts when no process has them
 loaded. Do not rebuild during measurements.
 
@@ -106,6 +113,18 @@ carefully scoped FMA implementation, another CPU, or arbitrary input signals.
 
 The archived scripts were moved from a private experiment directory and their
 loading paths were generalized during curation. Their original execution
-hashes and measured library hashes remain in the evidence. The curated scripts
-received static review only; no second benchmark or accuracy run was performed
-during this archival change. No native binaries are committed.
+hashes and measured library hashes remain in the evidence. The reproduction
+recipe was subsequently strengthened to build a fresh strict/FMA pair from a
+shared source snapshot; this does not alter the historical results. No native
+binaries are committed. New reproduction calls must be kept separate from the
+archived measurements.
+
+The corrected recipe was validated with two private builds and one 12-case
+semantic smoke. It reproduced the original strict binary SHA256
+`b0ab2e54a6231bd54b8d01c9c364efadb924c8e41dcc0398ef637f29d3e9e623`
+and FMA binary SHA256
+`4ec423046695c19d8b78ac6516982b97f2dd5e156b8cc78390dc2b0a726a2d0b`
+from the same eight-file snapshot. The smoke again found 27 dtype-mismatch
+columns, 255 new imaginary PSD points and zero nonfinite values. Installed
+production hashes were checked before and after and remained unchanged. No
+performance measurement or full accuracy audit was repeated for this fix.
