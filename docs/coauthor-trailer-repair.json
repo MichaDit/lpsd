@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "repository": "MichaDit/lpsd",
+  "base": "88b5166e60e9d3ff135b9cb105e096bdda656f9a",
+  "old_head": "8fa0185208432f5d1f4b63d78ac600eb8e469f1c",
+  "new_head": "a8c12fc0f7f9a3173d62fd610eca795656e6bdfe",
+  "archive_branch": "archive/fast3-before-trailer-normalization-2026-10-08",
+  "repair": "Remove the extra terminal blank paragraph added by git show --format=%B before GitHub API publication. Coauthor identity, subjects, body text and every file tree are unchanged. Commit IDs and API-created timestamps change.",
+  "commits": [
+    {
+      "old_sha": "9d22d48713a3ebb5a10fecd09005256533299f0f",
+      "new_sha": "ea8a95a69529a6034dfe00de07e5d8d918a2725a",
+      "tree": "73922e1e0162dfb517b3e99bb44d82aae6229a4d",
+      "subject": "chore: verify linked coauthors across the repaired history",
+      "original_author_date": "2026-10-08T20:27:25+02:00",
+      "original_committer_date": "2026-10-08T20:27:25+02:00",
+      "recreated_author_date": "2026-10-08T20:57:16+02:00",
+      "recreated_committer_date": "2026-10-08T20:57:16+02:00"
+    },
+    {
+      "old_sha": "21e4117d5386cbef6344594822ad2e1ba934e72f",
+      "new_sha": "1f735daded6076636b3f3169f4e5a1af15e39379",
+      "tree": "d65668e4b5322f50ed486e4974511837732e1829",
+      "subject": "perf: share PSD coefficients across eight AVX-512 segments",
+      "original_author_date": "2026-10-08T20:27:27+02:00",
+      "original_committer_date": "2026-10-08T20:27:27+02:00",
+      "recreated_author_date": "2026-10-08T20:57:59+02:00",
+      "recreated_committer_date": "2026-10-08T20:57:59+02:00"
+    },
+    {
+      "old_sha": "30d07a104b3637357de2e6ed71a911a3aa4b6851",
+      "new_sha": "899ab87dffebea608c69b6df7a02766d0e973593",
+      "tree": "254e4186bf0101a777c5071afc95cb28f634f28f",
+      "subject": "bench: inventory accelerator prerequisites and LPSD payload costs",
+      "original_author_date": "2026-10-08T20:27:28+02:00",
+      "original_committer_date": "2026-10-08T20:27:28+02:00",
+      "recreated_author_date": "2026-10-08T20:58:00+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:00+02:00"
+    },
+    {
+      "old_sha": "d24818a9998453a8ef84735f34b7938df9f49bd5",
+      "new_sha": "275fe725b4f1bef9f8ee5228b028a882ba3c1cb9",
+      "tree": "07ed1e94300f179f6018daad3382f6e87ee5308d",
+      "subject": "docs: assess GPU and accelerator paths for unchanged LPSD",
+      "original_author_date": "2026-10-08T20:27:29+02:00",
+      "original_committer_date": "2026-10-08T20:27:29+02:00",
+      "recreated_author_date": "2026-10-08T20:58:00+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:00+02:00"
+    },
+    {
+      "old_sha": "849c92d584863178c84af672fd05577dc41c4a9b",
+      "new_sha": "04d2c49e1d8bf1b790752dbbdef7e33193bd727f",
+      "tree": "24498916b46d3d1b612bb243837861eb3dd46f1a",
+      "subject": "ci: record accelerator visibility on native test runners",
+      "original_author_date": "2026-10-08T20:27:31+02:00",
+      "original_committer_date": "2026-10-08T20:27:31+02:00",
+      "recreated_author_date": "2026-10-08T20:58:01+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:01+02:00"
+    },
+    {
+      "old_sha": "da44151560fe5ed57fa4678805287071c77b306f",
+      "new_sha": "dacc540c4cef772cfd964d6df45df8357a2490a3",
+      "tree": "329ec262d6adea54c8a87a96699bb2d8b88a5448",
+      "subject": "perf: reuse Boxcar overlap with rebased Fourier states",
+      "original_author_date": "2026-10-08T20:27:32+02:00",
+      "original_committer_date": "2026-10-08T20:27:32+02:00",
+      "recreated_author_date": "2026-10-08T20:58:01+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:01+02:00"
+    },
+    {
+      "old_sha": "98f09de2ae27ebe62a1a1fa31129159dcce0f6a9",
+      "new_sha": "c0f3e5bfb4bb21cd5208a8457a55ebaadabb55a7",
+      "tree": "c075a47adcc4c534946ecfbe10f8eb35242c1550",
+      "subject": "perf: select eight-way batches from paired segment-length evidence",
+      "original_author_date": "2026-10-08T20:27:34+02:00",
+      "original_committer_date": "2026-10-08T20:27:34+02:00",
+      "recreated_author_date": "2026-10-08T20:58:02+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:02+02:00"
+    },
+    {
+      "old_sha": "7ce44e4fa8ee405d21fbe5db78c935b3da2b7cce",
+      "new_sha": "4bb664c6eb8bb17b3bfa5e67ade661b584539863",
+      "tree": "c7136f51ba33e3aca87297ee2d9811ec0eeb85e1",
+      "subject": "bench: record guarded Boxcar overlap timing and provenance",
+      "original_author_date": "2026-10-08T20:27:37+02:00",
+      "original_committer_date": "2026-10-08T20:27:37+02:00",
+      "recreated_author_date": "2026-10-08T20:58:03+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:03+02:00"
+    },
+    {
+      "old_sha": "b5f37733e2ad87f66f767328dc957627d4eaed30",
+      "new_sha": "4b5b6015b8e1e7948e0d568ba5e593386fc91730",
+      "tree": "b5cb56f191da117ff0c83976f39fb1b27c6bc5ac",
+      "subject": "ci: expose accelerator inventory in readable job logs",
+      "original_author_date": "2026-10-08T20:50:54+02:00",
+      "original_committer_date": "2026-10-08T20:50:54+02:00",
+      "recreated_author_date": "2026-10-08T20:58:04+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:04+02:00"
+    },
+    {
+      "old_sha": "2d46f78361528b4dd7cad06e9c68ba447a4d3b14",
+      "new_sha": "1c1abac6cca6d1e75318cfb1c29330fefe50e76e",
+      "tree": "3e8152e3bff736f290b7a7aa67adcddc0cb91227",
+      "subject": "bench: compare complete version APIs with balanced calls",
+      "original_author_date": "2026-10-08T20:50:55+02:00",
+      "original_committer_date": "2026-10-08T20:50:55+02:00",
+      "recreated_author_date": "2026-10-08T20:58:04+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:04+02:00"
+    },
+    {
+      "old_sha": "0223f262224d668d4de8152a63d9c10583955d99",
+      "new_sha": "66a208b4f7a6969f7b0fc1d9ed1966b08285b200",
+      "tree": "0e0b73469564cf2cd8f2cd10e59882b8b47ab252",
+      "subject": "docs: qualify output-selection rounding at extreme amplitudes",
+      "original_author_date": "2026-10-08T20:50:56+02:00",
+      "original_committer_date": "2026-10-08T20:50:56+02:00",
+      "recreated_author_date": "2026-10-08T20:58:05+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:05+02:00"
+    },
+    {
+      "old_sha": "d72ddf7cf8f7e1d4d80d3a2b229ce6c6559dc66f",
+      "new_sha": "06d916c6b8769e682772b9b575d5ca466fceabfb",
+      "tree": "dde07692010bef535231b3cc91626c5f95fbc1d1",
+      "subject": "bench: archive reproducible segment-batch measurements",
+      "original_author_date": "2026-10-08T20:50:59+02:00",
+      "original_committer_date": "2026-10-08T20:50:59+02:00",
+      "recreated_author_date": "2026-10-08T20:58:06+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:06+02:00"
+    },
+    {
+      "old_sha": "9507b81a33123ff52d6cc98b2ca6add07bacc0ec",
+      "new_sha": "052e36c97d30998e3511939095f5f05abe1e6b7f",
+      "tree": "d4a9621c78a040ae43a6efb2dad2a6e157b228c2",
+      "subject": "bench: verify Boxcar reuse against the final adaptive CPU kernel",
+      "original_author_date": "2026-10-08T20:51:03+02:00",
+      "original_committer_date": "2026-10-08T20:51:03+02:00",
+      "recreated_author_date": "2026-10-08T20:58:06+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:06+02:00"
+    },
+    {
+      "old_sha": "3dc39eeef6f8a75563e3d6a35144f77b9f8d653d",
+      "new_sha": "60cd1317a95af8881a4847fafcce389c73938d1b",
+      "tree": "110755b8eac1e147ab58525c54ca42800f356b0b",
+      "subject": "test: record integrated fast.3 timing and numerical evidence",
+      "original_author_date": "2026-10-08T20:51:06+02:00",
+      "original_committer_date": "2026-10-08T20:51:06+02:00",
+      "recreated_author_date": "2026-10-08T20:58:07+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:07+02:00"
+    },
+    {
+      "old_sha": "8fa0185208432f5d1f4b63d78ac600eb8e469f1c",
+      "new_sha": "a8c12fc0f7f9a3173d62fd610eca795656e6bdfe",
+      "tree": "012e1187f92a5fa0809c0ca9f5d1ffa5f8d13bfb",
+      "subject": "chore: release fast.3 with validated segment optimizations",
+      "original_author_date": "2026-10-08T20:51:08+02:00",
+      "original_committer_date": "2026-10-08T20:51:08+02:00",
+      "recreated_author_date": "2026-10-08T20:58:08+02:00",
+      "recreated_committer_date": "2026-10-08T20:58:08+02:00"
+    }
+  ]
+}

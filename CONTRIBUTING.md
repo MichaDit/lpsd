@@ -23,6 +23,17 @@ attribution; see [GitHub's coauthor documentation](https://docs.github.com/en/pu
 Verifying the trailer alone does not verify the rendered account/author list.
 After publication, inspect the commit page as well.
 
+GitHub's commit API preserves trailing message whitespace. A controlled check
+with the same parent and file tree found that an extra blank paragraph after
+the canonical trailer (`\n\n`) prevented the linked coauthor from appearing;
+removing those final newlines restored it. Read messages from `git cat-file commit`,
+not formatted `git show --format=%B` output, which adds another newline.
+Before API publication, normalize only the final line endings with
+`message.rstrip("\r\n")` and verify that the canonical trailer ends the message.
+The local audit rejects trailing blank paragraphs while allowing an ordinary
+single final newline. This formatting check supplements the rendered-author
+check; Git's trailer parser alone accepts the problematic blank paragraph.
+
 The first 43 fork commits, through `b8b921b5cabc808fc9ccab0157f7cc7030fa43f7`,
 originally contained `Co-authored-by: Codex <codex@openai.com>`. An audit confirmed that
 GitHub's rendered author list on that last commit contained only `MichaDit`.
@@ -39,14 +50,23 @@ timestamps; the [old/new mapping and original timestamps](docs/coauthor-repair.j
 make that explicit. The [44-commit web audit](docs/coauthor-audit.json) confirms
 that GitHub actually rendered `codex` on each recreated commit page.
 
+The 15 subsequent fast.3 commits needed the terminal-blank-paragraph repair
+described above. Their original objects remain on
+[`archive/fast3-before-trailer-normalization-2026-10-08`](https://github.com/MichaDit/lpsd/tree/archive/fast3-before-trailer-normalization-2026-10-08).
+The [second metadata-only mapping](docs/coauthor-trailer-repair.json) records
+their unchanged trees and refreshed timestamps. The
+[59-commit fast.3 web audit](docs/coauthor-audit-fast3.json) covers the complete
+corrected history through the release commit; later commits must pass the
+same audit after publication.
+
 To repeat both the local and public GitHub checks from a complete checkout:
 
 ```sh
 python tools/audit_coauthors.py --github --output .validation/coauthors.json
 ```
 
-Omit `--github` for a local trailer-only check. The default range begins after
-the pinned upstream v1.0.6 commit; upstream history is not required to carry
+Omit `--github` for a local trailer and message-format check. The default range
+begins after the pinned upstream v1.0.6 commit; upstream history is not required to carry
 Codex trailers. A changed page format or failed request fails the web audit
 visibly instead of being treated as successful attribution.
 

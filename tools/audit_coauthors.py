@@ -99,16 +99,20 @@ def main(argv=None):
         parser.error('The selected range contains no commits.')
     rows = []
     for sha in shas:
-        message = _git('show', '-s', '--format=%B', sha)
+        # Read the stored message: `git show --format=%B` adds another LF.
+        message = _git('cat-file', 'commit', sha).split('\n\n', 1)[1]
         trailers = _git('interpret-trailers', '--parse', input_text=message)
+        trailing_blank_paragraph = re.search(r'\n[ \t]*\n[ \t]*\Z', message) is not None
         rows.append({'sha': sha, 'subject': message.splitlines()[0],
-                     'linked_trailer': f'Co-authored-by: {COAUTHOR}' in trailers.splitlines()})
+                     'linked_trailer': f'Co-authored-by: {COAUTHOR}' in trailers.splitlines(),
+                     'trailing_blank_paragraph': trailing_blank_paragraph})
     if args.github:
         with ThreadPoolExecutor(max_workers=4) as pool:
             checks = pool.map(lambda sha: _web_authors(args.repository, sha), shas)
             for row, check in zip(rows, checks):
                 row.update(check)
-    ok = all(row['linked_trailer'] and (not args.github or row['codex_visible'])
+    ok = all(row['linked_trailer'] and not row['trailing_blank_paragraph']
+             and (not args.github or row['codex_visible'])
              for row in rows)
     report = {'schema_version': 1, 'checked_at': datetime.now(timezone.utc).isoformat(),
               'repository': args.repository, 'base': base, 'head': head,
@@ -119,7 +123,8 @@ def main(argv=None):
         args.output.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print(json.dumps({k: v for k, v in report.items() if k != 'commits'}, indent=2))
     for row in rows:
-        if not row['linked_trailer'] or (args.github and not row['codex_visible']):
+        if (not row['linked_trailer'] or row['trailing_blank_paragraph']
+                or (args.github and not row['codex_visible'])):
             print(json.dumps(row))
     return 0 if ok else 1
 
