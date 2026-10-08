@@ -93,7 +93,20 @@ def _available_memory():
         limit = Path('/sys/fs/cgroup/memory.max').read_text().strip()
         current = int(Path('/sys/fs/cgroup/memory.current').read_text())
         if limit != 'max':
-            candidates.append(int(limit) - current)
+            # memory.current includes reclaimable filesystem cache. Treating
+            # all of it as unavailable can serialize workers after unrelated
+            # file reads, even with almost no resident application data.
+            reclaimable = 0
+            try:
+                stats = dict(line.split() for line in
+                             Path('/sys/fs/cgroup/memory.stat').read_text().splitlines())
+                reclaimable = max(0, int(stats.get('inactive_file', 0))
+                                  - int(stats.get('file_dirty', 0))
+                                  - int(stats.get('file_writeback', 0)))
+            except (OSError, ValueError):
+                pass
+            limit = int(limit)
+            candidates.append(max(0, limit - current + min(reclaimable, current, limit)))
     except (OSError, ValueError):
         pass
     try:
