@@ -158,6 +158,10 @@ def main(argv=None):
     )
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--warmups", type=int, default=1)
+    parser.add_argument(
+        "--full-length-warmup", action="store_true",
+        help="Warm the complete requested problem; default warms at most 4096 samples and 100 frequencies.",
+    )
     parser.add_argument("--seed", type=int, default=20261008)
     parser.add_argument("--sample-rate", type=float, default=1.0)
     parser.add_argument("--n-frequencies", type=int, default=1000)
@@ -242,9 +246,12 @@ def main(argv=None):
     if args.backend == "fast" and args.outputs is not None:
         extra["outputs"] = args.outputs[0] if len(args.outputs) == 1 else args.outputs
     warmup_start = time.perf_counter()
-    warmup_kwargs = dict(common, n_frequencies=min(args.n_frequencies, 100))
+    warmup_kwargs = dict(common, n_frequencies=(
+        args.n_frequencies if args.full_length_warmup else min(args.n_frequencies, 100)
+    ))
+    warmup_samples = args.n if args.full_length_warmup else min(args.n, 4096)
     for _ in range(args.warmups):
-        implementation(series.iloc[:4096], **warmup_kwargs, **extra)
+        implementation(series.iloc[:warmup_samples], **warmup_kwargs, **extra)
     setup_warmup_s = time.perf_counter() - warmup_start
 
     timings = []
@@ -273,7 +280,8 @@ def main(argv=None):
         "input": "pandas.Series of seeded float64 standard-normal samples",
         "warmup": {
             "calls": args.warmups,
-            "samples_per_call": min(args.n, 4096),
+            "samples_per_call": warmup_samples,
+            "full_length": args.full_length_warmup,
             "target_frequencies": warmup_kwargs["n_frequencies"],
             "elapsed_s": setup_warmup_s,
         },
@@ -302,6 +310,7 @@ def main(argv=None):
         "build_reports": build_evidence(),
         "notes": [
             "Imports, input generation, warm-up, fingerprints and file output are outside API timers.",
+            "Full-length warm-up is opt-in. Every timed LPSD call still prepares its own frequency plan, windows and coefficients; no reusable LPSD plan is installed by warming up.",
             "With zero warm-ups the first timed call may include native loading or lazy-build setup.",
             "RSS is a process-lifetime high-water mark, not a per-call allocation or memory-budget guarantee.",
             "Output fingerprints are reproducibility metadata, not a numerical correctness proof.",
