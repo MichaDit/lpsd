@@ -35,8 +35,18 @@ standard-deviation columns are not validated statistical uncertainties.
 - `generate_coefficients` computes coefficients for the actual fractional
   bin, with independent phases and paired sine/cosine where the compiler
   supports it. It does not round frequencies to FFT bins.
+- `generate_window` additionally provides NumPy's symmetric Hann, Hamming,
+  Blackman, Bartlett and boxcar definitions. Kaiser alone keeps the original
+  LPSD periodic convention. Native libm can differ from NumPy by a few ulps.
 - `fast_dft_profile` performs the same calculation with three timer reads
   per frequency. `fast_dft` contains no timing calls on its execution path.
+- `fast_dft_selected` and `fast_dft_selected_profile` add optional variance
+  calculation and in-place coefficient projection without changing the
+  existing exports. Skipping variance retains every mean update and segment.
+  In-place mode 2 reuses the caller's private, writable coefficient arrays,
+  saving two length-L double buffers (16L bytes) per active frequency. It
+  never changes the input samples. Variance outputs may be NULL when not
+  requested; supplied variance outputs are then NAN.
 
 Signatures and return codes are documented in `fast_dft.h`. Argument errors,
 unsupported dimensions and failed allocations are returned to the caller.

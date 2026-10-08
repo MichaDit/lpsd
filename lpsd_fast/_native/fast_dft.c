@@ -218,14 +218,24 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                          long int nData, long int segLen,
                          const double *Cr, const double *Ci,
                          double olap, int order, bool csd, int mode,
+                         bool statistics,
+                         double *inplace_r, double *inplace_i,
                          double *preparation_seconds, double *segments_seconds)
 {
-    if (Pr_r == NULL || Pr_i == NULL || Vr_r == NULL || Vr_i == NULL ||
+    if (Pr_r == NULL || Pr_i == NULL ||
+        (statistics && (Vr_r == NULL || Vr_i == NULL)) ||
         Navs == NULL || x1data == NULL || Cr == NULL || Ci == NULL ||
-        (csd && x2data == NULL)) {
+        (csd && x2data == NULL) ||
+        ((inplace_r == NULL) != (inplace_i == NULL))) {
         return 1;
     }
-    *Pr_r = *Pr_i = *Vr_r = *Vr_i = NAN;
+    *Pr_r = *Pr_i = NAN;
+    if (Vr_r != NULL) {
+        *Vr_r = NAN;
+    }
+    if (Vr_i != NULL) {
+        *Vr_i = NAN;
+    }
     *Navs = 0;
     if (mode < 0 || mode > 2 ||
         (mode == 2 && order != 0 && order != 1)) {
@@ -264,11 +274,15 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     double *residual2 = NULL;
     double *projected_r = NULL;
     double *projected_i = NULL;
+    bool owns_projected = false;
     double coefficients1[11] = {0.0};
     double coefficients2[11] = {0.0};
     if (mode == 2) {
-        projected_r = (double *)malloc((size_t)segLen * sizeof(double));
-        projected_i = (double *)malloc((size_t)segLen * sizeof(double));
+        owns_projected = inplace_r == NULL;
+        projected_r = owns_projected ?
+            (double *)malloc((size_t)segLen * sizeof(double)) : inplace_r;
+        projected_i = owns_projected ?
+            (double *)malloc((size_t)segLen * sizeof(double)) : inplace_i;
         if (projected_r == NULL || projected_i == NULL) {
             free(projected_r);
             free(projected_i);
@@ -300,8 +314,10 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
         if (istart < 0 || istart > nData - segLen) {
             free(residual1);
             free(residual2);
-            free(projected_r);
-            free(projected_i);
+            if (owns_projected) {
+                free(projected_r);
+                free(projected_i);
+            }
             return 2;
         }
         const double *segment1 = x1data + istart;
@@ -355,11 +371,13 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
             /* Preserve upstream 1.0.6 exactly: ii, NOT ii + 1. */
             Mr_r += Qr_r / ii;
             Mr_i += Qr_i / ii;
-            const double XM_diff_r = Xr_r - Mr_r;
-            const double XM_diff_i = Xr_i - Mr_i;
-            /* Preserve assignment, NOT the corrected accumulating +=. */
-            M2_r = Qr_r * XM_diff_r - Qr_i * XM_diff_i;
-            M2_i = Qr_r * XM_diff_i + Qr_i * XM_diff_r;
+            if (statistics) {
+                const double XM_diff_r = Xr_r - Mr_r;
+                const double XM_diff_i = Xr_i - Mr_i;
+                /* Preserve assignment, NOT the corrected accumulating +=. */
+                M2_r = Qr_r * XM_diff_r - Qr_i * XM_diff_i;
+                M2_i = Qr_r * XM_diff_i + Qr_i * XM_diff_r;
+            }
         }
     }
 
@@ -368,16 +386,20 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     }
     free(residual1);
     free(residual2);
-    free(projected_r);
-    free(projected_i);
+    if (owns_projected) {
+        free(projected_r);
+        free(projected_i);
+    }
     *Pr_r = Mr_r;
     *Pr_i = Mr_i;
-    if (navg == 1) {
-        *Vr_r = Mr_r * Mr_r - Mr_i * Mr_i;
-        *Vr_i = 2.0 * Mr_i * Mr_r;
-    } else {
-        *Vr_r = M2_r / (navg - 1);
-        *Vr_i = M2_i / (navg - 1);
+    if (statistics) {
+        if (navg == 1) {
+            *Vr_r = Mr_r * Mr_r - Mr_i * Mr_i;
+            *Vr_i = 2.0 * Mr_i * Mr_r;
+        } else {
+            *Vr_r = M2_r / (navg - 1);
+            *Vr_i = M2_i / (navg - 1);
+        }
     }
     *Navs = navg;
     return 0;
@@ -392,7 +414,7 @@ int fast_dft(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
 {
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
-                          olap, order, csd, mode, NULL, NULL);
+                          olap, order, csd, mode, true, NULL, NULL, NULL, NULL);
 }
 
 int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -409,7 +431,42 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     *preparation_seconds = *segments_seconds = NAN;
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
-                          olap, order, csd, mode,
+                          olap, order, csd, mode, true, NULL, NULL,
+                          preparation_seconds, segments_seconds);
+}
+
+int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+                      long int *Navs,
+                      const double *x1data, const double *x2data,
+                      long int nData, long int segLen,
+                      double *Cr, double *Ci,
+                      double olap, int order, bool csd, int mode,
+                      bool statistics, bool inplace)
+{
+    return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+                          x1data, x2data, nData, segLen, Cr, Ci,
+                          olap, order, csd, mode, statistics,
+                          inplace ? Cr : NULL, inplace ? Ci : NULL,
+                          NULL, NULL);
+}
+
+int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
+                              double *Vr_r, double *Vr_i, long int *Navs,
+                              const double *x1data, const double *x2data,
+                              long int nData, long int segLen,
+                              double *Cr, double *Ci,
+                              double olap, int order, bool csd, int mode,
+                              bool statistics, bool inplace,
+                              double *preparation_seconds, double *segments_seconds)
+{
+    if (preparation_seconds == NULL || segments_seconds == NULL) {
+        return 1;
+    }
+    *preparation_seconds = *segments_seconds = NAN;
+    return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+                          x1data, x2data, nData, segLen, Cr, Ci,
+                          olap, order, csd, mode, statistics,
+                          inplace ? Cr : NULL, inplace ? Ci : NULL,
                           preparation_seconds, segments_seconds);
 }
 
