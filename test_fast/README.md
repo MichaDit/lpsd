@@ -81,3 +81,55 @@ requires the original native backend, compares scalar outputs, exercises auto
 with a NumPy input and two workers, and checks distribution/module versions.
 This catches missing native libraries and accidental success from local build
 artifacts. CI does not publish distributions or use write credentials.
+
+## Selected outputs and window acceleration
+
+The additional tests in `test_outputs.py` compare requested columns with the
+full result from the **same kernel**, bit for bit. They cover individual names,
+requested order, the `nsd` alias, cumulative RMS and deviation dependencies,
+parallel workers, multichannel data, and difficult DC/ramp/tone inputs. The
+unchanged original compatibility tests remain the independent estimator gate.
+NSD must follow the existing rounded complex64 PSD-to-ASD path, including its
+float32 real output, rather than taking a double-precision square root and
+rounding afterward. Complex and exactly anticorrelated CSD retain the legacy
+`asd` behavior; `nsd` and `lnsd` reject CSD. Explicit `outputs` on `lnsd`, even
+`None`, is an error instead of being silently discarded.
+
+Tests also require PSD/NSD-only calls to skip cumulative RMS and ENBW-only calls
+to avoid Fourier coefficients and the DFT kernel entirely. These are structural
+work-saving checks, not fragile timing thresholds. Scalar/auto standard-window
+tests distinguish NumPy's symmetric Hann, Hamming, Blackman and Bartlett
+conventions from the original periodic Kaiser. Opaque callbacks remain opaque,
+including a callback whose name matches a standard window and one that reuses
+a noncontiguous buffer while frequencies run concurrently.
+
+The benchmark CLI accepts output and window controls without changing the
+default full-output configuration:
+
+```sh
+python benchmarks/bench_lpsd.py --backend fast --n 1000000 --workers 1 \
+  --outputs psd --output benchmark-results/psd-only.json
+python benchmarks/bench_lpsd.py --backend fast --n 1000000 --workers 1 \
+  --entry-point lnsd --output benchmark-results/nsd-direct.json
+python benchmarks/bench_lpsd.py --backend fast --n 1000000 --workers 1 \
+  --outputs psd nsd --window hann --overlap 0.5 --profile \
+  --output benchmark-results/hann-profile.json
+```
+
+`--outputs` preserves the requested order; `--output` still names the JSON
+report file. `--psll` selects the Kaiser parameter. Every non-Kaiser window
+requires explicit overlap. The `hft248d` option provides an existing, more
+expensive arbitrary-callback comparison in addition to the recognized NumPy
+windows. The original backend always computes its full outputs and rejects
+selected-output requests. Optional profiling is an additional API call and
+now summarizes window generation, window sums and output assembly separately
+when those fields are available.
+
+For wall-time comparisons, run each configuration in a separate process and
+run the processes sequentially. A focused matrix is full/PSD-only/NSD-only at
+one and eight workers, followed by Kaiser/Hann/Hamming/Blackman/Bartlett/boxcar
+with the same requested output. Hold sample count, seed, frequency planning,
+overlap, detrending and compiler flags fixed within each comparison; changing
+overlap changes the estimator's work. Use a small input with a dense requested
+grid to expose Python/output overhead, then large inputs for the segment and
+memory costs. Do not present the sum of concurrent worker timers as wall time.
