@@ -144,6 +144,8 @@ def _native():
             _LIB.window_sums.restype = ct.c_int
             _LIB.generate_kaiser.argtypes = [dp, ct.c_long, ct.c_double]
             _LIB.generate_kaiser.restype = ct.c_int
+            _LIB.generate_kaiser_series.argtypes = _LIB.generate_kaiser.argtypes
+            _LIB.generate_kaiser_series.restype = ct.c_int
             _LIB.generate_window.argtypes = [dp, ct.c_long, ct.c_int, ct.c_double]
             _LIB.generate_window.restype = ct.c_int
             _LIB.generate_cosine_window.argtypes = [dp, ct.c_long, dp, ct.c_int]
@@ -334,6 +336,8 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
             if cosine_coefficients is not None:
                 status = _LIB.generate_cosine_window(_pointer(w), length,
                                                      _pointer(cosine_coefficients), len(cosine_coefficients))
+            elif kernel == 'fast' and window_kind == 0:
+                status = _LIB.generate_kaiser_series(_pointer(w), length, beta)
             else:
                 status = _LIB.generate_window(_pointer(w), length, window_kind, beta)
             if status:
@@ -458,6 +462,8 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                 'legacy_statistics': True, 'outputs': list(outputs),
                                 'variance_computed': statistics,
                                 'native_window': kernel != 'scalar' and known_window,
+                                'kaiser_method': ('series_with_fallback' if kernel == 'fast'
+                                                  else 'direct') if window_kind == 0 else None,
                                 'coefficient_method': 'blocked' if kernel == 'fast' else 'direct',
                                 'native_long_double_mantissa_bits': mantissa_bits}
     if profile:
@@ -508,7 +514,9 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     mantissa bits, otherwise SIMD with the original residual detrending.
     ``fast`` additionally uses blockwise Fourier coefficients and, when C
     long double has more than 64 mantissa bits, compensated FP64 preparation
-    for order 0. Independent block phases avoid unbounded recurrence drift.
+    for order 0. Long Kaiser windows with beta <= 32 use a positive Bessel
+    series evaluated by SIMD Horner steps; short/out-of-range cases use the
+    direct generator. Independent block phases avoid unbounded recurrence drift.
     Small additional rounding differences are accepted to reduce wall time;
     there is no universal relative-error bound at spectral nulls. Compare
     with ``scalar`` using relative and application-specific absolute limits.

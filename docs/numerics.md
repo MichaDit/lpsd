@@ -52,8 +52,34 @@ Their names are case-insensitive. The [coefficient table](../lpsd_fast/_windows.
 is copied from the original [window functions](../lpsd/flattop.py).
 
 All non-scalar kernels use the native path for these recognized windows.
-Kaiser uses the NumPy/Cephes approximation coefficients, evaluated with
-symmetry and SIMD blocks. The cosine-series path computes one fundamental
+The direct Kaiser path uses the NumPy/Cephes approximation coefficients,
+evaluated with symmetry and SIMD blocks. For `fast`, lengths at least 2048
+and `0 < abs(beta) <= 32` instead use a positive Bessel power series:
+
+\[
+I_0(\beta\sqrt{u})/I_0(\beta)
+= \sum_{k=0}^{D} c_k u^k + R_D,
+\qquad c_k=c_{k-1}\frac{\beta^2}{4k^2},
+\quad c_0=1/I_0(\beta).
+\]
+
+This follows [DLMF 10.25.2](https://dlmf.nist.gov/10.25.E2). Positive decreasing
+term ratios bound the omitted tail uniformly for `0 <= u <= 1`; the chosen
+truncation target is `1e-20`. That target excludes coefficient, normalization
+and Horner rounding. SIMD Horner blocks remove per-sample square roots and
+exponentials. Other lengths/beta values use the direct generator. `auto`
+and `scalar` retain their previous Kaiser evaluation paths.
+
+The 102-case development window audit observed a maximum absolute difference
+of `3.4416913763379853e-15`, up to 32 ULP against the direct native generator.
+These observed rounding errors are larger than the truncation target. A
+separate 26-case public Kaiser audit, including a `1e-9` weak tone beside a
+unit-amplitude tone, had maximum relative PSD/NSD differences of 0.22483% /
+0.11235% against scalar; all those cases passed the relative 1% criterion.
+Neither a finite test set nor a series-tail bound proves a general spectral
+error bound after cancellation, normalization and output quantization.
+
+ The cosine-series path computes one fundamental
 cosine and obtains the harmonics through a short Chebyshev recurrence,
 then mirrors the periodic window. The recurrence advances across harmonic
 order, not across an unbounded sequence of samples. This preserves the
