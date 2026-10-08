@@ -36,7 +36,7 @@ lpsd_fast = ["_native/*.c", "_native/*.h", "_native/LICENSE*", "_native/*.md"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = "-ra"
-testpaths = ["test"]
+testpaths = ["test", "test_fast"]
 
 [tool.coverage.run]
 source = ["lpsd"]

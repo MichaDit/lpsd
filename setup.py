@@ -20,7 +20,7 @@ class BuildNative(build_py):
         super().run()
         root = Path(__file__).resolve().parent
         destination = root if self.editable_mode else Path(self.build_lib)
-        legacy = load_build_module(root / "build.py", "lpsd_legacy_build")
+        legacy = load_build_module(root / "build_native.py", "lpsd_legacy_build")
         legacy.build_legacy(destination / "lpsd")
         fast = load_build_module(root / "lpsd_fast" / "build.py", "lpsd_fast_build")
         fast.build(native=os.environ.get("LPSD_NATIVE") == "1",
