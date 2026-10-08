@@ -20,6 +20,7 @@ import pandas as pd
 
 from . import __version__
 from .planning import _asdrms, _kaiser_alpha, _kaiser_rov, _ltf_plan
+from ._windows import COSINE_WINDOWS, COSINE_WINDOW_NAMES
 
 _LIB = None
 _LIB_LOCK = threading.Lock()
@@ -33,6 +34,7 @@ _WINDOW_NAMES = {
     'hamming': np.hamming, 'blackman': np.blackman,
     'bartlett': np.bartlett, 'boxcar': np.ones,
 }
+_WINDOW_NAMES.update(COSINE_WINDOW_NAMES)
 
 
 def _requested_outputs(outputs, csd):
@@ -131,6 +133,8 @@ def _native():
             _LIB.generate_kaiser.restype = ct.c_int
             _LIB.generate_window.argtypes = [dp, ct.c_long, ct.c_int, ct.c_double]
             _LIB.generate_window.restype = ct.c_int
+            _LIB.generate_cosine_window.argtypes = [dp, ct.c_long, dp, ct.c_int]
+            _LIB.generate_cosine_window.restype = ct.c_int
             _LIB.generate_coefficients.argtypes = [dp, dp, dp, ct.c_long, ct.c_double]
             _LIB.generate_coefficients.restype = ct.c_int
         return _LIB.fast_dft
@@ -272,6 +276,11 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                        if name in outputs or (name == 'psd' and spectrum))
     window_kind = next((kind for kind, fn_window in enumerate(_WINDOW_FUNCTIONS)
                         if window_function is fn_window), None)
+    cosine_coefficients = next((coefficients for fn_window, coefficients in COSINE_WINDOWS
+                                if window_function is fn_window), None)
+    if cosine_coefficients is not None:
+        cosine_coefficients = np.asarray(cosine_coefficients, dtype=np.float64)
+    known_window = window_kind is not None or cosine_coefficients is not None
     beta = _kaiser_alpha(psll) * np.pi
     capacity = int(max_working_mb * 1024**2) if max_working_mb is not None else int(_available_memory() * 0.65)
     capacity = max(64 * 1024**2, capacity)
@@ -292,10 +301,15 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                 cache[length] = value
                 return value, True, 0.0, 0.0
         generation_started = time.perf_counter() if profile else 0.0
-        native_window = kernel != 'scalar' and window_kind is not None
+        native_window = kernel != 'scalar' and known_window
         if native_window:
             w = np.empty(length, dtype=np.float64)
-            if _LIB.generate_window(_pointer(w), length, window_kind, beta):
+            if cosine_coefficients is not None:
+                status = _LIB.generate_cosine_window(_pointer(w), length,
+                                                     _pointer(cosine_coefficients), len(cosine_coefficients))
+            else:
+                status = _LIB.generate_window(_pointer(w), length, window_kind, beta)
+            if status:
                 raise ValueError('Native window generation failed.')
         elif window_function is np.kaiser:
             w = _kaiser_window(length, beta)
@@ -413,7 +427,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                 'native_mode': mode, 'estimator': 'lpsd-1.0.6',
                                 'legacy_statistics': True, 'outputs': list(outputs),
                                 'variance_computed': statistics,
-                                'native_window': kernel != 'scalar' and window_kind is not None}
+                                'native_window': kernel != 'scalar' and known_window}
     if profile:
         result.attrs['lpsd_profile'] = {'channel_wall_s': time.perf_counter() - start_all,
                                        'frequencies': rows, 'workers': workers, 'kernel': kernel,
@@ -450,6 +464,9 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     NumPy windows (boxcar is all ones). Non-Kaiser windows need an explicit
     overlap. Known NumPy functions also use the native fast window path;
     arbitrary callbacks retain their exact invocation/copying behavior.
+    The 19 periodic functions in ``lpsd.flattop`` are also recognized by
+    identity or name, including ``HFT248D``. Their fast native path evaluates
+    harmonics with a Chebyshev recurrence instead of separate cosine arrays.
 
     ``scalar`` keeps upstream accumulation order, coefficients and windows.
     ``simd`` reorders dot-product sums after unchanged long-double detrending.

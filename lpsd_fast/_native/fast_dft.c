@@ -31,6 +31,7 @@
 
 /* NumPy/Cephes window port; its original BSD notice is retained. */
 #include "numpy_kaiser.c"
+#include "cosine_windows.c"
 
 static void detrend_original(int order, const double *px, int length,
                              double *out, double *a)

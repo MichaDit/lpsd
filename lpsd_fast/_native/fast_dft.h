@@ -90,6 +90,13 @@ enum lpsd_window_kind {
  * Returns 0 on success, 1 for invalid pointers, dimensions or kind. */
 int generate_window(double *window, long int length, int kind, double beta);
 
+/* Periodic sum of signed coefficients[k]*cos(2*pi*k*j/length).
+ * Uses one cosine per position and a SIMD Chebyshev harmonic recurrence.
+ * count must lie in [1,32]. Rounding differs from independent cosine calls.
+ * Returns 0 on success, 1 for invalid arguments. */
+int generate_cosine_window(double *window, long int length,
+                            const double *coefficients, int count);
+
 /* Coefficients for the supplied (possibly fractional) frequency bin:
  * window[j] * exp(+i * ((2*pi)*frequency_bin/length) * j).
  * Independent samples use ordinary libm sin/cos; no phase recurrence.
