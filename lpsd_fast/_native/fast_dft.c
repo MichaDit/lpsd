@@ -578,7 +578,7 @@ int native_long_double_mantissa_bits(void)
     return LDBL_MANT_DIG;
 }
 
-int generate_coefficients(double *Cr, double *Ci, const double *window,
+LPSD_TARGET_CLONES int generate_coefficients(double *Cr, double *Ci, const double *window,
                            long int length, double frequency_bin)
 {
     if (Cr == NULL || Ci == NULL || window == NULL ||
@@ -600,7 +600,7 @@ int generate_coefficients(double *Cr, double *Ci, const double *window,
     return 0;
 }
 
-int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
+LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
                                    long int length, double frequency_bin)
 {
     if (Cr == NULL || Ci == NULL || window == NULL ||

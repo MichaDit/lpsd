@@ -12,7 +12,7 @@
 
 enum { LPSD_COSINE_BLOCK = 128, LPSD_COSINE_MAX_TERMS = 32 };
 
-int generate_cosine_window(double *window, long int length,
+LPSD_TARGET_CLONES int generate_cosine_window(double *window, long int length,
                             const double *coefficients, int count)
 {
     if (window == NULL || coefficients == NULL || length < 1 ||
