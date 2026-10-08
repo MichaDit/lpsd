@@ -12,10 +12,21 @@ The polynomial routines are included directly from the unchanged original
 | 0 / scalar | Original polynomial residuals and serial Fourier accumulation; one PSD projection instead of two | Closest reproduction of the original C path |
 | 1 / SIMD | Original residuals followed by vectorized Fourier reductions | Reordered sums can change rounding |
 | 2 / projected | Prepare detrended coefficients once per frequency, then use an input anchor for every segment | Algebraically equivalent; intended for mean removal in automatic mode |
+| 3 / compensated | Prepare the order-0 mean projector with compensated FP64 pairs, then use the same anchored segment dots | Avoids software binary128 arithmetic; opt-in alternative to mode 2 |
 
 The Python API selects mode 2 only for detrending order 0 in automatic mode.
 Explicit projection for order 1 can lose accuracy for a large ramp with a
 very small residual. See [numerical limits](../../docs/numerics.md).
+
+Mode 3 keeps an upper and lower FP64 part for each coefficient sum and for
+the mean. It uses independent SIMD lanes, compensated division and
+compensated subtraction. Extreme coefficient magnitudes fall back to the
+original long-double preparation before any coefficients are modified.
+`native_long_double_mantissa_bits()` returns the compiler's actual
+`LDBL_MANT_DIG`, allowing the caller to use this alternative only where
+long double has more than 64 significand bits. Its value must not be
+inferred from `sizeof(long double)` or the processor family. Mode 3 is
+limited to detrending order 0; the other original modes remain available.
 
 Segment starts deliberately use repeated `start += shift`, followed by
 `floor(start + 0.5)`. Multiplying the segment number by the shift can select
@@ -43,11 +54,11 @@ standard-deviation columns are not validated statistical uncertainties.
 - `fast_dft_selected` and `fast_dft_selected_profile` add optional variance
   calculation and in-place coefficient projection without changing the
   existing exports. Skipping variance retains every mean update and segment.
-  In-place mode 2 reuses the caller's private, writable coefficient arrays,
+  In-place modes 2/3 reuse the caller's private, writable coefficient arrays,
   saving two length-L double buffers (16L bytes) per active frequency. It
   never changes the input samples. Variance outputs may be NULL when not
   requested; supplied variance outputs are then NAN.
-- Selected mode 2 PSD shares coefficient loads across four segments when
+- Selected modes 2/3 PSD share coefficient loads across four segments when
   L is at least 2048. It retains separate anchors, every input sample, the
   original repeated segment-start updates, and the original mean order.
 - Only the final assignment to the legacy M2 is computed, since earlier
@@ -68,10 +79,15 @@ The original polynomial implementation limits lengths to positive `int`.
 ## Build and licenses
 
 The build uses `-O3 -fopenmp-simd -ffp-contract=off`, with `-fPIC` on Unix
-and `-lm`. It does not use global `-ffast-math`. `--native` adds
-`-march=native` for a local CPU; rebuild before using that library on a
-machine with different CPU capabilities. SIMD reductions do not create
-OpenMP threads. Python controls frequency-level concurrency.
+and `-lm`. It does not use global `-ffast-math`. Supported ELF/x86 compilers
+can generate runtime-dispatched default, AVX2 and AVX512F versions after a
+successful compile/link probe enables `LPSD_HAVE_TARGET_CLONES`. The hot
+helpers are inlined into each version, so the ISA choice applies to the
+actual loops. Other targets keep the compiler's ordinary ISA selection.
+`--native` selects the local CPU (`-march=native` on x86 or `-mcpu=native`
+on AArch64), without these portable clones; rebuild before using that
+library on a machine with different CPU capabilities. SIMD reductions do
+not create OpenMP threads. Python controls frequency-level concurrency.
 
 `fast_dft.c` and `fast_dft.h` are GPL-3.0-or-later derivatives of the
 original LPSD/LTPDA implementation. Original author credits remain in
