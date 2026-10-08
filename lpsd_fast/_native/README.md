@@ -59,8 +59,15 @@ standard-deviation columns are not validated statistical uncertainties.
   never changes the input samples. Variance outputs may be NULL when not
   requested; supplied variance outputs are then NAN.
 - Selected modes 2/3 PSD share coefficient loads across four segments when
-  L is at least 2048. It retains separate anchors, every input sample, the
-  original repeated segment-start updates, and the original mean order.
+  L is at least 2048. AVX-512 uses eight segments when L is at least 128,
+  followed by four-way and single-segment remainders where applicable.
+  The wider batch keeps sixteen SIMD accumulators and eight input anchors
+  in the larger register file; narrower targets retain the four-way path.
+  Portable x86 builds check AVX-512 at run time, including in target clones,
+  because baseline preprocessing cannot identify the selected clone.
+  Both batches retain separate anchors, every input sample, the original
+  repeated segment-start updates, and the original mean order. No global
+  floating-point contraction or statistics reassociation is enabled.
 - Only the final assignment to the legacy M2 is computed, since earlier
   M2 assignments are overwritten. This speeds up full-output calls too;
   it deliberately preserves the original variance defect.

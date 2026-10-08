@@ -63,8 +63,10 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
  * inplace=true lets modes 2/3 replace Cr/Ci with projected coefficients. These
  * arrays must be writable, distinct, nonoverlapping and private to the call.
  * The input samples remain unchanged. Modes 0/1 do not modify Cr/Ci.
- * Modes 2/3 PSD may process four segments together to share coefficient loads;
- * its means are still updated in the original segment order.
+ * Modes 2/3 PSD may process four or eight segments together to share
+ * coefficient loads. Eight-way batches require AVX-512 and length >= 128;
+ * four-way batches remain available for length >= 2048 and batch remainders.
+ * Means are still updated in the original segment order.
  * Existing fast_dft[_profile] retain their original read-only contract. */
 int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                       long int *Navs,
