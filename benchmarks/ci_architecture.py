@@ -65,8 +65,20 @@ def main():
             "--backend", "fast", "--kernel", "auto", "--workers", str(count),
             "--repeats", "3", "--profile", "--output", str(output / f"fast-auto-w{count}.json"),
         ])
+        commands.append(common + [
+            "--backend", "fast", "--kernel", "fast", "--workers", str(count),
+            "--outputs", "psd", "--repeats", "3", "--profile",
+            "--output", str(output / f"fast-selected-w{count}.json"),
+        ])
     for command in commands:
         subprocess.run(command, cwd=root, env=child_environment, check=True)
+        report = json.loads(Path(command[-1]).read_text())
+        print(json.dumps({
+            "report": Path(command[-1]).name,
+            "median_wall_s": report["median_wall_s"],
+            "fast_metadata": report.get("fast_metadata"),
+            "profile_summary": report.get("additional_profiled_call", {}).get("summary"),
+        }), flush=True)
 
 
 if __name__ == "__main__":

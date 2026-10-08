@@ -1,5 +1,5 @@
 """Parallel native implementation of the LPSD 1.0.6 estimator."""
-__version__ = "1.0.6+fast.1"
+__version__ = "1.0.6+fast.2"
 
 from .api import available_workers, lcsd, lnsd, lpsd
 
