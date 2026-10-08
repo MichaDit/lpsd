@@ -35,15 +35,22 @@ the caller's responsibility.
 On macOS the compiler and wheel metadata use the same deployment target,
 11.0 by default. `MACOSX_DEPLOYMENT_TARGET` can select a newer version. The
 native libraries retain their `.so` filenames for the existing ctypes loader,
-but are linked as Mach-O dynamic libraries. Universal2 and cross-compilation
-are not validated by the supplied CI.
+but are linked as Mach-O dynamic libraries. The wheel tag uses the configured
+compiler's target architecture; `lipo` verifies that both generated libraries
+contain that single architecture. The native Apple CI passed with an `arm64`
+wheel, including when Python's own configuration is universal2. Universal2
+and cross-compilation are not validated by the supplied CI, and inconsistent
+or fat library architectures are rejected during wheel construction.
 
 ### Optional x86 runtime dispatch
 
 For x86 ELF targets with glibc 2.23 or newer, the fast builder compiles and
 links a `target_clones("default", "avx2", "avx512f")` probe. Success defines
 `LPSD_HAVE_TARGET_CLONES=1`, which enables the corresponding guarded native
-annotations. The native implementation applies them to `fast_dft_impl` and
+annotations. The probe includes separate declarations, definitions and a call
+between clones; declarations and definitions carry identical attributes,
+as required by the validated Clang build. The native implementation applies
+them to `fast_dft_impl` and
 the Kaiser, general-window and Fourier-coefficient generators. Their hot
 private helpers are inlined into the clones, so the selected instruction set
 applies to the actual computation loops. See the
@@ -83,9 +90,9 @@ actual loaded-library file.
 
 | Environment | Relevant precision |
 |---|---|
-| Local Linux x86-64/GCC build used to validate these build changes | 64 significand bits, stored in 16 bytes |
-| AArch64 using the standard AAPCS64 mapping | IEEE binary128, 113 significand bits, 16 bytes |
-| Apple arm64 | Same representation and precision as `double`, 53 significand bits, 8 bytes |
+| Native Linux x86-64/GCC CI | 64 significand bits, stored in 16 bytes |
+| Native Linux AArch64/GCC CI | IEEE binary128, 113 significand bits, 16 bytes |
+| Native Apple arm64 CI | Same representation and precision as `double`, 53 significand bits, 8 bytes |
 
 The [Arm AAPCS64 specification](https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst)
 defines the standard mapping; [Apple's arm64 documentation](https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms)
@@ -120,30 +127,34 @@ This is a separate numerical path, with no guarantee of binary128's 113-bit
 significand or bitwise equality to the long-double projector. Compensated
 arithmetic assumes the usual IEEE rounding environment. The existing `auto`
 mode uses mode 2 for order 0 when long double has more than 53 significand
-bits; with 53 bits it uses the original residual arithmetic (mode 1). For higher orders,
-`auto` also retains the original residual detrending. The scalar path remains
-available. Mode 3 does not extend the
-experimental order-1 projector.
+bits; with at most 53 bits it uses the original residual arithmetic (mode 1).
+The Apple runner exercises this fallback, including the DC-plus-nanovolt
+regression case. Explicit `fast` still uses projected mode 2 on Apple, with
+the separately documented numerical tolerances. For higher orders, `auto`
+also retains the original residual detrending. The scalar path remains
+available. Mode 3 does not extend the experimental order-1 projector.
 
 An x86 build forced to use software binary128 is an arithmetic/build
 surrogate. Its timings are not ARM measurements and do not establish an ARM
-speedup. Native Linux AArch64 measurements must show whether preparation
-improves, while the numerical gates check the resulting spectra. Apple
-Silicon requires its own measurements and validation as well.
+speedup. The native Linux AArch64 and Apple measurements below come from
+their own runners, with numerical gates executed on those same architectures.
 
 ## Native CI matrix and small measurements
 
-The workflow is configured to execute numerical tests on these native runners.
-**The new Linux ARM64, Apple Silicon and Clang jobs are still awaiting their
-first successful native CI run at this documentation update.** The table
-describes the configured checks, not completed platform validation.
+All eight jobs completed successfully in
+[CI run 37803974329](https://github.com/MichaDit/lpsd/actions/runs/37803974329)
+on 2026-10-08, for commit
+[`0d80d10872fd0a6d632a272b31d356b28e15feb3`](https://github.com/MichaDit/lpsd/commit/0d80d10872fd0a6d632a272b31d356b28e15feb3).
+Each of the five numerical jobs reported **300 passed and 2 expected failures**
+for `test_fast`, plus **18 passed** for the unchanged upstream tests. All three
+installed-wheel jobs also passed. These are completed native checks:
 
 | Runner | Compiler | Python | Numerical tests | Installed wheel | Small benchmark |
 |---|---|---|---|---|---|
-| `ubuntu-24.04`, x86-64 | GCC | 3.10, 3.12 | Both | 3.12 | 3.12 |
-| `ubuntu-24.04`, x86-64 | Clang | 3.12 | Yes | No | No |
-| `ubuntu-24.04-arm`, AArch64 | GCC | 3.12 | Yes | Yes | Yes |
-| `macos-15`, Apple Silicon | Apple Clang | 3.12 | Yes | Yes | Yes |
+| `ubuntu-24.04`, x86-64 | GCC 13.3 | 3.10, 3.12 | [3.10 passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403269825), [3.12 passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268994) | [Passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268914), 3.12 | Completed, 3.12 |
+| `ubuntu-24.04`, x86-64 | Clang 18.1.3 | 3.12 | [Passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268856) | Not in matrix | Not in matrix |
+| `ubuntu-24.04-arm`, AArch64 | GCC 13.3 | 3.12 | [Passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268796) | [Passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268843) | Completed |
+| `macos-15`, Apple Silicon | Apple Clang 17.0 | 3.12 | [Passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268900) | [Passed](https://github.com/MichaDit/lpsd/actions/runs/37803974329/job/113403268634) | Completed |
 
 These labels and architectures are documented in
 [GitHub's hosted-runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
@@ -153,14 +164,41 @@ checkout. No platform-specific relaxation of the numerical assertions is
 introduced here. A changed expected-failure outcome requires review on the
 actual platform.
 
-The new build path was locally checked on Linux x86-64 with GCC 13.3.0:
-93 existing tests passed, two known numerical/statistical limits remained
-expected failures, three new build-policy checks passed, and the sdist-built
-wheel passed its isolated installation smoke test. This describes the build
-change's local validation before dispatch, compensated preparation and other
-feature branches were integrated. These historical counts do not validate
-the later native changes or the additional architectures. Successful native
-jobs and their artifacts are required before reporting those results.
+The [earlier native run](https://github.com/MichaDit/lpsd/actions/runs/37801321576)
+exposed the Clang declaration/definition attribute mismatch, the incorrect
+macOS universal2 wheel tag and Apple's order-0 `auto` projection error on a
+DC-plus-nanovolt input. The final run above passed after matching the clone
+attributes, verifying native wheel architecture and selecting residual mode 1
+for `auto` on the 53-bit long-double ABI. The numerical assertions were kept.
+
+### Recorded wall times
+
+The same run measured `N=100000` input samples and 469 actual output
+frequencies, with the default Kaiser window, order-0 detrending and fixed
+seed. Times below are seconds of ordinary public-API wall time. The original
+API has one measured call; each optimized configuration is the median of
+three calls. Every configuration has one small untimed warm-up call using
+4096 samples and at most 100 requested frequencies.
+
+| Native runner | Available workers W | Original, 1 worker | Auto, 1 worker | Auto, W workers | Fast PSD, 1 worker | Fast PSD, W workers |
+|---|---:|---:|---:|---:|---:|---:|
+| Linux x86-64/GCC | 4 | 1.651395 | 0.170180 | 0.119720 | 0.103736 | 0.100687 |
+| Linux AArch64/GCC | 4 | 7.944584 | 0.391475 | 0.145769 | 0.172261 | 0.088587 |
+| Apple arm64/Clang | 3 | 1.457533 | 0.442041 | 0.175523 | 0.126828 | 0.091993 |
+
+The original API and `auto` return all seven output columns; `fast` requests
+only PSD and skips variance accumulation. `fast` also uses blocked Fourier
+coefficients and the positive-series Kaiser path with fallback. Its mode is
+3 on Linux AArch64 and 2 on the other two runners. Auto uses mode 2 on the
+Linux runners and mode 1 on Apple. Therefore an Auto/Fast API time ratio
+includes several changes and cannot isolate one kernel's speedup.
+
+In the separate one-worker Linux AArch64 profiles, projector preparation took
+0.180995 s for Auto and 0.013152 s for Fast; segment work took 0.098275 s and
+0.098642 s respectively. These native measurements support a reduced
+preparation cost for the compensated path in this case, without claiming
+binary128 precision for that path. The profiled calls are separate from the
+uninstrumented wall-time medians above.
 
 To reproduce the small native-runner measurements:
 
@@ -169,10 +207,11 @@ make compile
 python benchmarks/ci_architecture.py --n 100000 --output-directory benchmark-results
 ```
 
-This runs the original public API once, then `auto` with one and the available
-number of workers, three ordinary repetitions per configuration. Each fast
+This runs the original public API once, then `auto` with all outputs and
+`fast` with selected PSD, each with one and the available number of workers
+and three ordinary repetitions per configuration. Each optimized
 configuration also has a separate profiled call. All use the same seeded
-float64 Series and spectral parameters. The JSON artifacts contain wall and
+float64 Series and spectral parameters. The run's JSON artifacts contain wall and
 CPU times, per-frequency phase data, build reports and the runner environment.
 Input generation and result-file I/O are outside the API timers. There is no
 hard timing gate and no saved signal array. Summed worker phase times overlap
