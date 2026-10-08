@@ -612,7 +612,7 @@ int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
         offsets_r[j] = cos(phase);
         offsets_i[j] = sin(phase);
     }
-    for (long int start = 0; start < length; start += BLOCK) {
+    for (long int start = 0; start < length;) {
         const double phase = scale * (double)start;
         const double base_r = cos(phase), base_i = sin(phase);
         const int first = (int)start;
@@ -632,6 +632,9 @@ int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
             Cr[start + j] = value * (real - delta * imag);
             Ci[start + j] = value * (imag + delta * real);
         }
+        /* The final partial block ends at length, including on LLP64
+         * where a fixed BLOCK increment could overflow a 32-bit long. */
+        start += count;
     }
     return 0;
 }
