@@ -85,6 +85,20 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
                               bool statistics, bool inplace,
                               double *preparation_seconds, double *segments_seconds);
 
+/* High-overlap order-0 auto spectrum for a known all-ones window. Cr/Ci must
+ * be the unprojected exp(i*w*j) coefficients for frequency_bin and length.
+ * It may replace them in place only when falling back to the ordinary
+ * projected kernel. Every 32 segments are recomputed directly. The optional
+ * timers must be both NULL or both non-NULL. rebase_count is nonnegative for
+ * overlap reuse, -1 for a direct fallback. Modes 2/3 are supported. */
+LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
+                                      double *Vr_r, double *Vr_i, long int *Navs,
+                                      const double *x, long int nData, long int segLen,
+                                      double *Cr, double *Ci, double olap,
+                                      double frequency_bin, int mode, bool statistics,
+                                      double *preparation_seconds, double *segments_seconds,
+                                      long int *rebase_count);
+
 /* Replace Python sum(window) and sum(window**2) without changing their
  * sequential addition order. Compile with -ffp-contract=off and without
  * -ffast-math. Returns 0 on success, 1 for invalid pointers/length. */

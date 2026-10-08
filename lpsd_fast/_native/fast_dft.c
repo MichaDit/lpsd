@@ -636,6 +636,8 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
                           preparation_seconds, segments_seconds);
 }
 
+#include "rolling_boxcar.c"
+
 int window_sums(const double *window, long int length,
                  double *sum_window, double *sum_squares)
 {
