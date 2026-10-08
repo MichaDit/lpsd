@@ -1,0 +1,19 @@
+{
+  "source": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/fast_dft.c",
+  "source_sha256": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+  "prototype_sha256": "0988bec6af07d9cc7fa3ebca3f058f7f0f394ed43a781525fd2c092bf78d4197",
+  "flags": [
+    "cc",
+    "-shared",
+    "-O3",
+    "-std=c11",
+    "-fPIC",
+    "-fopenmp-simd",
+    "-fno-fast-math",
+    "-ffp-contract=off",
+    "-march=native",
+    "-DLPSD_HAVE_TARGET_CLONES=0",
+    "-I",
+    "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native"
+  ]
+}

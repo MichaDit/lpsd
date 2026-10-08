@@ -1,0 +1,2782 @@
+{
+  "note": "Serial native-frequency wall time including projection preparation and allocations. Original window and Fourier coefficient generation excluded for every method. Profiles are separate calls; repeated wall times are uninstrumented. Microbenchmark screening, not full API results.",
+  "binary_hashes": {
+    "/workspace/scratch/5346007753d8/folded-probe/libfolded_reuse_plain.so": "21bf8594f7ea846779dc790faab60d0bbdb2cb642b44cc5d49bdde1db3fe89c3",
+    "/workspace/scratch/5346007753d8/folded-probe/libfolded_reuse_fma.so": "6cecdfba266306e3dbf504f49e9882785bca640c86ba6ff85dca1e95f71cf9af",
+    "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+    "/workspace/scratch/5346007753d8/lpsd-kernel/lpsd_fast/_native/liblpsd_fast.so": "ce8eb8db4920318fa197c50ad883ef9eeeb304ce7d8e3454348b532747f8263b"
+  },
+  "prototype_source_sha256": "0988bec6af07d9cc7fa3ebca3f058f7f0f394ed43a781525fd2c092bf78d4197",
+  "summary": [
+    {
+      "length": 128,
+      "window": 0,
+      "best": "folded_fma_4",
+      "native_speedup": 1.139865321678835,
+      "targeted_fma_speedup": 0.7911252594080617,
+      "total_us": 6.399625017365906,
+      "prep_us": 0.4710018401965499,
+      "segments_us": 3.5249977372586727,
+      "max_relative_error": 2.483129401113175e-16
+    },
+    {
+      "length": 128,
+      "window": 1,
+      "best": "folded_fma_8",
+      "native_speedup": 0.9365044714713705,
+      "targeted_fma_speedup": 0.8673377847530769,
+      "total_us": 5.562359983741771,
+      "prep_us": 0.44999615056440234,
+      "segments_us": 2.8750000637955964,
+      "max_relative_error": 1.163969276070094e-16
+    },
+    {
+      "length": 256,
+      "window": 0,
+      "best": "folded_fma_8",
+      "native_speedup": 0.6875289107897637,
+      "targeted_fma_speedup": 0.5164320102081964,
+      "total_us": 13.769770012004301,
+      "prep_us": 1.1610027286224067,
+      "segments_us": 7.982001989148557,
+      "max_relative_error": 0.0
+    },
+    {
+      "length": 256,
+      "window": 1,
+      "best": "folded_fma_8",
+      "native_speedup": 1.1690229300689294,
+      "targeted_fma_speedup": 0.9175373422213545,
+      "total_us": 11.012499999196734,
+      "prep_us": 1.2419986887834966,
+      "segments_us": 6.2300023273564875,
+      "max_relative_error": 3.0683561262961446e-16
+    },
+    {
+      "length": 512,
+      "window": 0,
+      "best": "folded_fma_8",
+      "native_speedup": 0.9835890656030042,
+      "targeted_fma_speedup": 0.8134876564198892,
+      "total_us": 13.017234996368643,
+      "prep_us": 2.34400067711249,
+      "segments_us": 7.470996933989227,
+      "max_relative_error": 1.5533486686275095e-16
+    },
+    {
+      "length": 512,
+      "window": 1,
+      "best": "folded_fma_8",
+      "native_speedup": 1.135131320714151,
+      "targeted_fma_speedup": 0.9452304838103132,
+      "total_us": 11.309850015095435,
+      "prep_us": 1.972999598365277,
+      "segments_us": 5.126996256876737,
+      "max_relative_error": 7.78086501619817e-16
+    },
+    {
+      "length": 1024,
+      "window": 0,
+      "best": "folded_fma_4",
+      "native_speedup": 1.302344391362007,
+      "targeted_fma_speedup": 1.1812533869237611,
+      "total_us": 14.179790014168248,
+      "prep_us": 3.0949959182180464,
+      "segments_us": 8.59300052979961,
+      "max_relative_error": 3.4039851748838835e-16
+    },
+    {
+      "length": 1024,
+      "window": 1,
+      "best": "folded_fma_8",
+      "native_speedup": 0.7287586629272754,
+      "targeted_fma_speedup": 0.6489504861704025,
+      "total_us": 17.132454995589796,
+      "prep_us": 3.9660008042119443,
+      "segments_us": 9.113995474763215,
+      "max_relative_error": 8.755154382423595e-16
+    },
+    {
+      "length": 2048,
+      "window": 0,
+      "best": "folded_fma_4",
+      "native_speedup": 1.209486551425806,
+      "targeted_fma_speedup": 0.916027546396783,
+      "total_us": 25.192190005327575,
+      "prep_us": 6.219001079443842,
+      "segments_us": 16.304999007843435,
+      "max_relative_error": 1.4478144914739358e-16
+    },
+    {
+      "length": 2048,
+      "window": 1,
+      "best": "folded_plain_1",
+      "native_speedup": 1.0594275957448758,
+      "targeted_fma_speedup": 0.8866936424763664,
+      "total_us": 27.35530499194283,
+      "prep_us": 6.408998160623014,
+      "segments_us": 16.404999769292772,
+      "max_relative_error": 1.4134256443189216e-16
+    },
+    {
+      "length": 8192,
+      "window": 0,
+      "best": "folded_fma_4",
+      "native_speedup": 1.1192980299202557,
+      "targeted_fma_speedup": 1.0633492277396508,
+      "total_us": 107.17764998844359,
+      "prep_us": 45.27899727690965,
+      "segments_us": 62.01300129760057,
+      "max_relative_error": 7.969834641277666e-16
+    },
+    {
+      "length": 8192,
+      "window": 1,
+      "best": "folded_plain_8",
+      "native_speedup": 1.2812401094293229,
+      "targeted_fma_speedup": 1.32491248436736,
+      "total_us": 105.27236957821752,
+      "prep_us": 28.762995498254895,
+      "segments_us": 93.40100223198533,
+      "max_relative_error": 5.740814073819927e-16
+    },
+    {
+      "length": 32768,
+      "window": 0,
+      "best": "folded_fma_4",
+      "native_speedup": 1.1186654021128557,
+      "targeted_fma_speedup": 1.0319658696571115,
+      "total_us": 437.5426923126305,
+      "prep_us": 115.06400187499821,
+      "segments_us": 370.5909985001199,
+      "max_relative_error": 4.1220532261734794e-16
+    },
+    {
+      "length": 32768,
+      "window": 1,
+      "best": "folded_fma_4",
+      "native_speedup": 1.4720201158961095,
+      "targeted_fma_speedup": 1.1472018660712937,
+      "total_us": 420.73412197812394,
+      "prep_us": 93.79200491821393,
+      "segments_us": 299.9040007125586,
+      "max_relative_error": 1.5744924865328402e-15
+    },
+    {
+      "length": 131072,
+      "window": 0,
+      "best": "folded_plain_4",
+      "native_speedup": 0.9549845578385676,
+      "targeted_fma_speedup": 0.9798100416253596,
+      "total_us": 1277.6191539999743,
+      "prep_us": 475.7900023832917,
+      "segments_us": 809.5140001387335,
+      "max_relative_error": 5.063783110314806e-15
+    },
+    {
+      "length": 131072,
+      "window": 1,
+      "best": "folded_plain_4",
+      "native_speedup": 0.9792573142966822,
+      "targeted_fma_speedup": 1.0236118051167942,
+      "total_us": 1229.1176002084587,
+      "prep_us": 495.74999866308644,
+      "segments_us": 739.0480022877455,
+      "max_relative_error": 7.125794482013413e-15
+    }
+  ],
+  "rows": [
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        6.162864992802497e-06,
+        5.4387699856306425e-06,
+        5.989004966977518e-06
+      ],
+      "median_s": 5.989004966977518e-06,
+      "preparation_s": 6.510017556138337e-07,
+      "segments_s": 3.845001629088074e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 38,
+      "repeats_s": [
+        5.6854474486930195e-06,
+        7.294710629043709e-06,
+        1.3626921205095163e-05
+      ],
+      "median_s": 7.294710629043709e-06,
+      "preparation_s": 5.409965524449944e-07,
+      "segments_s": 2.9340008040890098e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        4.8887449884205125e-06,
+        5.068815007689409e-06,
+        5.062905001977924e-06
+      ],
+      "median_s": 5.062905001977924e-06,
+      "preparation_s": 4.709945642389357e-07,
+      "segments_s": 2.1930027287453413e-06,
+      "used": 15,
+      "relative_power_error": 2.483129401113175e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        7.725979994575027e-06,
+        7.9224249930121e-06,
+        8.319279986608308e-06
+      ],
+      "median_s": 7.9224249930121e-06,
+      "preparation_s": 7.410053513012826e-07,
+      "segments_s": 4.897992766927928e-06,
+      "used": 122,
+      "relative_power_error": 1.2415647005565875e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        6.714654991810676e-06,
+        7.627534978382755e-06,
+        6.751205000909977e-06
+      ],
+      "median_s": 6.751205000909977e-06,
+      "preparation_s": 4.5100023271515965e-07,
+      "segments_s": 3.926004865206778e-06,
+      "used": 122,
+      "relative_power_error": 1.2415647005565875e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        7.21685999451438e-06,
+        7.133484978112392e-06,
+        7.5872199886362065e-06
+      ],
+      "median_s": 7.21685999451438e-06,
+      "preparation_s": 4.5100023271515965e-07,
+      "segments_s": 4.43699536845088e-06,
+      "used": 122,
+      "relative_power_error": 1.2415647005565875e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 82,
+      "repeats_s": [
+        7.669402448965872e-06,
+        7.448207303773748e-06,
+        7.61578050470434e-06
+      ],
+      "median_s": 7.61578050470434e-06,
+      "preparation_s": 4.710018401965499e-07,
+      "segments_s": 5.056994268670678e-06,
+      "used": 122,
+      "relative_power_error": 1.2415647005565875e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        6.3996250173659065e-06,
+        6.362675012496766e-06,
+        6.710394991387148e-06
+      ],
+      "median_s": 6.3996250173659065e-06,
+      "preparation_s": 4.710018401965499e-07,
+      "segments_s": 3.5249977372586727e-06,
+      "used": 122,
+      "relative_power_error": 1.2415647005565875e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w0-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        6.727174986735918e-06,
+        8.79900500876829e-06,
+        1.1674449997371994e-05
+      ],
+      "median_s": 8.79900500876829e-06,
+      "preparation_s": 4.809990059584379e-07,
+      "segments_s": 3.906003257725388e-06,
+      "used": 122,
+      "relative_power_error": 1.2415647005565875e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        5.7148449923261065e-06,
+        6.417099975806195e-06,
+        5.312080029398203e-06
+      ],
+      "median_s": 5.7148449923261065e-06,
+      "preparation_s": 7.010021363385022e-07,
+      "segments_s": 2.954999217763543e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        5.209174996707589e-06,
+        5.191650016058702e-06,
+        5.260600009933114e-06
+      ],
+      "median_s": 5.209174996707589e-06,
+      "preparation_s": 4.0099985199049115e-07,
+      "segments_s": 2.9139991966076195e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        4.824444986297749e-06,
+        4.736209994007368e-06,
+        8.333449986821506e-06
+      ],
+      "median_s": 4.824444986297749e-06,
+      "preparation_s": 4.710018401965499e-07,
+      "segments_s": 2.253997081425041e-06,
+      "used": 15,
+      "relative_power_error": 1.163969276070094e-16
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 192,
+      "repeats_s": [
+        6.581671868843841e-06,
+        6.828817693834329e-06,
+        6.641552090513869e-06
+      ],
+      "median_s": 6.641552090513869e-06,
+      "preparation_s": 6.210029823705554e-07,
+      "segments_s": 4.085995897185057e-06,
+      "used": 122,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        6.238329988264013e-06,
+        5.835019983351231e-06,
+        5.840880003233906e-06
+      ],
+      "median_s": 5.840880003233906e-06,
+      "preparation_s": 4.4099579099565744e-07,
+      "segments_s": 3.0340015655383468e-06,
+      "used": 122,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        6.5462500060675666e-06,
+        6.186504979268648e-06,
+        5.999375025567133e-06
+      ],
+      "median_s": 6.186504979268648e-06,
+      "preparation_s": 4.300018190406263e-07,
+      "segments_s": 3.2050011213868856e-06,
+      "used": 122,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        7.2780549817252905e-06,
+        7.044250014587305e-06,
+        6.131720001576469e-06
+      ],
+      "median_s": 7.044250014587305e-06,
+      "preparation_s": 4.609973984770477e-07,
+      "segments_s": 3.7960053305141628e-06,
+      "used": 122,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        5.748090006818529e-06,
+        5.6288599807885475e-06,
+        5.642579999403097e-06
+      ],
+      "median_s": 5.642579999403097e-06,
+      "preparation_s": 4.399989848025143e-07,
+      "segments_s": 2.934997610282153e-06,
+      "used": 122,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L128-K129-m4.371-w1-b23.7-white",
+      "length": 128,
+      "segments": 130,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        5.562359983741772e-06,
+        5.894765017728787e-06,
+        5.524749976757448e-06
+      ],
+      "median_s": 5.562359983741772e-06,
+      "preparation_s": 4.4999615056440234e-07,
+      "segments_s": 2.8750000637955964e-06,
+      "used": 122,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        9.554999996908009e-06,
+        8.916580009099562e-06,
+        8.9518850290915e-06
+      ],
+      "median_s": 8.9518850290915e-06,
+      "preparation_s": 1.4419929357245564e-06,
+      "segments_s": 6.259004294406623e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        1.0180989993386903e-05,
+        9.46711497817887e-06,
+        9.408275000168942e-06
+      ],
+      "median_s": 9.46711497817887e-06,
+      "preparation_s": 9.81999619398266e-07,
+      "segments_s": 6.198999471962452e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        6.57223499729298e-06,
+        7.1111500074039214e-06,
+        7.747114977973979e-06
+      ],
+      "median_s": 7.1111500074039214e-06,
+      "preparation_s": 9.709983714856207e-07,
+      "segments_s": 3.516004653647542e-06,
+      "used": 15,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.0322659982193727e-05,
+        1.4900624992151279e-05,
+        1.4870030026941094e-05
+      ],
+      "median_s": 1.4870030026941094e-05,
+      "preparation_s": 8.820061339065433e-07,
+      "segments_s": 1.0955998732242733e-05,
+      "used": 127,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.5554919991700443e-05,
+        1.4442689971474465e-05,
+        1.420527998561738e-05
+      ],
+      "median_s": 1.4442689971474465e-05,
+      "preparation_s": 1.2719974620267749e-06,
+      "segments_s": 9.134004358202219e-06,
+      "used": 127,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.5523869988101068e-05,
+        1.4733625030203256e-05,
+        1.4694514975417405e-05
+      ],
+      "median_s": 1.4733625030203256e-05,
+      "preparation_s": 1.2419986887834966e-06,
+      "segments_s": 9.704999683890492e-06,
+      "used": 127,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.39603549905587e-05,
+        1.3971975022286642e-05,
+        1.403997503075516e-05
+      ],
+      "median_s": 1.3971975022286642e-05,
+      "preparation_s": 1.2219970813021064e-06,
+      "segments_s": 9.574003343004733e-06,
+      "used": 127,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.3765715011686553e-05,
+        1.4418099999602418e-05,
+        1.4484144994639791e-05
+      ],
+      "median_s": 1.4418099999602418e-05,
+      "preparation_s": 1.171007170341909e-06,
+      "segments_s": 7.971997547429055e-06,
+      "used": 127,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w0-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.3907175016356633e-05,
+        1.3389244995778427e-05,
+        1.3769770012004301e-05
+      ],
+      "median_s": 1.3769770012004301e-05,
+      "preparation_s": 1.1610027286224067e-06,
+      "segments_s": 7.982001989148557e-06,
+      "used": 127,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        1.2957690014445688e-05,
+        1.3079324999125674e-05,
+        1.290716500079725e-05
+      ],
+      "median_s": 1.2957690014445688e-05,
+      "preparation_s": 1.3519966159947217e-06,
+      "segments_s": 8.733004506211728e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        1.2974070014024619e-05,
+        1.2857034998887685e-05,
+        1.2873865016445051e-05
+      ],
+      "median_s": 1.2873865016445051e-05,
+      "preparation_s": 1.18200114229694e-06,
+      "segments_s": 8.57299892231822e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        1.0698575024434832e-05,
+        9.870269968814682e-06,
+        1.0104379980475641e-05
+      ],
+      "median_s": 1.0104379980475641e-05,
+      "preparation_s": 1.272004737984389e-06,
+      "segments_s": 5.237998266238719e-06,
+      "used": 15,
+      "relative_power_error": 1.5341780631480723e-16
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.257986998098204e-05,
+        1.2606964992301073e-05,
+        1.293275498028379e-05
+      ],
+      "median_s": 1.2606964992301073e-05,
+      "preparation_s": 1.272004737984389e-06,
+      "segments_s": 7.80199479777366e-06,
+      "used": 127,
+      "relative_power_error": 1.5341780631480723e-16
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.1874049996549728e-05,
+        1.2124985005357303e-05,
+        1.2121680010750423e-05
+      ],
+      "median_s": 1.2121680010750423e-05,
+      "preparation_s": 1.1220035958103836e-06,
+      "segments_s": 7.009999535512179e-06,
+      "used": 127,
+      "relative_power_error": 1.5341780631480723e-16
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.1701690018526279e-05,
+        1.1731140002666507e-05,
+        1.3170815000194125e-05
+      ],
+      "median_s": 1.1731140002666507e-05,
+      "preparation_s": 1.172003976535052e-06,
+      "segments_s": 6.859998393338174e-06,
+      "used": 127,
+      "relative_power_error": 1.5341780631480723e-16
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.170449500932591e-05,
+        1.2067745010426734e-05,
+        1.1670895000861492e-05
+      ],
+      "median_s": 1.170449500932591e-05,
+      "preparation_s": 1.2419986887834966e-06,
+      "segments_s": 7.1409958763979375e-06,
+      "used": 127,
+      "relative_power_error": 3.0683561262961446e-16
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.1814464996859897e-05,
+        1.1610760011535604e-05,
+        1.1585014981392305e-05
+      ],
+      "median_s": 1.1610760011535604e-05,
+      "preparation_s": 1.1320007615722716e-06,
+      "segments_s": 6.789996405132115e-06,
+      "used": 127,
+      "relative_power_error": 3.0683561262961446e-16
+    },
+    {
+      "label": "L256-K129-m4.371-w1-b23.7-white",
+      "length": 256,
+      "segments": 129,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.1055364993808325e-05,
+        1.10039399805828e-05,
+        1.1012499999196735e-05
+      ],
+      "median_s": 1.1012499999196735e-05,
+      "preparation_s": 1.2419986887834966e-06,
+      "segments_s": 6.2300023273564875e-06,
+      "used": 127,
+      "relative_power_error": 3.0683561262961446e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        1.3063450023764744e-05,
+        1.2672310003836173e-05,
+        1.2792644993169233e-05
+      ],
+      "median_s": 1.2792644993169233e-05,
+      "preparation_s": 3.516004653647542e-06,
+      "segments_s": 7.550996087957174e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        1.280726501136087e-05,
+        1.2611265010491479e-05,
+        1.280361000681296e-05
+      ],
+      "median_s": 1.280361000681296e-05,
+      "preparation_s": 1.962995156645775e-06,
+      "segments_s": 7.000999175943434e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        1.060202997905435e-05,
+        1.0505329992156476e-05,
+        1.0589359990262892e-05
+      ],
+      "median_s": 1.0589359990262892e-05,
+      "preparation_s": 2.2230015019886196e-06,
+      "segments_s": 4.796995199285448e-06,
+      "used": 7,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.3868470014131162e-05,
+        1.3996265006426255e-05,
+        1.3923199985583778e-05
+      ],
+      "median_s": 1.3923199985583778e-05,
+      "preparation_s": 2.162996679544449e-06,
+      "segments_s": 8.693001291248947e-06,
+      "used": 63,
+      "relative_power_error": 1.5533486686275095e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.3546734990086407e-05,
+        1.3836770012858323e-05,
+        1.3678479990630877e-05
+      ],
+      "median_s": 1.3678479990630877e-05,
+      "preparation_s": 2.152999513782561e-06,
+      "segments_s": 7.5210045906715095e-06,
+      "used": 63,
+      "relative_power_error": 1.5533486686275095e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.3597860015579499e-05,
+        1.3857154990546405e-05,
+        1.3813434998155572e-05
+      ],
+      "median_s": 1.3813434998155572e-05,
+      "preparation_s": 2.073000359814614e-06,
+      "segments_s": 6.920003215782344e-06,
+      "used": 63,
+      "relative_power_error": 1.5533486686275095e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.3741324983129743e-05,
+        1.3170460006222129e-05,
+        1.3413579981715884e-05
+      ],
+      "median_s": 1.3413579981715884e-05,
+      "preparation_s": 2.054002834483981e-06,
+      "segments_s": 7.280999852810055e-06,
+      "used": 63,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.301202501053922e-05,
+        1.3076169998385013e-05,
+        1.33157299933373e-05
+      ],
+      "median_s": 1.3076169998385013e-05,
+      "preparation_s": 2.2429958335123956e-06,
+      "segments_s": 7.031005225144327e-06,
+      "used": 63,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w0-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.313000000664033e-05,
+        1.2537155016616453e-05,
+        1.3017234996368643e-05
+      ],
+      "median_s": 1.3017234996368643e-05,
+      "preparation_s": 2.34400067711249e-06,
+      "segments_s": 7.470996933989227e-06,
+      "used": 63,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        1.2894595020043198e-05,
+        1.2672660013777203e-05,
+        1.2679120009124745e-05
+      ],
+      "median_s": 1.2679120009124745e-05,
+      "preparation_s": 2.6139969122596085e-06,
+      "segments_s": 7.301001460291445e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        1.2569049977173563e-05,
+        1.283816498471424e-05,
+        1.2963650005985983e-05
+      ],
+      "median_s": 1.283816498471424e-05,
+      "preparation_s": 1.8430000636726618e-06,
+      "segments_s": 6.909998774062842e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        1.0567124991212041e-05,
+        1.072381499398034e-05,
+        1.0690415001590736e-05
+      ],
+      "median_s": 1.0690415001590736e-05,
+      "preparation_s": 2.474000211805105e-06,
+      "segments_s": 4.9770023906603456e-06,
+      "used": 7,
+      "relative_power_error": 1.556173003239634e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.2233644993102644e-05,
+        1.2509560001490172e-05,
+        1.2444365020201075e-05
+      ],
+      "median_s": 1.2444365020201075e-05,
+      "preparation_s": 1.982996764127165e-06,
+      "segments_s": 6.67999847792089e-06,
+      "used": 63,
+      "relative_power_error": 7.78086501619817e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.2455834985303227e-05,
+        1.235323001310462e-05,
+        1.2443214982340578e-05
+      ],
+      "median_s": 1.2443214982340578e-05,
+      "preparation_s": 1.963002432603389e-06,
+      "segments_s": 5.49799733562395e-06,
+      "used": 63,
+      "relative_power_error": 7.78086501619817e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.1409500002628192e-05,
+        1.4843245007796213e-05,
+        1.1729934994946234e-05
+      ],
+      "median_s": 1.1729934994946234e-05,
+      "preparation_s": 2.063003194052726e-06,
+      "segments_s": 6.469999789260328e-06,
+      "used": 63,
+      "relative_power_error": 7.78086501619817e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.2127189984312281e-05,
+        1.2009104975732044e-05,
+        1.2274559994693845e-05
+      ],
+      "median_s": 1.2127189984312281e-05,
+      "preparation_s": 1.863001671154052e-06,
+      "segments_s": 5.738998879678547e-06,
+      "used": 63,
+      "relative_power_error": 7.78086501619817e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.1484460010251496e-05,
+        1.1786169998231345e-05,
+        1.2048664975736756e-05
+      ],
+      "median_s": 1.1786169998231345e-05,
+      "preparation_s": 2.0029983716085553e-06,
+      "segments_s": 6.200003554113209e-06,
+      "used": 63,
+      "relative_power_error": 7.78086501619817e-16
+    },
+    {
+      "label": "L512-K65-m4.371-w1-b23.7-white",
+      "length": 512,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.1083754980063532e-05,
+        1.1309850015095435e-05,
+        1.1312499991618096e-05
+      ],
+      "median_s": 1.1309850015095435e-05,
+      "preparation_s": 1.972999598365277e-06,
+      "segments_s": 5.126996256876737e-06,
+      "used": 63,
+      "relative_power_error": 7.78086501619817e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        1.7585440000402743e-05,
+        1.790141501260223e-05,
+        1.7707275001157542e-05
+      ],
+      "median_s": 1.7707275001157542e-05,
+      "preparation_s": 4.526998964138329e-06,
+      "segments_s": 1.0866002412512898e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        1.846696999564301e-05,
+        1.859341500676237e-05,
+        1.832991500123171e-05
+      ],
+      "median_s": 1.846696999564301e-05,
+      "preparation_s": 3.6849960451945662e-06,
+      "segments_s": 1.1226999049540609e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        1.6869255014171357e-05,
+        1.674992498010397e-05,
+        1.6682374989613892e-05
+      ],
+      "median_s": 1.674992498010397e-05,
+      "preparation_s": 3.035005647689104e-06,
+      "segments_s": 5.827998393215239e-06,
+      "used": 7,
+      "relative_power_error": 3.4039851748838835e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.5194820007309317e-05,
+        1.5069135006342549e-05,
+        1.5102635006769561e-05
+      ],
+      "median_s": 1.5102635006769561e-05,
+      "preparation_s": 3.135006409138441e-06,
+      "segments_s": 9.453993698116392e-06,
+      "used": 57,
+      "relative_power_error": 3.4039851748838835e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.594956498593092e-05,
+        1.4650049997726456e-05,
+        1.4663975016446783e-05
+      ],
+      "median_s": 1.4663975016446783e-05,
+      "preparation_s": 3.0849987524561584e-06,
+      "segments_s": 9.023002348840237e-06,
+      "used": 57,
+      "relative_power_error": 3.4039851748838835e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.528536002297187e-05,
+        1.486822497099638e-05,
+        1.4818054987699725e-05
+      ],
+      "median_s": 1.486822497099638e-05,
+      "preparation_s": 3.134999133180827e-06,
+      "segments_s": 9.193994628731161e-06,
+      "used": 57,
+      "relative_power_error": 3.4039851748838835e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.4675289967271966e-05,
+        1.4629819997935555e-05,
+        1.4590859973395708e-05
+      ],
+      "median_s": 1.4629819997935555e-05,
+      "preparation_s": 3.134999133180827e-06,
+      "segments_s": 9.093993867281824e-06,
+      "used": 57,
+      "relative_power_error": 1.7019925874419418e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.4179790014168248e-05,
+        1.4080239998293109e-05,
+        1.6653129969199653e-05
+      ],
+      "median_s": 1.4179790014168248e-05,
+      "preparation_s": 3.0949959182180464e-06,
+      "segments_s": 8.59300052979961e-06,
+      "used": 57,
+      "relative_power_error": 1.7019925874419418e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w0-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.4709839997522067e-05,
+        1.4269374987634365e-05,
+        1.3055334966338705e-05
+      ],
+      "median_s": 1.4269374987634365e-05,
+      "preparation_s": 3.1849995139054954e-06,
+      "segments_s": 7.5409989221952856e-06,
+      "used": 57,
+      "relative_power_error": 1.7019925874419418e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        1.3017980018048548e-05,
+        1.2404954977682792e-05,
+        1.236058997164946e-05
+      ],
+      "median_s": 1.2404954977682792e-05,
+      "preparation_s": 3.726003342308104e-06,
+      "segments_s": 7.581998943351209e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        1.2463995008147321e-05,
+        1.4812850022281054e-05,
+        1.2485424995247741e-05
+      ],
+      "median_s": 1.2485424995247741e-05,
+      "preparation_s": 2.943997969850898e-06,
+      "segments_s": 7.572001777589321e-06,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        1.1051910005335231e-05,
+        1.1280104990873951e-05,
+        1.111811499868054e-05
+      ],
+      "median_s": 1.111811499868054e-05,
+      "preparation_s": 3.2650059438310564e-06,
+      "segments_s": 5.998997949063778e-06,
+      "used": 7,
+      "relative_power_error": 1.751030876484719e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.4926020012353547e-05,
+        1.884264002001146e-05,
+        2.0401494984980673e-05
+      ],
+      "median_s": 1.884264002001146e-05,
+      "preparation_s": 3.986002411693335e-06,
+      "segments_s": 1.29489999380894e-05,
+      "used": 57,
+      "relative_power_error": 8.755154382423595e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.943248000316089e-05,
+        1.9281854984001258e-05,
+        1.930904501932673e-05
+      ],
+      "median_s": 1.930904501932673e-05,
+      "preparation_s": 3.6760029615834355e-06,
+      "segments_s": 1.1216994607821107e-05,
+      "used": 57,
+      "relative_power_error": 8.755154382423595e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.8358755005465356e-05,
+        1.83631649997551e-05,
+        1.8259304997627624e-05
+      ],
+      "median_s": 1.8358755005465356e-05,
+      "preparation_s": 3.6860001273453236e-06,
+      "segments_s": 1.1005999112967402e-05,
+      "used": 57,
+      "relative_power_error": 8.755154382423595e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        1.8848500003514347e-05,
+        1.892306001536781e-05,
+        1.8891660001827404e-05
+      ],
+      "median_s": 1.8891660001827404e-05,
+      "preparation_s": 3.875000402331352e-06,
+      "segments_s": 1.089699799194932e-05,
+      "used": 57,
+      "relative_power_error": 1.751030876484719e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        1.8743040018307512e-05,
+        1.9415354981902054e-05,
+        1.8631724997248967e-05
+      ],
+      "median_s": 1.8743040018307512e-05,
+      "preparation_s": 3.5560005926527083e-06,
+      "segments_s": 1.0555006156209856e-05,
+      "used": 57,
+      "relative_power_error": 1.751030876484719e-16
+    },
+    {
+      "label": "L1024-K65-m4.371-w1-b23.7-white",
+      "length": 1024,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        1.7132454995589797e-05,
+        1.7094444992835633e-05,
+        1.7137415015895384e-05
+      ],
+      "median_s": 1.7132454995589797e-05,
+      "preparation_s": 3.966000804211944e-06,
+      "segments_s": 9.113995474763215e-06,
+      "used": 57,
+      "relative_power_error": 1.751030876484719e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        3.50007649831241e-05,
+        3.49141900005634e-05,
+        3.491754498099908e-05
+      ],
+      "median_s": 3.491754498099908e-05,
+      "preparation_s": 7.681999704800546e-06,
+      "segments_s": 2.2394000552594662e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        3.402654499950586e-05,
+        3.0469615012407303e-05,
+        2.533936502004508e-05
+      ],
+      "median_s": 3.0469615012407303e-05,
+      "preparation_s": 5.638001312036067e-06,
+      "segments_s": 1.6644997231196612e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        2.3076739998941776e-05,
+        2.320282997970935e-05,
+        2.29753849998815e-05
+      ],
+      "median_s": 2.3076739998941776e-05,
+      "preparation_s": 5.729001713916659e-06,
+      "segments_s": 1.4792000001762062e-05,
+      "used": 7,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        2.6898670002992732e-05,
+        2.7021654968848452e-05,
+        2.6846589971682988e-05
+      ],
+      "median_s": 2.6898670002992732e-05,
+      "preparation_s": 6.178997864481062e-06,
+      "segments_s": 1.832799898693338e-05,
+      "used": 57,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        2.6586045023577754e-05,
+        2.7219004987273366e-05,
+        2.627517500513932e-05
+      ],
+      "median_s": 2.6586045023577754e-05,
+      "preparation_s": 6.67999847792089e-06,
+      "segments_s": 1.7976999515667558e-05,
+      "used": 57,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        2.7719609970517923e-05,
+        2.746442500210833e-05,
+        2.717257997574052e-05
+      ],
+      "median_s": 2.746442500210833e-05,
+      "preparation_s": 2.164299803553149e-05,
+      "segments_s": 1.82270014192909e-05,
+      "used": 57,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        2.5915184996847527e-05,
+        2.5994450006692204e-05,
+        2.7116699966427406e-05
+      ],
+      "median_s": 2.5994450006692204e-05,
+      "preparation_s": 6.0489983297884464e-06,
+      "segments_s": 1.747599890222773e-05,
+      "used": 57,
+      "relative_power_error": 1.4478144914739358e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        2.71430900102132e-05,
+        2.5192190005327575e-05,
+        2.5185279992001596e-05
+      ],
+      "median_s": 2.5192190005327575e-05,
+      "preparation_s": 6.219001079443842e-06,
+      "segments_s": 1.6304999007843435e-05,
+      "used": 57,
+      "relative_power_error": 1.4478144914739358e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w0-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        2.8926939994562416e-05,
+        3.334310997161083e-05,
+        2.8989780003030318e-05
+      ],
+      "median_s": 2.8989780003030318e-05,
+      "preparation_s": 6.078997103031725e-06,
+      "segments_s": 1.654500374570489e-05,
+      "used": 57,
+      "relative_power_error": 1.4478144914739358e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 200,
+      "repeats_s": [
+        2.791675997286802e-05,
+        2.7671240022755228e-05,
+        3.2498134969500826e-05
+      ],
+      "median_s": 2.791675997286802e-05,
+      "preparation_s": 9.224000677932054e-06,
+      "segments_s": 2.6310000976081938e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 200,
+      "repeats_s": [
+        2.8980964998481795e-05,
+        3.107778997218702e-05,
+        2.493174499250017e-05
+      ],
+      "median_s": 2.8980964998481795e-05,
+      "preparation_s": 6.3499974203296006e-06,
+      "segments_s": 1.7826998373493552e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 200,
+      "repeats_s": [
+        2.359066998906201e-05,
+        2.7047394978580997e-05,
+        2.4255775024357717e-05
+      ],
+      "median_s": 2.4255775024357717e-05,
+      "preparation_s": 5.948997568339109e-06,
+      "segments_s": 1.4951998309697956e-05,
+      "used": 7,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 200,
+      "repeats_s": [
+        2.847785497579025e-05,
+        2.7355304991942832e-05,
+        2.5888595009746494e-05
+      ],
+      "median_s": 2.7355304991942832e-05,
+      "preparation_s": 6.408998160623014e-06,
+      "segments_s": 1.6404999769292772e-05,
+      "used": 57,
+      "relative_power_error": 1.4134256443189216e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 200,
+      "repeats_s": [
+        2.8234990022610873e-05,
+        2.6434120009071194e-05,
+        3.169301500747679e-05
+      ],
+      "median_s": 2.8234990022610873e-05,
+      "preparation_s": 6.0589954955503345e-06,
+      "segments_s": 1.5624005754943937e-05,
+      "used": 57,
+      "relative_power_error": 1.4134256443189216e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 200,
+      "repeats_s": [
+        3.4827454983314964e-05,
+        4.4541444985952694e-05,
+        4.65635000000475e-05
+      ],
+      "median_s": 4.4541444985952694e-05,
+      "preparation_s": 9.133000276051462e-06,
+      "segments_s": 3.3901997085195035e-05,
+      "used": 57,
+      "relative_power_error": 1.4134256443189216e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 200,
+      "repeats_s": [
+        3.8299710031424186e-05,
+        2.5134855022770352e-05,
+        3.191534997313283e-05
+      ],
+      "median_s": 3.191534997313283e-05,
+      "preparation_s": 7.891998393461108e-06,
+      "segments_s": 2.1432002540677786e-05,
+      "used": 57,
+      "relative_power_error": 1.4134256443189216e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        3.1481000005442186e-05,
+        3.308206498331856e-05,
+        3.1379245010612065e-05
+      ],
+      "median_s": 3.1481000005442186e-05,
+      "preparation_s": 7.381000614259392e-06,
+      "segments_s": 1.8358005036134273e-05,
+      "used": 57,
+      "relative_power_error": 1.4134256443189216e-16
+    },
+    {
+      "label": "L2048-K65-m4.371-w1-b23.7-white",
+      "length": 2048,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        3.253023500292329e-05,
+        3.5280140000395474e-05,
+        2.751845499005867e-05
+      ],
+      "median_s": 3.253023500292329e-05,
+      "preparation_s": 5.939000402577221e-06,
+      "segments_s": 1.413100108038634e-05,
+      "used": 57,
+      "relative_power_error": 1.4134256443189216e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 111,
+      "repeats_s": [
+        0.00011897266669112871,
+        0.00011560523427334858,
+        0.00011929243244283186
+      ],
+      "median_s": 0.00011897266669112871,
+      "preparation_s": 3.394099621800706e-05,
+      "segments_s": 8.636100392322987e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 157,
+      "repeats_s": [
+        0.00011995608281050542,
+        0.00012017679620411093,
+        0.00011996373248354763
+      ],
+      "median_s": 0.00011996373248354763,
+      "preparation_s": 2.6599998818710446e-05,
+      "segments_s": 9.199899795930833e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 129,
+      "repeats_s": [
+        0.0001151187829546948,
+        0.00011196036431884264,
+        0.00011396727134616208
+      ],
+      "median_s": 0.00011396727134616208,
+      "preparation_s": 2.9283997719176114e-05,
+      "segments_s": 7.733699749223888e-05,
+      "used": 7,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 131,
+      "repeats_s": [
+        0.00013888456489009255,
+        0.00012252899997633037,
+        0.00013996735112990416
+      ],
+      "median_s": 0.00013888456489009255,
+      "preparation_s": 2.6990994228981435e-05,
+      "segments_s": 0.00010519900388317183,
+      "used": 57,
+      "relative_power_error": 7.969834641277666e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 161,
+      "repeats_s": [
+        0.00012426022981598637,
+        0.00012456050311845745,
+        0.00011957090681343577
+      ],
+      "median_s": 0.00012426022981598637,
+      "preparation_s": 2.743200457189232e-05,
+      "segments_s": 8.952499774750322e-05,
+      "used": 57,
+      "relative_power_error": 7.969834641277666e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 137,
+      "repeats_s": [
+        0.00013877149637538707,
+        0.00014058576644411869,
+        0.00013855729924674642
+      ],
+      "median_s": 0.00013877149637538707,
+      "preparation_s": 2.7911999495700002e-05,
+      "segments_s": 9.833900548983365e-05,
+      "used": 57,
+      "relative_power_error": 7.969834641277666e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 121,
+      "repeats_s": [
+        0.00014031984298999906,
+        0.0001412492644350614,
+        0.00012846075209802448
+      ],
+      "median_s": 0.00014031984298999906,
+      "preparation_s": 2.3355998564511538e-05,
+      "segments_s": 9.25900021684356e-05,
+      "used": 57,
+      "relative_power_error": 6.375867713022133e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 200,
+      "repeats_s": [
+        9.816730002057739e-05,
+        0.0001071776499884436,
+        0.00010840720497071744
+      ],
+      "median_s": 0.0001071776499884436,
+      "preparation_s": 4.527899727690965e-05,
+      "segments_s": 6.201300129760057e-05,
+      "used": 57,
+      "relative_power_error": 6.375867713022133e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w0-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 200,
+      "repeats_s": [
+        0.00013732477502344408,
+        0.00013189196499297396,
+        0.00010045187998912297
+      ],
+      "median_s": 0.00013189196499297396,
+      "preparation_s": 2.2934000298846513e-05,
+      "segments_s": 6.394700176315382e-05,
+      "used": 57,
+      "relative_power_error": 6.375867713022133e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 158,
+      "repeats_s": [
+        0.00010664909495972097,
+        0.00011414663923817357,
+        0.00011773649366429558
+      ],
+      "median_s": 0.00011414663923817357,
+      "preparation_s": 2.5248002202715725e-05,
+      "segments_s": 9.881900041364133e-05,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 181,
+      "repeats_s": [
+        0.0001245261215314125,
+        0.00013487918231827953,
+        0.0001539814861819987
+      ],
+      "median_s": 0.00013487918231827953,
+      "preparation_s": 2.6529996830504388e-05,
+      "segments_s": 0.00011977100075455382,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 133,
+      "repeats_s": [
+        0.00013932192480827058,
+        0.00014159009020330902,
+        0.00013947667671311507
+      ],
+      "median_s": 0.00013947667671311507,
+      "preparation_s": 3.12470001517795e-05,
+      "segments_s": 0.00010100300278281793,
+      "used": 7,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 144,
+      "repeats_s": [
+        0.00013442449305027063,
+        0.00013481344447225437,
+        0.00013433365276998503
+      ],
+      "median_s": 0.00013442449305027063,
+      "preparation_s": 2.9084003472235054e-05,
+      "segments_s": 0.00012001099821645766,
+      "used": 57,
+      "relative_power_error": 5.740814073819927e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 157,
+      "repeats_s": [
+        0.00012606977710165202,
+        0.00010567501274079892,
+        9.657950320349306e-05
+      ],
+      "median_s": 0.00010567501274079892,
+      "preparation_s": 3.822799772024155e-05,
+      "segments_s": 7.77870009187609e-05,
+      "used": 57,
+      "relative_power_error": 5.740814073819927e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 138,
+      "repeats_s": [
+        0.00010527236957821752,
+        0.0001030226956282749,
+        0.00011109534060106735
+      ],
+      "median_s": 0.00010527236957821752,
+      "preparation_s": 2.8762995498254895e-05,
+      "segments_s": 9.340100223198533e-05,
+      "used": 57,
+      "relative_power_error": 5.740814073819927e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 151,
+      "repeats_s": [
+        0.0001310190132515357,
+        0.00013138533111920717,
+        0.00013089783439398835
+      ],
+      "median_s": 0.0001310190132515357,
+      "preparation_s": 3.359100082889199e-05,
+      "segments_s": 9.149900142801926e-05,
+      "used": 57,
+      "relative_power_error": 4.3056105553649454e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 166,
+      "repeats_s": [
+        0.000121154379496191,
+        0.00012133959636087979,
+        0.00012095316867407198
+      ],
+      "median_s": 0.000121154379496191,
+      "preparation_s": 2.8512993594631553e-05,
+      "segments_s": 0.00010993600153597072,
+      "used": 57,
+      "relative_power_error": 4.3056105553649454e-16
+    },
+    {
+      "label": "L8192-K65-m4.371-w1-b23.7-white",
+      "length": 8192,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 169,
+      "repeats_s": [
+        0.00012246160355524694,
+        0.00012177849704566407,
+        0.00012304769227379028
+      ],
+      "median_s": 0.00012246160355524694,
+      "preparation_s": 2.6079003873746842e-05,
+      "segments_s": 8.766300015849993e-05,
+      "used": 57,
+      "relative_power_error": 4.3056105553649454e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 33,
+      "repeats_s": [
+        0.0004927306667509997,
+        0.00047931339411826974,
+        0.00047486972735813737
+      ],
+      "median_s": 0.00047931339411826974,
+      "preparation_s": 0.00011875000200234354,
+      "segments_s": 0.00040821699803927913,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 39,
+      "repeats_s": [
+        0.0004907362819768679,
+        0.00048439158966245415,
+        0.0004894638718374503
+      ],
+      "median_s": 0.0004894638718374503,
+      "preparation_s": 0.0001243980004801415,
+      "segments_s": 0.00036571300006471574,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 40,
+      "repeats_s": [
+        0.00045698565008933656,
+        0.0004515291249845177,
+        0.0004497359499509912
+      ],
+      "median_s": 0.0004515291249845177,
+      "preparation_s": 0.00011270100367255509,
+      "segments_s": 0.0003149759941152297,
+      "used": 7,
+      "relative_power_error": 4.1220532261734794e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 32,
+      "repeats_s": [
+        0.0005391357185544621,
+        0.00053738371889267,
+        0.0005442396561647911
+      ],
+      "median_s": 0.0005391357185544621,
+      "preparation_s": 0.00010960600047837943,
+      "segments_s": 0.00039446599839720875,
+      "used": 57,
+      "relative_power_error": 2.7480354841156526e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 38,
+      "repeats_s": [
+        0.0005351462105433089,
+        0.0006026390788304669,
+        0.0005094019736708632
+      ],
+      "median_s": 0.0005351462105433089,
+      "preparation_s": 0.00013734800450038165,
+      "segments_s": 0.00036454200017033145,
+      "used": 57,
+      "relative_power_error": 2.7480354841156526e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 35,
+      "repeats_s": [
+        0.0005508659999967286,
+        0.0005514863714259783,
+        0.0005539826857524791
+      ],
+      "median_s": 0.0005514863714259783,
+      "preparation_s": 0.00011397300113458186,
+      "segments_s": 0.0004106310007045977,
+      "used": 57,
+      "relative_power_error": 2.7480354841156526e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 37,
+      "repeats_s": [
+        0.000524229729725866,
+        0.0008177064593985198,
+        0.0005349387838332159
+      ],
+      "median_s": 0.0005349387838332159,
+      "preparation_s": 0.0001619949980522506,
+      "segments_s": 0.0003314519999548793,
+      "used": 57,
+      "relative_power_error": 1.3740177420578263e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 52,
+      "repeats_s": [
+        0.0004375426923126305,
+        0.00040326413461745967,
+        0.0004416408268857944
+      ],
+      "median_s": 0.0004375426923126305,
+      "preparation_s": 0.00011506400187499821,
+      "segments_s": 0.0003705909985001199,
+      "used": 57,
+      "relative_power_error": 1.3740177420578263e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w0-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 40,
+      "repeats_s": [
+        0.0005098055498820031,
+        0.0005108531249788939,
+        0.0005118588998811902
+      ],
+      "median_s": 0.0005108531249788939,
+      "preparation_s": 0.00011405300028854981,
+      "segments_s": 0.00038277899875538424,
+      "used": 57,
+      "relative_power_error": 1.3740177420578263e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 25,
+      "repeats_s": [
+        0.000614292680111248,
+        0.000614791440020781,
+        0.0006176413202774711
+      ],
+      "median_s": 0.000614791440020781,
+      "preparation_s": 0.00013389199739322066,
+      "segments_s": 0.00046438300341833383,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 33,
+      "repeats_s": [
+        0.0005998639394282222,
+        0.0006194134544013209,
+        0.0006193290909956859
+      ],
+      "median_s": 0.0006193290909956859,
+      "preparation_s": 0.0001296259943046607,
+      "segments_s": 0.0004872570061706938,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 33,
+      "repeats_s": [
+        0.0005317797573904196,
+        0.0004826669698531711,
+        0.0004521480908751431
+      ],
+      "median_s": 0.0004826669698531711,
+      "preparation_s": 0.00032774599822005257,
+      "segments_s": 0.0004018180043203756,
+      "used": 7,
+      "relative_power_error": 2.6241541442214003e-16
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 36,
+      "repeats_s": [
+        0.0005433128056514155,
+        0.0005214071667675549,
+        0.0005276349444708709
+      ],
+      "median_s": 0.0005276349444708709,
+      "preparation_s": 0.00011734699364751577,
+      "segments_s": 0.00040857800195226446,
+      "used": 57,
+      "relative_power_error": 1.5744924865328402e-15
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 41,
+      "repeats_s": [
+        0.0005064855365894689,
+        0.0005007844878624693,
+        0.0005018472926699692
+      ],
+      "median_s": 0.0005018472926699692,
+      "preparation_s": 0.00011316099698888138,
+      "segments_s": 0.00041510799928801134,
+      "used": 57,
+      "relative_power_error": 1.5744924865328402e-15
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 39,
+      "repeats_s": [
+        0.0005269225640894057,
+        0.0005329239487391299,
+        0.0005290948204511108
+      ],
+      "median_s": 0.0005290948204511108,
+      "preparation_s": 0.00013698700058739632,
+      "segments_s": 0.0003837300027953461,
+      "used": 57,
+      "relative_power_error": 1.5744924865328402e-15
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 38,
+      "repeats_s": [
+        0.0005040423158406108,
+        0.0005008525262574518,
+        0.0005234930262974414
+      ],
+      "median_s": 0.0005040423158406108,
+      "preparation_s": 0.00011347200052114204,
+      "segments_s": 0.0009311179965152405,
+      "used": 57,
+      "relative_power_error": 1.4432847793217701e-15
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 41,
+      "repeats_s": [
+        0.0005037372194659305,
+        0.00041432078042573,
+        0.0004207341219781239
+      ],
+      "median_s": 0.0004207341219781239,
+      "preparation_s": 9.379200491821393e-05,
+      "segments_s": 0.00029990400071255863,
+      "used": 57,
+      "relative_power_error": 1.4432847793217701e-15
+    },
+    {
+      "label": "L32768-K65-m4.371-w1-b23.7-white",
+      "length": 32768,
+      "segments": 65,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 56,
+      "repeats_s": [
+        0.00044953703569003016,
+        0.0004971146965025193,
+        0.0004432096785811674
+      ],
+      "median_s": 0.00044953703569003016,
+      "preparation_s": 9.471399971516803e-05,
+      "segments_s": 0.0003434590034885332,
+      "used": 57,
+      "relative_power_error": 1.4432847793217701e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "baseline_portable",
+      "iterations": 8,
+      "repeats_s": [
+        0.0011088332494182396,
+        0.0011103017495770473,
+        0.0012134188746131258
+      ],
+      "median_s": 0.0011103017495770473,
+      "preparation_s": 0.00042697499884525314,
+      "segments_s": 0.0007918980045360513,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "baseline_native",
+      "iterations": 16,
+      "repeats_s": [
+        0.001212202750139113,
+        0.0012201065628687502,
+        0.0012356331249065988
+      ],
+      "median_s": 0.0012201065628687502,
+      "preparation_s": 0.0004404560022521764,
+      "segments_s": 0.0007598189986310899,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "targeted_fma",
+      "iterations": 13,
+      "repeats_s": [
+        0.0012579163079723143,
+        0.0012222916921018623,
+        0.0012518240764620714
+      ],
+      "median_s": 0.0012518240764620714,
+      "preparation_s": 0.00047521899978164583,
+      "segments_s": 0.0008370560026378371,
+      "used": 3,
+      "relative_power_error": 1.1252851356255123e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "folded_plain_1",
+      "iterations": 13,
+      "repeats_s": [
+        0.0014115225382668611,
+        0.0014213380765375826,
+        0.0014773501539961076
+      ],
+      "median_s": 0.0014213380765375826,
+      "preparation_s": 0.00039717100298730657,
+      "segments_s": 0.0009226549955201335,
+      "used": 25,
+      "relative_power_error": 4.313593019897798e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "folded_plain_4",
+      "iterations": 13,
+      "repeats_s": [
+        0.0012214288463627992,
+        0.0012776191539999743,
+        0.0013077070767534538
+      ],
+      "median_s": 0.0012776191539999743,
+      "preparation_s": 0.0004757900023832917,
+      "segments_s": 0.0008095140001387335,
+      "used": 25,
+      "relative_power_error": 4.313593019897798e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "folded_plain_8",
+      "iterations": 13,
+      "repeats_s": [
+        0.0013656380772142885,
+        0.0014153776154181776,
+        0.0014299163846702029
+      ],
+      "median_s": 0.0014153776154181776,
+      "preparation_s": 0.0006563019996974617,
+      "segments_s": 0.0011094880028394982,
+      "used": 25,
+      "relative_power_error": 4.313593019897798e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "folded_fma_1",
+      "iterations": 8,
+      "repeats_s": [
+        0.001567120124491339,
+        0.0016327969997291802,
+        0.0016261794999081758
+      ],
+      "median_s": 0.0016261794999081758,
+      "preparation_s": 0.00038908900023670867,
+      "segments_s": 0.0009727010037750006,
+      "used": 25,
+      "relative_power_error": 5.063783110314806e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "folded_fma_4",
+      "iterations": 12,
+      "repeats_s": [
+        0.0012684684164317634,
+        0.0013647077497201583,
+        0.0014501240833245295
+      ],
+      "median_s": 0.0013647077497201583,
+      "preparation_s": 0.0004856949963141233,
+      "segments_s": 0.0008010509991436265,
+      "used": 25,
+      "relative_power_error": 5.063783110314806e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w0-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 0,
+      "method": "folded_fma_8",
+      "iterations": 14,
+      "repeats_s": [
+        0.0014733955712082597,
+        0.0013594067142029026,
+        0.0013804778567906137
+      ],
+      "median_s": 0.0013804778567906137,
+      "preparation_s": 0.0004883680012426339,
+      "segments_s": 0.0008820250004646368,
+      "used": 25,
+      "relative_power_error": 5.063783110314806e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "baseline_portable",
+      "iterations": 12,
+      "repeats_s": [
+        0.0011920319999868905,
+        0.0010075546664059705,
+        0.0010481251671687157
+      ],
+      "median_s": 0.0010481251671687157,
+      "preparation_s": 0.0005847339998581447,
+      "segments_s": 0.0007018420001259074,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "baseline_native",
+      "iterations": 20,
+      "repeats_s": [
+        0.0011134770498756551,
+        0.0012036224001349184,
+        0.0013043602502875729
+      ],
+      "median_s": 0.0012036224001349184,
+      "preparation_s": 0.00035623899748316035,
+      "segments_s": 0.0007738200001767837,
+      "used": 0,
+      "relative_power_error": 0.0
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "targeted_fma",
+      "iterations": 14,
+      "repeats_s": [
+        0.0014035045002986277,
+        0.0012487300004327803,
+        0.0012581392854502025
+      ],
+      "median_s": 0.0012581392854502025,
+      "preparation_s": 0.00048698700265958905,
+      "segments_s": 0.0008222339965868741,
+      "used": 3,
+      "relative_power_error": 1.979387356114837e-16
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "folded_plain_1",
+      "iterations": 12,
+      "repeats_s": [
+        0.001500078749813838,
+        0.001436766333426931,
+        0.0014683883334024965
+      ],
+      "median_s": 0.0014683883334024965,
+      "preparation_s": 0.0004709720014943741,
+      "segments_s": 0.0010373489931225777,
+      "used": 25,
+      "relative_power_error": 7.125794482013413e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "folded_plain_4",
+      "iterations": 15,
+      "repeats_s": [
+        0.0012291176002084587,
+        0.0012250961333241624,
+        0.0012421306004398503
+      ],
+      "median_s": 0.0012291176002084587,
+      "preparation_s": 0.0004957499986630864,
+      "segments_s": 0.0007390480022877455,
+      "used": 25,
+      "relative_power_error": 7.125794482013413e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "folded_plain_8",
+      "iterations": 14,
+      "repeats_s": [
+        0.0013195607144942706,
+        0.0012658945711986494,
+        0.0013295522855644646
+      ],
+      "median_s": 0.0013195607144942706,
+      "preparation_s": 0.0004787639991263859,
+      "segments_s": 0.0008136309988913126,
+      "used": 25,
+      "relative_power_error": 7.125794482013413e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "folded_fma_1",
+      "iterations": 10,
+      "repeats_s": [
+        0.001519653300056234,
+        0.0014979070001572836,
+        0.0018869399005779996
+      ],
+      "median_s": 0.001519653300056234,
+      "preparation_s": 0.0004974120020051487,
+      "segments_s": 0.0009839580015977845,
+      "used": 25,
+      "relative_power_error": 6.7299170107904466e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "folded_fma_4",
+      "iterations": 15,
+      "repeats_s": [
+        0.0012232413995661774,
+        0.001241023533414894,
+        0.0012321074667852373
+      ],
+      "median_s": 0.0012321074667852373,
+      "preparation_s": 0.0005051539992564358,
+      "segments_s": 0.0007602500045322813,
+      "used": 25,
+      "relative_power_error": 6.7299170107904466e-15
+    },
+    {
+      "label": "L131072-K33-m4.371-w1-b23.7-white",
+      "length": 131072,
+      "segments": 33,
+      "window": 1,
+      "method": "folded_fma_8",
+      "iterations": 14,
+      "repeats_s": [
+        0.001385246500181633,
+        0.0013916962140813535,
+        0.0013708576428013788
+      ],
+      "median_s": 0.001385246500181633,
+      "preparation_s": 0.0004738470015581697,
+      "segments_s": 0.0008861000023898669,
+      "used": 25,
+      "relative_power_error": 6.7299170107904466e-15
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "baseline_commit": "9f3071ca2b7134a585f1727506a4e1472a7da299",
+  "baseline_fast_dft_sha256": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+  "initial_report_prototype_sha256": "ebb58ec452770d913d11e593a9cddc727798422c4a15066084d6c412c5df82ab",
+  "initial_source_portability_change": "Only the absolute fast_dft.c include was replaced by #include \"fast_dft.c\". Compile with -I pointing to the pinned baseline native source directory.",
+  "files": {
+    "archive-sources/folded_analytic_original.c": "a88a4a1089a330797f3188a0e1dbf48c535ed4bb59f573f52cf2a4a6f3589f74",
+    "folded_probe.c": "0988bec6af07d9cc7fa3ebca3f058f7f0f394ed43a781525fd2c092bf78d4197",
+    "build_probe.py": "2c7b3c04ec925c6fecd8a2bc86eab3dc6e935423a0fce643cb8523343d5463ea",
+    "check_probe.py": "7b85f9188ff2fecbe33c93a1d866ea0ecc35905ef56cd5f1a0a99274a5f3f176",
+    "bench_probe.py": "df10125d1cb64a4e3f1866054e4e90e9ee49ae836a94ffe4dcfe1fe002e6bec0"
+  },
+  "host": {
+    "machine": "x86_64",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39"
+  },
+  "final_numerical_reports": {
+    "each": {
+      "cases": 344,
+      "numeric_comparisons": 672,
+      "exceptional_comparisons": 16,
+      "passes": 688
+    },
+    "prototype_sha256": "0988bec6af07d9cc7fa3ebca3f058f7f0f394ed43a781525fd2c092bf78d4197"
+  }
+}
