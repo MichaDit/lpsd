@@ -99,6 +99,86 @@ This implementation therefore uses measured eligibility for the narrow
 Boxcar case. It does not substitute a different window or spectral estimator
 to force a speedup.
 
+## Initial comparison against the first eight-segment kernel
+
+This series used the first eight-segment AVX-512 kernel, whose gate included
+all lengths of at least 128. A subsequent CPU optimization keeps direct
+projections for lengths 256–1023; that adaptive gate is not the baseline in
+this archived series. These ratios measure the additional benefit of Boxcar
+reuse relative to the specifically identified `de9e70a5…` binary. Final
+incremental claims require the separate comparison against the adaptive gate.
+All cases use a resident
+float64 standard-normal record (seed 20261008), sample rate 1, 1,000 target
+frequencies, 100 target averages, order-zero detrending, PSD-only output, and
+a 4,096 MiB working-concurrency budget. Exact output counts depend on overlap
+and record length and are included in the saved data.
+
+| Samples | Workers | Overlap | Eight-segment baseline | With Boxcar reuse | Speedup |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,000,000 | 1 | 0.8 | 0.549 s | 0.495 s | 1.11× |
+| 1,000,000 | 8 | 0.8 | 0.150 s | 0.140 s | 1.07× |
+| 1,000,000 | 1 | 0.9 | 1.080 s | 0.697 s | 1.55× |
+| 1,000,000 | 8 | 0.9 | 0.250 s | 0.197 s | 1.27× |
+| 1,000,000 | 1 | 0.95 | 1.964 s | 0.996 s | 1.97× |
+| 1,000,000 | 8 | 0.95 | 0.473 s | 0.291 s | 1.63× |
+| 10,000,000 | 1 | 0.9 | 12.795 s | 8.890 s | 1.44× |
+| 10,000,000 | 8 | 0.8 | 1.508 s | 1.267 s | 1.19× |
+| 10,000,000 | 8 | 0.9 | 2.647 s | 2.312 s | 1.14× |
+| 10,000,000 | 8 | 0.95 | 5.533 s | 2.723 s | 2.03× |
+
+These are medians of four complete API calls per implementation, with one
+full-problem warm-up first. Timing order alternates baseline/candidate and
+candidate/baseline. There is shared-host noise: the candidate was faster in
+37 of the 40 individual pairs, not every pair. The smallest case improvement
+is modest and should not be interpreted as an architecture-independent
+guarantee. These are x86-64 native builds measured on the same host as the
+other fast.3 CPU experiments; architecture tests establish correctness and
+build support separately from performance claims.
+
+For the separate instrumented **10-million-sample, one-worker, 0.9-overlap**
+calls, total API time was 12.842 s for the baseline and 8.314 s for overlap
+reuse. The segment phase fell from 10.435 s to 6.274 s. Coefficient projection
+preparation fell from 1.201 s to 0.882 s; window generation, window sums, and
+coefficient generation together were 1.111 s and 1.071 s. The principal gain
+therefore comes from the segment computation. These instrumented calls are
+separate from the ordinary-call medians above.
+
+Both implementations retained the same logical 66,299,007,864 `L*K` sample
+coverage in that case. Overlap reuse does not execute that many full-length
+sample visits, so dividing this count by its segment time would overstate
+executed throughput.
+
+All ten timing cases produced **identical rounded float32 PSD values**
+and matching frequency indices/dtypes. This observation does not imply
+bitwise equality for arbitrary signals. The 46 focused regressions cover
+eleven signal families, odd/even lengths and nonintegral shifts, selected
+outputs and workers, exclusions, large departed transients, the first legacy
+mean reset, power/variance exponent limits, and six longer 131,073-sample
+scalar-reference PSD/NSD cases. The latter use a 1% relative limit or explicit
+synthetic-case floors of PSD 1e-24 / NSD 1e-12; those floors do not define a
+physical tolerance for other inputs. The inherited deviation recurrence is
+retained; minute absolute differences in its output can remain under a
+different order of segment projection.
+
+The readable [result summary](../benchmarks/results_rolling_boxcar.json)
+contains all timing repetitions, ratios, comparisons, phase summaries, and
+provenance. The [compressed full data](../benchmarks/results_rolling_boxcar_raw.json.gz)
+retain every per-frequency profile row and observed source/build identity.
+Gzip compression is lossless and deterministic, and both compressed and
+uncompressed SHA-256 hashes are included in the summary.
+
+The measured candidate package source is local commit `881b308`; its native
+library SHA-256 is
+`f2cb01984194d2bb6acf3d44f0a873d7daaf2ec17a775c601088eb586a45602d`.
+The baseline library is
+`de9e70a504dbe82131fcca52b483c2fb2e23d17f765ca3c99e5dbb7ed886a773`.
+The data preserve a provenance distinction: a later 64-bit-only dispatch
+guard changed the observed baseline C file, while the loaded baseline binary
+stayed unchanged. An independent native rebuild of that guard-only source
+produced the same baseline binary. The subsequently added Python profile
+note labels logical sample counts and does not change the measured native
+kernel or ordinary-call calculation.
+
 ## Reproduce the comparison
 
 Use separate checkouts and native builds of the baseline and candidate.

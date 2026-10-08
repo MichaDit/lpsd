@@ -1,0 +1,1263 @@
+{
+  "schema_version": 1,
+  "measurement_date": "2026-10-08",
+  "candidate_source_commit": "881b308638949654ffe57e1eabcb22dae5e39e57",
+  "baseline_source_commit": "6add62a0a84de35c707b3d16aa34c77c66cc1ec8",
+  "purpose": "Incremental high-overlap Boxcar speedup on top of eight-segment AVX-512 sharing, preserving the LPSD estimator.",
+  "baseline_compiled_source_sha256": {
+    "__init__.py": "ebf1ec01480415b8d1432070683a79138d45dc47c55ed7937695322f4048e0bf",
+    "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+    "api.py": "22a1c9fc8858ae9bc008027758463dd1135004eea58edf1f7a35bad3e81b574a",
+    "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+    "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+    "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+    "_native/fast_dft.c": "93164f0e728586d7ca86e890caaac93bde2679d1af26cc842b4fc3b9727991c0",
+    "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+    "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+    "_native/fast_dft.h": "976dfc05ef382b53728032ce07bcbea9c3a303ab2bfc4c0618d2983288c625c2"
+  },
+  "provenance_notes": [
+    "Each run retained its observed Python/source fingerprints, exact loaded library SHA256, and verified binary-matching build sidecar.",
+    "The measured baseline binary was always de9e70a504dbe82131fcca52b483c2fb2e23d17f765ca3c99e5dbb7ed886a773, initially built from 6add62a / fast_dft.c SHA25693164f0e728586d7ca86e890caaac93bde2679d1af26cc842b4fc3b9727991c0.",
+    "During metadata work, the baseline worktree received a 64-bit-x86-only dispatch guard. Later runs observed C SHA256f6a78a5bcf6f2479368b6d07caca5090126935af11dfa43b77c46a187e49388f. The loaded binary did not change. An independent native rebuild of that guard-only source reproduced exactly the same de9e70a5 binary on this x86-64 host.",
+    "All candidate runs have identical package-source fingerprints and native binary SHA256f2cb01984194d2bb6acf3d44f0a873d7daaf2ec17a775c601088eb586a45602d, matching candidate source commit881b308.",
+    "A subsequent documentation/profile-note-only change labels sample_iterations as logical L*K reference coverage; this note was not present in the measured Python source.",
+    "sample_iterations in saved profiles is logical L*K coverage, not actual rolling dot-product visits, measured FLOPS, or physical memory traffic.",
+    "Per-frequency times overlap with multiple workers and cannot be added to infer wall time. Fallback segment times include wasted rolling work plus direct recomputation."
+  ],
+  "validation": {
+    "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m pytest -o addopts='' -q -ra test_fast/test_rolling_boxcar.py",
+    "passed": 46,
+    "elapsed_s": 6.2,
+    "test_source_sha256": "994731d57b8a2c78f2de2f060eb964ae0eb8a1dfa3d46bd617f7c3aa9de98ef1",
+    "coverage": "11 signal families; odd/even lengths and nonintegral shifts; workers and selected outputs; CSD/order/kernel exclusions; departed large transients; first legacy mean reset; extreme squared/fourth-power intermediates; six longer N131073 scalar PSD/NSD comparisons.",
+    "api_timing_cases": 10,
+    "all_timed_float32_psd_arrays_identical": true,
+    "absolute_floors": "Longer scalar synthetic checks use PSD1e-24 and NSD1e-12 only for those specified unit-scale/DC-nanovolt inputs; these are not universal physical tolerances."
+  },
+  "input_reports": [
+    {
+      "path": ".validation/rolling-final-1m.json",
+      "sha256": "6ebc5b5a0b94c891b287ee25b9939846c5b76ed6fa7fc6bd3064cadb860c582a"
+    },
+    {
+      "path": ".validation/rolling-final-10m-nine.json",
+      "sha256": "27ee1880a665b6af4286193b49976586f7b0353c1bcc2edbfd53d90f5645e23b"
+    },
+    {
+      "path": ".validation/rolling-final-10m-edges.json",
+      "sha256": "aee0d2f23146179dccf4e51dedf649ca8d072a4c5b6677ef5159ab3fd361a93d"
+    }
+  ],
+  "raw_artifact": {
+    "path": "results_rolling_boxcar_raw.json.gz",
+    "compression": "gzip",
+    "sha256": "a06b03338ede1359640a6a948878c9d00187929be1a1bfc758635e32fe3d9858",
+    "uncompressed_sha256": "008c77750476654a227a4426e1bb971f6f0a4aa2b06e2827ec32222de98b4d22",
+    "uncompressed_bytes": 11293170,
+    "contains": "Full per-run provenance, every wall-clock repetition, and every per-frequency profile row without numeric rounding or dropped rows."
+  },
+  "methodology": {
+    "seed": 20261008,
+    "signal": "float64 standard normal, resident in RAM",
+    "sample_rate": 1.0,
+    "warmup": "one complete call per implementation per case",
+    "timing": "wall clock, complete lpsd API, alternating within each pair",
+    "excludes": "input creation, module imports, build, provenance, separate profiles",
+    "profile": "one separate call per implementation after ordinary repetitions",
+    "statistics": "median of saved wall-clock repetitions; shared-host noise remains"
+  },
+  "baseline": {
+    "package": "/workspace/scratch/1a083f70b5d7/lpsd_segments3/lpsd_fast",
+    "version": "1.0.6+fast.2",
+    "library": "/workspace/scratch/1a083f70b5d7/lpsd_segments3/lpsd_fast/_native/liblpsd_fast.so",
+    "library_sha256": "de9e70a504dbe82131fcca52b483c2fb2e23d17f765ca3c99e5dbb7ed886a773",
+    "build_report": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "liblpsd_fast.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": true,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": false,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "binary_sha256": "de9e70a504dbe82131fcca52b483c2fb2e23d17f765ca3c99e5dbb7ed886a773"
+    },
+    "source_sha256": {
+      "__init__.py": "ebf1ec01480415b8d1432070683a79138d45dc47c55ed7937695322f4048e0bf",
+      "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+      "api.py": "22a1c9fc8858ae9bc008027758463dd1135004eea58edf1f7a35bad3e81b574a",
+      "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+      "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+      "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+      "_native/fast_dft.c": "93164f0e728586d7ca86e890caaac93bde2679d1af26cc842b4fc3b9727991c0",
+      "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+      "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+      "_native/fast_dft.h": "976dfc05ef382b53728032ce07bcbea9c3a303ab2bfc4c0618d2983288c625c2"
+    }
+  },
+  "candidate": {
+    "package": "/workspace/scratch/1a083f70b5d7/lpsd_structured3/lpsd_fast",
+    "version": "1.0.6+fast.2",
+    "library": "/workspace/scratch/1a083f70b5d7/lpsd_structured3/lpsd_fast/_native/liblpsd_fast.so",
+    "library_sha256": "f2cb01984194d2bb6acf3d44f0a873d7daaf2ec17a775c601088eb586a45602d",
+    "build_report": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "liblpsd_fast.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": true,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": false,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "binary_sha256": "f2cb01984194d2bb6acf3d44f0a873d7daaf2ec17a775c601088eb586a45602d"
+    },
+    "source_sha256": {
+      "__init__.py": "ebf1ec01480415b8d1432070683a79138d45dc47c55ed7937695322f4048e0bf",
+      "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+      "api.py": "f1f9a91eb8a80c2ab5116fd2c69e29f50ed3b86f4a4361f6e63ed6911c8425e5",
+      "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+      "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+      "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+      "_native/fast_dft.c": "9f3f809d39a3408b6189839a4d374095d2f830abfb69b3f2ab49970010972c58",
+      "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+      "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+      "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+      "_native/fast_dft.h": "9918f826fce174364fa2b228655e8392a6769c2b609adce9035287a3bb39fdf6"
+    }
+  },
+  "cases": [
+    {
+      "n": 1000000,
+      "overlap": 0.8,
+      "workers": 1,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.8,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 1,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 588,
+      "rolling_frequencies": 499,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          0.6048886729986407,
+          0.5380566929961788,
+          0.5309598589956295,
+          0.5596638790011639
+        ],
+        "candidate": [
+          0.4847530849947361,
+          0.5290394100011326,
+          0.48120981500687776,
+          0.5051632649992825
+        ]
+      },
+      "baseline_median_s": 0.5488602859986713,
+      "candidate_median_s": 0.49495817499700934,
+      "speedup": 1.1089023552383748,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 0.5598639269956038,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 24008192,
+          "output_assembly_s": 0.0006880200016894378,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.5631013819947839,
+          "planning_s": 0.0008359040002687834,
+          "input_conversion_s": 0.0003119020038866438,
+          "frequency_count": 588,
+          "logical_sample_iterations": 2822360836,
+          "phase_sums": {
+            "window_generation_s": 0.008033181016799062,
+            "window_sums_s": 0.02548601202579448,
+            "coefficients_s": 0.04693208409298677,
+            "c_preparation_s": 0.08245515801536385,
+            "c_segments_s": 0.37808311791013693,
+            "memory_gate_wait_s": 0.00154152289906051
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 0.4819631649952498,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 24008192,
+          "output_assembly_s": 0.000650683999992907,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.48500206099561183,
+          "planning_s": 0.0006996779993642122,
+          "input_conversion_s": 0.00036916800308972597,
+          "frequency_count": 588,
+          "logical_sample_iterations": 2822360836,
+          "phase_sums": {
+            "window_generation_s": 0.00834079096239293,
+            "window_sums_s": 0.025537679917761125,
+            "coefficients_s": 0.045391319996269885,
+            "c_preparation_s": 0.06592934489890467,
+            "c_segments_s": 0.31890125303470995,
+            "memory_gate_wait_s": 0.0014349868870340288
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.247828413521513,
+        1.0170446337731756,
+        1.1033853475911348,
+        1.1078871283365364
+      ],
+      "candidate_faster_in_pairs": 4
+    },
+    {
+      "n": 1000000,
+      "overlap": 0.8,
+      "workers": 8,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.8,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 8,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 588,
+      "rolling_frequencies": 499,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          0.14839475999906426,
+          0.15313110400165897,
+          0.15076294699974824,
+          0.13993147099972703
+        ],
+        "candidate": [
+          0.14184122400183696,
+          0.13637644400296267,
+          0.16633435700350674,
+          0.13808384599542478
+        ]
+      },
+      "baseline_median_s": 0.14957885349940625,
+      "candidate_median_s": 0.13996253499863087,
+      "speedup": 1.0687063756087973,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 0.13865262599574635,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 167062408,
+          "output_assembly_s": 0.0008824350006761961,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.14155587700224714,
+          "planning_s": 0.0008297250024043024,
+          "input_conversion_s": 0.00025473599816905335,
+          "frequency_count": 588,
+          "logical_sample_iterations": 2822360836,
+          "phase_sums": {
+            "window_generation_s": 0.08482101497793337,
+            "window_sums_s": 0.08009341895376565,
+            "coefficients_s": 0.15440960301930318,
+            "c_preparation_s": 0.1278704770229524,
+            "c_segments_s": 0.5503176380225341,
+            "memory_gate_wait_s": 0.0017616250552237034
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 0.15079493099619867,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 167062408,
+          "output_assembly_s": 0.0007958029964356683,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.1569134240053245,
+          "planning_s": 0.0030632630005129613,
+          "input_conversion_s": 0.0003964689967688173,
+          "frequency_count": 588,
+          "logical_sample_iterations": 2822360836,
+          "phase_sums": {
+            "window_generation_s": 0.0992227169990656,
+            "window_sums_s": 0.133065424990491,
+            "coefficients_s": 0.21623586805799277,
+            "c_preparation_s": 0.10509028214437421,
+            "c_segments_s": 0.46802424784982577,
+            "memory_gate_wait_s": 0.0020352458668639883
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.0462033237751982,
+        1.1228559676943353,
+        0.9063848847329226,
+        1.0133804572937768
+      ],
+      "candidate_faster_in_pairs": 3
+    },
+    {
+      "n": 1000000,
+      "overlap": 0.9,
+      "workers": 1,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.9,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 1,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 633,
+      "rolling_frequencies": 544,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          1.0440161429942236,
+          1.0773550070007332,
+          1.0830663759988965,
+          1.1193850739946356
+        ],
+        "candidate": [
+          0.6955317839965574,
+          0.6987852300007944,
+          0.7212730479950551,
+          0.6882218109967653
+        ]
+      },
+      "baseline_median_s": 1.0802106914998149,
+      "candidate_median_s": 0.6971585069986759,
+      "speedup": 1.549447766405677,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 1.035928512996179,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 24008192,
+          "output_assembly_s": 0.000689772998157423,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 1.0393323929965845,
+          "planning_s": 0.0008162450030795299,
+          "input_conversion_s": 0.00040817700210027397,
+          "frequency_count": 633,
+          "logical_sample_iterations": 5906281254,
+          "phase_sums": {
+            "window_generation_s": 0.011783989961259067,
+            "window_sums_s": 0.04049520788976224,
+            "coefficients_s": 0.06740140506008174,
+            "c_preparation_s": 0.13334080897766398,
+            "c_segments_s": 0.7605931860962301,
+            "memory_gate_wait_s": 0.0016998520150082186
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 0.6412778450030601,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 24008192,
+          "output_assembly_s": 0.000708691994077526,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.6444436019955901,
+          "planning_s": 0.000741671996365767,
+          "input_conversion_s": 0.0002627580033731647,
+          "frequency_count": 633,
+          "logical_sample_iterations": 5906281254,
+          "phase_sums": {
+            "window_generation_s": 0.00882585310318973,
+            "window_sums_s": 0.036802099995838944,
+            "coefficients_s": 0.060521009043441154,
+            "c_preparation_s": 0.09742451912461547,
+            "c_segments_s": 0.42089520493755117,
+            "memory_gate_wait_s": 0.0011256309953751042
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.5010329750788085,
+        1.5417541195017936,
+        1.5016038364521307,
+        1.6264888094339935
+      ],
+      "candidate_faster_in_pairs": 4
+    },
+    {
+      "n": 1000000,
+      "overlap": 0.9,
+      "workers": 8,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.9,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 8,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 633,
+      "rolling_frequencies": 544,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          0.1973951809995924,
+          0.2564827040041564,
+          0.2640530030039372,
+          0.24396591699769488
+        ],
+        "candidate": [
+          0.213753453004756,
+          0.18922241099789971,
+          0.2053261909968569,
+          0.18353010400460334
+        ]
+      },
+      "baseline_median_s": 0.25022431050092564,
+      "candidate_median_s": 0.1972743009973783,
+      "speedup": 1.268408045223544,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 0.25839332100440515,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 190428064,
+          "output_assembly_s": 0.0008419850055361167,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.26245401999767637,
+          "planning_s": 0.000873562996275723,
+          "input_conversion_s": 0.0003894600013154559,
+          "frequency_count": 633,
+          "logical_sample_iterations": 5906281254,
+          "phase_sums": {
+            "window_generation_s": 0.08378584899764974,
+            "window_sums_s": 0.12274924086523242,
+            "coefficients_s": 0.23035775395692326,
+            "c_preparation_s": 0.19903800005704397,
+            "c_segments_s": 1.2885061179913464,
+            "memory_gate_wait_s": 0.00222998399840435
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 0.20861621999938507,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 190428064,
+          "output_assembly_s": 0.0007593400005134754,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.21291520899831085,
+          "planning_s": 0.0009455309991608374,
+          "input_conversion_s": 0.00037351599894464016,
+          "frequency_count": 633,
+          "logical_sample_iterations": 5906281254,
+          "phase_sums": {
+            "window_generation_s": 0.11742901009711204,
+            "window_sums_s": 0.1656373390360386,
+            "coefficients_s": 0.28446637302840827,
+            "c_preparation_s": 0.15994816096645081,
+            "c_segments_s": 0.7373952290508896,
+            "memory_gate_wait_s": 0.0020983550857636146
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        0.9234713087661811,
+        1.3554562731314277,
+        1.2860171501841149,
+        1.329296456953872
+      ],
+      "candidate_faster_in_pairs": 3
+    },
+    {
+      "n": 1000000,
+      "overlap": 0.95,
+      "workers": 1,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.95,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 1,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 673,
+      "rolling_frequencies": 582,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          1.9306054590051644,
+          1.887703018997854,
+          2.022488921000331,
+          1.9982961549976608
+        ],
+        "candidate": [
+          0.9730011100036791,
+          0.9879977430027793,
+          1.0972335170008591,
+          1.0043302570047672
+        ]
+      },
+      "baseline_median_s": 1.9644508070014126,
+      "candidate_median_s": 0.9961640000037733,
+      "speedup": 1.9720154582919798,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 1.9259352459994261,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 24008192,
+          "output_assembly_s": 0.0007564650004496798,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 1.9288614629986114,
+          "planning_s": 0.0007863499995437451,
+          "input_conversion_s": 0.00040261899994220585,
+          "frequency_count": 673,
+          "logical_sample_iterations": 12114287150,
+          "phase_sums": {
+            "window_generation_s": 0.01851407907815883,
+            "window_sums_s": 0.05884281190083129,
+            "coefficients_s": 0.08864248896861682,
+            "c_preparation_s": 0.19963847704639193,
+            "c_segments_s": 1.5288153429646627,
+            "memory_gate_wait_s": 0.002201485876867082
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 0.9781877230052487,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 24008192,
+          "output_assembly_s": 0.0007046659957268275,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.9815188330030651,
+          "planning_s": 0.0008126090033329092,
+          "input_conversion_s": 0.0003694690021802671,
+          "frequency_count": 673,
+          "logical_sample_iterations": 12114287150,
+          "phase_sums": {
+            "window_generation_s": 0.013924838945968077,
+            "window_sums_s": 0.05502035900281044,
+            "coefficients_s": 0.0859978458902333,
+            "c_preparation_s": 0.14567218706361018,
+            "c_segments_s": 0.6535511889596819,
+            "memory_gate_wait_s": 0.0016539380158064887
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.9841760088000975,
+        1.9106349507040765,
+        1.8432620674298519,
+        1.989680327820867
+      ],
+      "candidate_faster_in_pairs": 4
+    },
+    {
+      "n": 1000000,
+      "overlap": 0.95,
+      "workers": 8,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.95,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 8,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 673,
+      "rolling_frequencies": 582,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          0.48723575100302696,
+          0.48342285599937895,
+          0.46329841199622024,
+          0.34583543399639893
+        ],
+        "candidate": [
+          0.3285182409963454,
+          0.31200998200074537,
+          0.2691885579988593,
+          0.26888501399662346
+        ]
+      },
+      "baseline_median_s": 0.4733606339977996,
+      "candidate_median_s": 0.29059926999980235,
+      "speedup": 1.628911985904581,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 0.3078912849960034,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 192065536,
+          "output_assembly_s": 0.000698807998560369,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.31401577000360703,
+          "planning_s": 0.0008405710032093339,
+          "input_conversion_s": 0.00044259899732423946,
+          "frequency_count": 673,
+          "logical_sample_iterations": 12114287150,
+          "phase_sums": {
+            "window_generation_s": 0.0896871899603866,
+            "window_sums_s": 0.09284759794536512,
+            "coefficients_s": 0.22728684198955307,
+            "c_preparation_s": 0.22045020300720353,
+            "c_segments_s": 1.7039255030904314,
+            "memory_gate_wait_s": 0.002645885120728053
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 0.21352404500066768,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 192065536,
+          "output_assembly_s": 0.0007253669973579235,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 0.22264504300255794,
+          "planning_s": 0.0007984780022525229,
+          "input_conversion_s": 0.00032728599762776867,
+          "frequency_count": 673,
+          "logical_sample_iterations": 12114287150,
+          "phase_sums": {
+            "window_generation_s": 0.10915141886653146,
+            "window_sums_s": 0.13772109191631898,
+            "coefficients_s": 0.30922852112416876,
+            "c_preparation_s": 0.17733875902194995,
+            "c_segments_s": 0.8150096739336732,
+            "memory_gate_wait_s": 0.002103306047501974
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.4831314983463801,
+        1.5493826604503445,
+        1.7210925138882889,
+        1.286183372051898
+      ],
+      "candidate_faster_in_pairs": 4
+    },
+    {
+      "n": 10000000,
+      "overlap": 0.9,
+      "workers": 1,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.9,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 1,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 699,
+      "rolling_frequencies": 612,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          12.809855556995899,
+          12.615721818001475,
+          12.780315239004267,
+          13.480467868997948
+        ],
+        "candidate": [
+          9.039682437993179,
+          8.838273021996429,
+          8.637885342999652,
+          8.941009255999234
+        ]
+      },
+      "baseline_median_s": 12.795085398000083,
+      "candidate_median_s": 8.889641138997831,
+      "speedup": 1.4393252998559771,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 12.836317034998501,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 240008192,
+          "output_assembly_s": 0.0008378479979000986,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 12.841705932005425,
+          "planning_s": 0.0007243060026667081,
+          "input_conversion_s": 0.0041390149999642745,
+          "frequency_count": 699,
+          "logical_sample_iterations": 66299007864,
+          "phase_sums": {
+            "window_generation_s": 0.1627624938992085,
+            "window_sums_s": 0.33314168790820986,
+            "coefficients_s": 0.6150723408427439,
+            "c_preparation_s": 1.2012028488825308,
+            "c_segments_s": 10.435287787113339,
+            "memory_gate_wait_s": 0.00472709604218835
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 8.307930157003284,
+          "workers": 1,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 240008192,
+          "output_assembly_s": 0.0007650780025869608,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 8.314019882993307,
+          "planning_s": 0.0010203139972873032,
+          "input_conversion_s": 0.0046344029979081824,
+          "frequency_count": 699,
+          "logical_sample_iterations": 66299007864,
+          "phase_sums": {
+            "window_generation_s": 0.1661281218912336,
+            "window_sums_s": 0.31726181400881615,
+            "coefficients_s": 0.5872459829697618,
+            "c_preparation_s": 0.8818732269864995,
+            "c_segments_s": 6.274015062961553,
+            "memory_gate_wait_s": 0.004605831054504961
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.4170691995945495,
+        1.4273967082261259,
+        1.4795652791758505,
+        1.5077121030774945
+      ],
+      "candidate_faster_in_pairs": 4
+    },
+    {
+      "n": 10000000,
+      "overlap": 0.9,
+      "workers": 8,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.9,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 8,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 699,
+      "rolling_frequencies": 612,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          3.3732665889983764,
+          2.3142082519989344,
+          2.413542526002857,
+          2.880056150999735
+        ],
+        "candidate": [
+          2.553899566999462,
+          2.171773559995927,
+          2.451848484000948,
+          1.996421242998622
+        ]
+      },
+      "baseline_median_s": 2.646799338501296,
+      "candidate_median_s": 2.3118110219984374,
+      "speedup": 1.1449029844201015,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 2.751576622998982,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 1865442496,
+          "output_assembly_s": 0.001070808997610584,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 2.756951793002372,
+          "planning_s": 0.0007362139949691482,
+          "input_conversion_s": 0.004023656001663767,
+          "frequency_count": 699,
+          "logical_sample_iterations": 66299007864,
+          "phase_sums": {
+            "window_generation_s": 0.5155503400237649,
+            "window_sums_s": 0.5264228230298613,
+            "coefficients_s": 1.321481182181742,
+            "c_preparation_s": 1.7856793171231402,
+            "c_segments_s": 17.555647732748184,
+            "memory_gate_wait_s": 0.006956870944122784
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 1.6099331649966189,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 1865442496,
+          "output_assembly_s": 0.0008282220005639829,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 1.61643639599788,
+          "planning_s": 0.0010430159964016639,
+          "input_conversion_s": 0.00501787499524653,
+          "frequency_count": 699,
+          "logical_sample_iterations": 66299007864,
+          "phase_sums": {
+            "window_generation_s": 0.6658163570245961,
+            "window_sums_s": 0.48421426809363766,
+            "coefficients_s": 1.2068521580076776,
+            "c_preparation_s": 1.2650433939925279,
+            "c_segments_s": 8.89389202908933,
+            "memory_gate_wait_s": 0.005152635007107165
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.3208297744306274,
+        1.0655845041244882,
+        0.9843767026192488,
+        1.4426094498342918
+      ],
+      "candidate_faster_in_pairs": 3
+    },
+    {
+      "n": 10000000,
+      "overlap": 0.8,
+      "workers": 8,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.8,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 8,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 660,
+      "rolling_frequencies": 574,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          1.4766392190067563,
+          2.393771461000142,
+          1.3554835640024976,
+          1.538581743996474
+        ],
+        "candidate": [
+          1.2898676539989538,
+          1.3749647710064892,
+          1.2431633209998836,
+          1.1960150279992376
+        ]
+      },
+      "baseline_median_s": 1.5076104815016151,
+      "candidate_median_s": 1.2665154874994187,
+      "speedup": 1.1903608731056337,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 1.6787590090025333,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 1571515216,
+          "output_assembly_s": 0.0008051980039454065,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 1.686894154001493,
+          "planning_s": 0.0007024820006336085,
+          "input_conversion_s": 0.00543668499449268,
+          "frequency_count": 660,
+          "logical_sample_iterations": 31999934861,
+          "phase_sums": {
+            "window_generation_s": 0.6862820808237302,
+            "window_sums_s": 0.38385514215769945,
+            "coefficients_s": 0.9126323670789134,
+            "c_preparation_s": 1.1415546351054218,
+            "c_segments_s": 10.002499777838239,
+            "memory_gate_wait_s": 0.006015937949996442
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 1.3547515099999146,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 1571515216,
+          "output_assembly_s": 0.0007868500033509918,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 1.3607243849983206,
+          "planning_s": 0.0008659899976919405,
+          "input_conversion_s": 0.004524805000983179,
+          "frequency_count": 660,
+          "logical_sample_iterations": 31999934861,
+          "phase_sums": {
+            "window_generation_s": 0.3361595910100732,
+            "window_sums_s": 0.3659337668432272,
+            "coefficients_s": 0.794061432890885,
+            "c_preparation_s": 0.8244845809022081,
+            "c_segments_s": 8.162432818033267,
+            "memory_gate_wait_s": 0.005286871943098959
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.1447990144017939,
+        1.7409693044337968,
+        1.0903503514825985,
+        1.2864234210922094
+      ],
+      "candidate_faster_in_pairs": 4
+    },
+    {
+      "n": 10000000,
+      "overlap": 0.95,
+      "workers": 8,
+      "parameters": {
+        "sample_rate": 1.0,
+        "window_function": "boxcar",
+        "overlap": 0.95,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "kernel": "fast",
+        "workers": 8,
+        "max_working_mb": 4096,
+        "outputs": "psd"
+      },
+      "actual_frequencies": 733,
+      "rolling_frequencies": 644,
+      "observed_order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "wall_repetitions_s": {
+        "baseline": [
+          4.923298594003427,
+          6.244738531000621,
+          5.441853787000582,
+          5.623870563998935
+        ],
+        "candidate": [
+          2.721590692999598,
+          3.1306038510010694,
+          2.7239699450001353,
+          2.425685155998508
+        ]
+      },
+      "baseline_median_s": 5.5328621754997585,
+      "candidate_median_s": 2.7227803189998667,
+      "speedup": 2.03206337907279,
+      "numerical_comparison": {
+        "index_exact": true,
+        "dtypes_equal": true,
+        "max_absolute_error": 0.0,
+        "max_relative_error_nonzero_reference": 0.0,
+        "points_at_or_above_one_percent": 0,
+        "changed_exact_zeros": 0
+      },
+      "profiles": {
+        "baseline": {
+          "channel_wall_s": 4.765072249996592,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 1920065536,
+          "output_assembly_s": 0.0008324189984705299,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 4.771835116996954,
+          "planning_s": 0.0011523700013640337,
+          "input_conversion_s": 0.004066951994900592,
+          "frequency_count": 733,
+          "logical_sample_iterations": 135165278523,
+          "phase_sums": {
+            "window_generation_s": 0.7056156659309636,
+            "window_sums_s": 0.7133217630180297,
+            "coefficients_s": 2.4060840790480142,
+            "c_preparation_s": 2.585511836092337,
+            "c_segments_s": 31.255934926055488,
+            "memory_gate_wait_s": 0.007153268932597712
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        },
+        "candidate": {
+          "channel_wall_s": 4.035491677997925,
+          "workers": 8,
+          "kernel": "fast",
+          "concurrency_budget_bytes": 4294967296,
+          "peak_reserved_bytes": 1920065536,
+          "output_assembly_s": 0.0009020130019052885,
+          "note": "Per-worker elapsed times overlap and must not be summed as wall clock.",
+          "api_wall_s": 4.041039429001103,
+          "planning_s": 0.0007787080030539073,
+          "input_conversion_s": 0.004329518997110426,
+          "frequency_count": 733,
+          "logical_sample_iterations": 135165278523,
+          "phase_sums": {
+            "window_generation_s": 1.2939932030421915,
+            "window_sums_s": 1.055641690043558,
+            "coefficients_s": 4.524723411042942,
+            "c_preparation_s": 2.836349655997765,
+            "c_segments_s": 21.83876366091863,
+            "memory_gate_wait_s": 0.009904154008836485
+          },
+          "phase_sums_note": "Additive phases only describe serial wall contributions when workers=1; otherwise workers overlap. Logical sample iterations are direct L*K coverage, not executed rolling sample visits."
+        }
+      },
+      "paired_speedups": [
+        1.8089783326592799,
+        1.9947392989386852,
+        1.997765723145786,
+        2.3184668257921244
+      ],
+      "candidate_faster_in_pairs": 4
+    }
+  ],
+  "series": "initial-wide-eight-segment-gate",
+  "interpretation": "Archived comparison against the de9e70a5 baseline with eight-way sharing at all L>=128. The later adaptive gate excludes L256..1023; final incremental claims must use a separate adaptive-baseline series."
+}

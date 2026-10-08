@@ -492,6 +492,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                        'concurrency_budget_bytes': capacity,
                                        'peak_reserved_bytes': gate.peak,
                                        'output_assembly_s': time.perf_counter() - assembly_started,
+                                       'sample_iterations_note': 'L*K is logical segment coverage/direct reference work, not executed rolling sample visits or measured memory traffic.',
                                        'note': 'Per-worker elapsed times overlap and must not be summed as wall clock.'}
     return result
 
