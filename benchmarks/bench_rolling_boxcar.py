@@ -20,6 +20,8 @@ import time
 
 import numpy as np
 
+from lpsd_fast.build import source_manifest
+
 
 def load_package(root, name):
     package = Path(root).resolve() / "lpsd_fast"
@@ -43,11 +45,25 @@ def evidence(module):
     build_report = json.loads(report.read_text())
     if build_report["binary_sha256"] != library_sha256:
         raise AssertionError("Native build report does not match the loaded library")
+    native_sources = source_manifest(package / "_native" / build_report["source"])
+    bound_sources = build_report.get("source_sha256")
+    if bound_sources is not None and bound_sources != native_sources:
+        raise AssertionError("Native sources do not match the sources used to build the library")
+    shared_sources = {}
+    for name, imported in tuple(sys.modules.items()):
+        filename = getattr(imported, "__file__", None)
+        if filename and (name == "lpsd" or name.startswith("lpsd.")):
+            path = Path(filename).resolve()
+            shared_sources[name] = {"path": str(path),
+                                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
     return {
         "package": str(package), "version": module.__version__,
         "library": str(library),
         "library_sha256": library_sha256,
         "build_report": build_report,
+        "native_source_binding": "verified" if bound_sources is not None else "unavailable_legacy_build_report",
+        "native_source_sha256": native_sources,
+        "shared_python_sources": shared_sources,
         "source_sha256": {str(path.relative_to(package)): hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in sources},
     }

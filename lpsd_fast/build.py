@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -106,6 +107,22 @@ LPSD_PROBE_CLONES double lpsd_probe_caller(const double *x, int n) {
 """
 
 
+def source_manifest(source):
+    """Hash the C source and recursive literal quoted project includes."""
+    source = Path(source).resolve()
+    pending, hashes = [source], {}
+    while pending:
+        path = pending.pop()
+        relative = os.path.relpath(path, source.parent).replace(os.sep, "/")
+        if relative in hashes:
+            continue
+        content = path.read_bytes()
+        hashes[relative] = hashlib.sha256(content).hexdigest()
+        pending.extend((path.parent / name.decode("utf-8")).resolve() for name in
+                       re.findall(rb'^\s*#\s*include\s*"([^"\r\n]+)"', content, re.MULTILINE))
+    return dict(sorted(hashes.items()))
+
+
 def build_shared(source, target, *, simd=False, native=False):
     """Compile a source file atomically, with a JSON report beside the binary."""
     source, target = Path(source), Path(target)
@@ -192,7 +209,10 @@ def build_shared(source, target, *, simd=False, native=False):
     metadata_temporary = temporary + ".json"
     command = compiler + flags + [link_flag, str(source), "-o", temporary, "-lm"]
     try:
+        report["source_sha256"] = source_manifest(source)
         subprocess.run(command, check=True)
+        if report["source_sha256"] != source_manifest(source):
+            raise RuntimeError("Project sources changed during native compilation")
         report["binary_sha256"] = hashlib.sha256(Path(temporary).read_bytes()).hexdigest()
         Path(metadata_temporary).write_text(json.dumps(report, indent=2) + "\n")
         os.chmod(temporary, 0o755)
