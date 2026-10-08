@@ -1,0 +1,454 @@
+{
+  "schema_version": 1,
+  "description": "Curated historical timing records and validation summaries; no new measurements were run while preparing this file.",
+  "baseline": {
+    "distribution": "lpsd",
+    "version": "1.0.6",
+    "integration_source_commit": "2fd15da"
+  },
+  "conditions": {
+    "signal": "float64 standard-normal noise",
+    "seed": 20261008,
+    "sample_rate": 1.0,
+    "n_frequencies_target": 1000,
+    "n_averages": 100,
+    "detrending_order": 0,
+    "window": "upstream periodic Kaiser",
+    "psll": 200,
+    "overlap": "default automatic overlap",
+    "warmup_calls_per_process": 1,
+    "warmup_samples": 4096,
+    "warmup_target_frequencies": 100,
+    "timing_scope": "Public API call: conversion, planning, window/coefficient generation, C computation, output construction; includes profiling probes in rows marked profiling_enabled.",
+    "outside_timer": [
+      "imports",
+      "input generation",
+      "small warm-up",
+      "comparison",
+      "file output"
+    ],
+    "historical_input_container_difference": "Original received a Series; optimized calls received the same numerical samples as an ndarray. The reproduction script uses a Series for both.",
+    "machine": {
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "cpu_quota_raw": "800000 100000",
+      "cpu_quota_cores": 8,
+      "memory_limit_bytes": 8589934592,
+      "cpu_affinity_count": 9,
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "optimized_compiler": "GCC 13.3.0",
+      "optimized_flags": [
+        "-O3",
+        "-std=c11",
+        "-fopenmp-simd",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-march=native",
+        "-shared"
+      ],
+      "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+      "saved_compiler_version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "environment_evidence": {
+        "cpu_model": "profile_N10000000_J1000_originalC.json metadata.cpu_model",
+        "compiler_version": "c_build_manifest.json compiler; compiler of the saved build environment"
+      }
+    },
+    "memory_note": "max_rss_kib is Linux process-lifetime maximum RSS in KiB, not a per-call allocation measurement.",
+    "limits": [
+      "One machine, one synthetic signal family; speedups are not portable guarantees.",
+      "A single original baseline call is compared with three optimized calls where available.",
+      "Three repetitions are descriptive, not a confidence interval.",
+      "The thirty-million-sample run has no original reference or measured speedup."
+    ]
+  },
+  "measurements": [
+    {
+      "source_report": "final_original_N10000000.json",
+      "implementation": "unchanged lpsd 1.0.6 public API with original C core",
+      "n": 10000000,
+      "workers": 1,
+      "kernel": "original",
+      "actual_frequencies": 651,
+      "input_container": "pandas.Series",
+      "repeats": [
+        {
+          "wall_s": 151.41229080300036,
+          "cpu_s": 151.37594953200002,
+          "max_rss_kib": 1790444
+        }
+      ],
+      "median_wall_s": 151.41229080300036,
+      "all_outputs_bit_equal_to_saved_original": true,
+      "profiling_enabled": false
+    },
+    {
+      "source_report": "final_N1000000_auto_w1.json",
+      "implementation": "lpsd_fast before repository integration",
+      "n": 1000000,
+      "workers": 1,
+      "kernel": "auto",
+      "actual_frequencies": 577,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 1.7399776420006674,
+          "cpu_s": 1.739887862,
+          "max_rss_kib": 197764
+        },
+        {
+          "repeat": 1,
+          "wall_s": 1.7746019280002656,
+          "cpu_s": 1.773706384,
+          "max_rss_kib": 198648
+        },
+        {
+          "repeat": 2,
+          "wall_s": 1.3754853199989157,
+          "cpu_s": 1.3753291690000005,
+          "max_rss_kib": 199296
+        }
+      ],
+      "median_wall_s": 1.7399776420006674,
+      "input_container": "numpy.ndarray",
+      "all_outputs_bit_equal_to_saved_original": true,
+      "compared_output_columns": 7,
+      "reference_available": true,
+      "profiling_enabled": true
+    },
+    {
+      "source_report": "final_N1000000_auto_w8.json",
+      "implementation": "lpsd_fast before repository integration",
+      "n": 1000000,
+      "workers": 8,
+      "kernel": "auto",
+      "actual_frequencies": 577,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 0.4822506999989855,
+          "cpu_s": 2.842948401,
+          "max_rss_kib": 270676
+        },
+        {
+          "repeat": 1,
+          "wall_s": 0.4234686319996399,
+          "cpu_s": 2.5325679029999995,
+          "max_rss_kib": 270676
+        },
+        {
+          "repeat": 2,
+          "wall_s": 0.36490806700021494,
+          "cpu_s": 2.4980047490000006,
+          "max_rss_kib": 292608
+        }
+      ],
+      "median_wall_s": 0.4234686319996399,
+      "input_container": "numpy.ndarray",
+      "all_outputs_bit_equal_to_saved_original": true,
+      "compared_output_columns": 7,
+      "reference_available": true,
+      "profiling_enabled": false
+    },
+    {
+      "source_report": "final_N10000000_auto_w1.json",
+      "implementation": "lpsd_fast before repository integration",
+      "n": 10000000,
+      "workers": 1,
+      "kernel": "auto",
+      "actual_frequencies": 651,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 15.476075729999138,
+          "cpu_s": 15.467743694,
+          "max_rss_kib": 534564
+        }
+      ],
+      "median_wall_s": 15.476075729999138,
+      "input_container": "numpy.ndarray",
+      "all_outputs_bit_equal_to_saved_original": true,
+      "compared_output_columns": 7,
+      "reference_available": true,
+      "profiling_enabled": true
+    },
+    {
+      "source_report": "final_N10000000_auto_w8.json",
+      "implementation": "lpsd_fast before repository integration",
+      "n": 10000000,
+      "workers": 8,
+      "kernel": "auto",
+      "actual_frequencies": 651,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 3.7151808500002517,
+          "cpu_s": 28.92644915,
+          "max_rss_kib": 1703908
+        },
+        {
+          "repeat": 1,
+          "wall_s": 2.936799004999557,
+          "cpu_s": 23.133676015000002,
+          "max_rss_kib": 2057540
+        },
+        {
+          "repeat": 2,
+          "wall_s": 2.9258173440011888,
+          "cpu_s": 23.092480548999994,
+          "max_rss_kib": 2057540
+        }
+      ],
+      "median_wall_s": 2.936799004999557,
+      "input_container": "numpy.ndarray",
+      "all_outputs_bit_equal_to_saved_original": true,
+      "compared_output_columns": 7,
+      "reference_available": true,
+      "profiling_enabled": false
+    },
+    {
+      "source_report": "final_N10000000_scalar_w8.json",
+      "implementation": "lpsd_fast before repository integration",
+      "n": 10000000,
+      "workers": 8,
+      "kernel": "scalar",
+      "actual_frequencies": 651,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 16.18401353400077,
+          "cpu_s": 125.351993496,
+          "max_rss_kib": 1424380
+        }
+      ],
+      "median_wall_s": 16.18401353400077,
+      "input_container": "numpy.ndarray",
+      "all_outputs_bit_equal_to_saved_original": true,
+      "compared_output_columns": 7,
+      "reference_available": true,
+      "profiling_enabled": false
+    },
+    {
+      "source_report": "final_N30000000_auto_w8.json",
+      "implementation": "lpsd_fast before repository integration",
+      "n": 30000000,
+      "workers": 8,
+      "kernel": "auto",
+      "actual_frequencies": 678,
+      "repeats": [
+        {
+          "repeat": 0,
+          "wall_s": 12.506205777001014,
+          "cpu_s": 79.425773542,
+          "max_rss_kib": 2125664
+        }
+      ],
+      "median_wall_s": 12.506205777001014,
+      "input_container": "numpy.ndarray",
+      "all_outputs_bit_equal_to_saved_original": null,
+      "compared_output_columns": 0,
+      "reference_available": false,
+      "profiling_enabled": false
+    }
+  ],
+  "derived_ten_million_sample_ratios": {
+    "original_single_call_over_auto8_median": 51.55691300127746,
+    "original_single_call_over_auto1_single_call": 9.783635945222192,
+    "auto1_single_call_over_auto8_median": 5.2697088577233
+  },
+  "original_work_counts": [
+    {
+      "n": 1000000,
+      "actual_frequencies": 577,
+      "sum_segment_lengths": 26193284,
+      "sum_sample_iterations_KL": 2377782853
+    },
+    {
+      "n": 10000000,
+      "actual_frequencies": 651,
+      "sum_segment_lengths": 223491711,
+      "sum_sample_iterations_KL": 27072536884
+    }
+  ],
+  "historical_optimized_fingerprints": {
+    "note": "Paths are relative to the old package tree. Integration now shares upstream planning/polyreg sources, so these are identification of the historical experiment rather than required current-source hashes.",
+    "sha256": {
+      "lpsd_fast/__init__.py": "7f7bb6a1cef1ddc67a6e364ba8ecef98603b56f8992bcb675db93bdacdbbf7e0",
+      "lpsd_fast/_native/fast_dft.c": "ae281656636eb82567d5285e9d2b9c01464de2e3754b2413eb51f1ad7874e6db",
+      "lpsd_fast/_native/fast_dft.h": "f297cf70c882c88c7d9c917277321de070aa82901dcd79f0682a8856a1446c98",
+      "lpsd_fast/_native/liblpsd_fast.so": "0edc61184a698f6107f9fd63a5ece20919310ef90490fd04af55fabd3d02140d",
+      "lpsd_fast/_native/numpy_kaiser.c": "81293586e6fb0a9c3bbcdfad65390e3a0e532a5068b6c685da9f90c78f6543f8",
+      "lpsd_fast/_native/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+      "lpsd_fast/api.py": "28210ecdadb546c0a259f11b75dac3e58e4544f3b1cf3a063fcaa0982261ea5e",
+      "lpsd_fast/build.py": "49040dfcfa337b9f6069dcb316c9b8329b0cf2157b4c5bc14f368d5bdad33d29",
+      "lpsd_fast/planning.py": "9ec5b811fe7c29c2a628f2f6b7bdbbeba82e8f57a390d05a1a39638fbdbada07"
+    }
+  },
+  "numerical_validation": {
+    "relative_tolerance_primary": 2e-06,
+    "relative_tolerance_uncertainty": 1e-05,
+    "absolute_tolerance": 0.0,
+    "primary_columns": [
+      "ps",
+      "psd",
+      "asd",
+      "enbw",
+      "asdrms"
+    ],
+    "legacy_uncertainty_columns": [
+      "ps_std",
+      "psd_std"
+    ],
+    "groups": [
+      {
+        "source_report": "compatibility_final_scalar_1d.json",
+        "suite": "full",
+        "configuration": {
+          "workers": 1,
+          "kernel": "scalar"
+        },
+        "cases": 49,
+        "complete_cases_passed": 49,
+        "primary_cases_passed": 49,
+        "column_arrays": 350,
+        "bitwise_equal_column_arrays": 350
+      },
+      {
+        "source_report": "compatibility_final_auto_1d.json",
+        "suite": "full",
+        "configuration": {
+          "workers": 1,
+          "kernel": "auto"
+        },
+        "cases": 49,
+        "complete_cases_passed": 37,
+        "primary_cases_passed": 46,
+        "column_arrays": 350,
+        "bitwise_equal_column_arrays": 296
+      },
+      {
+        "source_report": "compatibility_final_layout_scalar.json",
+        "suite": "layout",
+        "configuration": {
+          "workers": 1,
+          "kernel": "scalar"
+        },
+        "cases": 4,
+        "complete_cases_passed": 4,
+        "primary_cases_passed": 4,
+        "column_arrays": 28,
+        "bitwise_equal_column_arrays": 28
+      },
+      {
+        "source_report": "compatibility_final_layout_auto.json",
+        "suite": "layout",
+        "configuration": {
+          "workers": 1,
+          "kernel": "auto"
+        },
+        "cases": 4,
+        "complete_cases_passed": 1,
+        "primary_cases_passed": 4,
+        "column_arrays": 28,
+        "bitwise_equal_column_arrays": 22
+      }
+    ],
+    "auto_primary_failures": [
+      {
+        "name": "offbin_tone",
+        "psd_max_absolute": 4.796274303743752e-28,
+        "psd_max_relative_nonzero_reference": 6.576236083489076e-05,
+        "asd_max_absolute": 2.8080836267374565e-17,
+        "status": "FAIL at unchanged strict tolerance"
+      },
+      {
+        "name": "onbin_tone",
+        "psd_max_absolute": 5.169878828456423e-26,
+        "psd_max_relative_nonzero_reference": 5.9222603111297415e-06,
+        "asd_max_absolute": 1.0755285551056204e-16,
+        "status": "FAIL at unchanged strict tolerance"
+      },
+      {
+        "name": "tiny_tone_next_to_large_tone",
+        "psd_max_absolute": 2.2214323091023692e-27,
+        "psd_max_relative_nonzero_reference": 1.1444635996698266e-05,
+        "asd_max_absolute": 4.423544863740858e-17,
+        "status": "FAIL at unchanged strict tolerance"
+      }
+    ],
+    "auto_other_failed_cases": {
+      "count": 9,
+      "cause": "Differences confined to legacy uncertainty columns; K=2 cancellation artifacts, as reviewed in discrepancy_review_final.json."
+    },
+    "parallel_same_kernel_comparison": {
+      "source_report": "parallel_determinism_final.json",
+      "kernel": "auto",
+      "workers": [
+        1,
+        8
+      ],
+      "cases": 10,
+      "cases_passed": 10,
+      "bitwise_equal_column_arrays": 70
+    },
+    "order1_projection_caution": {
+      "source_report": "reference_audit_final_small.json",
+      "reference": "Independent precentered long-double residual, fixed binary64 coefficients",
+      "note": "Separate native-kernel experiment with supplied fixed coefficients; this audit preceded final coefficient-generation integration.",
+      "test_case": {
+        "name": "twenty_volt_ramp_nanovolt",
+        "N": 1025,
+        "L": 1025,
+        "fractional_bin": 1.375,
+        "order": 1,
+        "K": 1
+      },
+      "relative_power_error": {
+        "upstream": 1.5542877303461014e-08,
+        "simd": 1.554288019683419e-08,
+        "projected": 8.649534753422768e-06
+      },
+      "auto_behavior": "Uses SIMD residual detrending for order 1; projected order 1 requires explicit selection."
+    },
+    "limits": [
+      "These comparisons describe the tested build and finite suite, not universal bitwise or relative-error guarantees.",
+      "The original mean and second-moment recurrence defects are preserved in all modes.",
+      "Legacy uncertainty columns are not independently validated statistical uncertainties.",
+      "Maximum absolute and maximum relative discrepancies can occur in different bins."
+    ]
+  },
+  "recorded_phase_profiles": {
+    "note": "Two distinct one-worker measurements, not phases of the same timed call. All phase sums here use one worker; parallel worker elapsed times must not be added as wall time.",
+    "original_ten_million": {
+      "source_report": "profile_N10000000_J1000_originalC.json",
+      "implementation": "Granular Python profiler calling the unchanged original PyPI C binary",
+      "n": 10000000,
+      "workers": 1,
+      "profiled_api_wall_s": 151.37539873700007,
+      "stages_s": {
+        "c_kernel_s": 109.31261990899839,
+        "window_s": 12.139343830964208,
+        "sum_window_s": 11.869612274997053,
+        "sum_window_square_s": 11.933878565001578,
+        "complex_coefficients_s": 4.794700045003992,
+        "other_s": 1.3252441120348522
+      },
+      "other_scope": "Phase-vector construction, copies, squaring, scaling, planning, output construction and remaining profiler/Python overhead."
+    },
+    "fast_ten_million": {
+      "source_report": "final_N10000000_auto_w1.json",
+      "implementation": "Final historical lpsd_fast build, auto kernel, one worker, profiling enabled",
+      "n": 10000000,
+      "workers": 1,
+      "profiled_api_wall_s": 15.476075729999138,
+      "stages_s": {
+        "window_and_sums_s": 2.0161215649568476,
+        "coefficients_s": 3.4699920450148056,
+        "c_preparation_s": 1.120338307990096,
+        "c_segments_s": 8.710353352018501,
+        "other_s": 0.15927046001888812
+      },
+      "other_scope": "Native allocation/call overhead, planning, conversion, output construction and remaining profiler/Python overhead; C preparation and segments are subdivisions of the native kernel."
+    }
+  }
+}
