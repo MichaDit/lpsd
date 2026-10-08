@@ -48,7 +48,9 @@ def test_auto_uses_stable_linear_detrending_for_large_ramp():
     actual = run("ramp_nanovolt_order1", "auto")
     assert actual.attrs["lpsd_fast"]["native_mode"] == 1
     compare(actual, run("ramp_nanovolt_order1", "simd"), exact=True)
-    assert run("dc_nanovolt_order0", "auto").attrs["lpsd_fast"]["native_mode"] == 2
+    metadata = run("dc_nanovolt_order0", "auto").attrs["lpsd_fast"]
+    expected = 2 if metadata["native_long_double_mantissa_bits"] > 53 else 1
+    assert metadata["native_mode"] == expected
 
 
 def test_lcsd_alias_and_version_metadata():

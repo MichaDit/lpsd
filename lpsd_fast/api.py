@@ -287,7 +287,11 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     n = len(x1)
     mode = (2 if order == 0 else 1) if kernel in ('auto', 'fast') else _KERNELS[kernel]
     mantissa_bits = _LIB.native_long_double_mantissa_bits()
-    if kernel == 'fast' and order == 0 and mantissa_bits > 64:
+    if kernel == 'auto' and order == 0 and mantissa_bits <= 53:
+        # On targets where long double is just double (notably Apple ARM),
+        # retain the reference residual arithmetic for DC-dominated inputs.
+        mode = 1
+    elif kernel == 'fast' and order == 0 and mantissa_bits > 64:
         # Compensated FP64 preparation avoids expensive wider long-double
         # arithmetic on targets such as the Linux AArch64 ABI.
         mode = 3
@@ -500,7 +504,8 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     ``simd`` reorders dot-product sums after unchanged long-double detrending.
     ``projected`` moves order-0/1 detrending into the coefficients and uses
     per-segment centering for small signals with a large DC offset. ``auto``
-    selects projected for order 0 and SIMD for other supported orders.
+    selects projected for order 0 when C long double has more than 53
+    mantissa bits, otherwise SIMD with the original residual detrending.
     ``fast`` additionally uses blockwise Fourier coefficients and, when C
     long double has more than 64 mantissa bits, compensated FP64 preparation
     for order 0. Independent block phases avoid unbounded recurrence drift.

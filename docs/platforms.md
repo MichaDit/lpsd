@@ -119,7 +119,9 @@ long-double preparation before any coefficient is modified.
 This is a separate numerical path, with no guarantee of binary128's 113-bit
 significand or bitwise equality to the long-double projector. Compensated
 arithmetic assumes the usual IEEE rounding environment. The existing `auto`
-mode retains mode 2 for order-0 projection, and the original residual
+mode uses mode 2 for order 0 when long double has more than 53 significand
+bits; with 53 bits it uses the original residual arithmetic (mode 1). It also
+retains the original residual
 detrending and scalar paths remain available. Mode 3 does not extend the
 experimental order-1 projector.
 
