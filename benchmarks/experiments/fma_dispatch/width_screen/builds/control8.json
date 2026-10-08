@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source": "fast_dft.c",
+  "library": "liblpsd_fast.so",
+  "compiler": [
+    "cc"
+  ],
+  "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "compiler_target": "x86_64-linux-gnu",
+  "flags": [
+    "-O3",
+    "-std=c11",
+    "-fno-fast-math",
+    "-ffp-contract=off",
+    "-fPIC",
+    "-fopenmp-simd",
+    "-DLPSD_HAVE_TARGET_CLONES=1"
+  ],
+  "link_flags": [
+    "-shared",
+    "-lm"
+  ],
+  "native": false,
+  "openmp_simd_flags": [
+    "-fopenmp-simd"
+  ],
+  "target_clones_requested": "auto",
+  "target_clones": true,
+  "macos_deployment_target": null,
+  "floating_point": {
+    "double_mant_dig": 53,
+    "long_double_mant_dig": 64,
+    "long_double_bytes": 16
+  },
+  "source_sha256": {
+    "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+    "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+    "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+    "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+    "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+    "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+    "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+  },
+  "binary_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992"
+}

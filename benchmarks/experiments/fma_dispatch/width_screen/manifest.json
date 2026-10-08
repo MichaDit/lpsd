@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "base_git_commit": "fc838aafa5de75fb1375574e0d8146756d4ab831",
+  "snapshot_patch": "patches/fc838-to-control8.patch",
+  "description": "Exact measured 8-FMA+CSD snapshot and candidate patches; raw measurements are unchanged.",
+  "base_files_sha256": {
+    "LICENSE": "6e5c0ad07f77bfd520ea9be718ba2ce775d7f15b3d5b5509204860ee0d9d7852",
+    "benchmarks/bench_lpsd.py": "a7f47fead2060caf232ba9c12360b905981df48de0b3a51db7f24a948fa3bf71",
+    "benchmarks/bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056",
+    "benchmarks/bench_segment_core.py": "72da45aabddd1c0b13dacb924643458d24a62f2d0b3d7741a77e787409557cd7",
+    "lpsd/__init__.py": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf",
+    "lpsd/_helpers.py": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf",
+    "lpsd/_lcsd.py": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429",
+    "lpsd/c_sources/Vector.c": "9394c93b96e53947605c0f795d7abb7245219bdefccac5c317b4a33b0e14819e",
+    "lpsd/c_sources/Vector.h": "20d1dca0ec22050ed85f1afbfffab5cac6f68a86ae8cbabf880ece2eb0b3a787",
+    "lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+    "lpsd/flattop.py": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9",
+    "lpsd/wrapper.py": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e",
+    "lpsd_fast/__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+    "lpsd_fast/_native/LICENSE.numpy.txt": "2046a3130e50b11c01659b3a0d963e6ae0b7436ff8e89cbcfd9e87bc6112d595",
+    "lpsd_fast/_native/README.md": "920c7fe69ad790b61c764e612cddb29108fc67728a23c493fa00eb96013cab17",
+    "lpsd_fast/_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+    "lpsd_fast/_native/fast_dft.c": "19a0d0e2b56975cb74f3bee479b44b1dd733247088200467947fc26cba72ef34",
+    "lpsd_fast/_native/fast_dft.h": "68cef55fcc0a29bc3a97c035ade665e95741fee4a77dda3142b1217382a67572",
+    "lpsd_fast/_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+    "lpsd_fast/_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+    "lpsd_fast/_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+    "lpsd_fast/_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+    "lpsd_fast/api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+    "lpsd_fast/build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+    "lpsd_fast/planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434"
+  },
+  "snapshot_files_sha256": {
+    "LICENSE": "6e5c0ad07f77bfd520ea9be718ba2ce775d7f15b3d5b5509204860ee0d9d7852",
+    "benchmarks/bench_lpsd.py": "329d8b39fca86d477fa98b9dd76e066a4a61ef2db7592ef46e106e636086dac3",
+    "benchmarks/bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056",
+    "benchmarks/bench_segment_core.py": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+    "lpsd/__init__.py": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf",
+    "lpsd/_helpers.py": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf",
+    "lpsd/_lcsd.py": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429",
+    "lpsd/c_sources/Vector.c": "9394c93b96e53947605c0f795d7abb7245219bdefccac5c317b4a33b0e14819e",
+    "lpsd/c_sources/Vector.h": "20d1dca0ec22050ed85f1afbfffab5cac6f68a86ae8cbabf880ece2eb0b3a787",
+    "lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+    "lpsd/flattop.py": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9",
+    "lpsd/wrapper.py": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e",
+    "lpsd_fast/__init__.py": "721a029434969a6169b3ccd6ae054b2a2a0afea669c1fdfcf18ab9a32e6365fe",
+    "lpsd_fast/_native/LICENSE.numpy.txt": "2046a3130e50b11c01659b3a0d963e6ae0b7436ff8e89cbcfd9e87bc6112d595",
+    "lpsd_fast/_native/README.md": "920c7fe69ad790b61c764e612cddb29108fc67728a23c493fa00eb96013cab17",
+    "lpsd_fast/_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+    "lpsd_fast/_native/fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+    "lpsd_fast/_native/fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+    "lpsd_fast/_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+    "lpsd_fast/_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+    "lpsd_fast/_native/rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f",
+    "lpsd_fast/_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+    "lpsd_fast/api.py": "43c5ef0b09a090bdeabeb4cd378a855522fec7f611dbbddcb1b253c1a5159d48",
+    "lpsd_fast/build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+    "lpsd_fast/planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434"
+  },
+  "variants": {
+    "control8": {
+      "patch": null,
+      "changed_files_sha256": {},
+      "native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+      "original_build_report": "builds/control8.json",
+      "settings": {
+        "vector_bits": null,
+        "minimum_length": null,
+        "native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730"
+      }
+    },
+    "strict": {
+      "patch": "patches/strict.patch",
+      "changed_files_sha256": {
+        "lpsd_fast/api.py": "ba9fe1c1387fd62dae93bef3d49a1a07692de7b2d5894c070b2c63766273086f"
+      },
+      "native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+      "original_build_report": "builds/strict.json",
+      "settings": {
+        "vector_bits": null,
+        "minimum_length": null,
+        "native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730"
+      }
+    },
+    "split256_large": {
+      "patch": "patches/split256_large.patch",
+      "changed_files_sha256": {
+        "lpsd_fast/_native/fast_dft.c": "94815e09697e5fdd2d20e2b239684308f57fff587f9a30e19d50e89b533c32de"
+      },
+      "native_source_sha256": "94815e09697e5fdd2d20e2b239684308f57fff587f9a30e19d50e89b533c32de",
+      "original_build_report": "builds/split256_large.json",
+      "settings": {
+        "vector_bits": 256,
+        "minimum_length": 2048,
+        "native_source_sha256": "94815e09697e5fdd2d20e2b239684308f57fff587f9a30e19d50e89b533c32de"
+      }
+    },
+    "split256_all": {
+      "patch": "patches/split256_all.patch",
+      "changed_files_sha256": {
+        "lpsd_fast/_native/fast_dft.c": "0ce1d376d464848247c3c269a2bb8d95d324c2e42f494b3c9d7e7aa7c8bc2d33"
+      },
+      "native_source_sha256": "0ce1d376d464848247c3c269a2bb8d95d324c2e42f494b3c9d7e7aa7c8bc2d33",
+      "original_build_report": "builds/split256_all.json",
+      "settings": {
+        "vector_bits": 256,
+        "minimum_length": 128,
+        "native_source_sha256": "0ce1d376d464848247c3c269a2bb8d95d324c2e42f494b3c9d7e7aa7c8bc2d33"
+      }
+    },
+    "split512_large": {
+      "patch": "patches/split512_large.patch",
+      "changed_files_sha256": {
+        "lpsd_fast/_native/fast_dft.c": "f3ba80b043ee1d9592df2d09efb5cd476180a1a63a581921e8599c562c44366b"
+      },
+      "native_source_sha256": "f3ba80b043ee1d9592df2d09efb5cd476180a1a63a581921e8599c562c44366b",
+      "original_build_report": "builds/split512_large.json",
+      "settings": {
+        "vector_bits": 512,
+        "minimum_length": 2048,
+        "native_source_sha256": "f3ba80b043ee1d9592df2d09efb5cd476180a1a63a581921e8599c562c44366b"
+      }
+    },
+    "selective8": {
+      "patch": "patches/selective8.patch",
+      "changed_files_sha256": {
+        "lpsd_fast/_native/fast_dft.c": "e7a20a881012b87cca4bb8b422183c0e22a56c6edb8e13e4d33a6489ba8f1ca5"
+      },
+      "native_source_sha256": "e7a20a881012b87cca4bb8b422183c0e22a56c6edb8e13e4d33a6489ba8f1ca5",
+      "original_build_report": "builds/selective8.json",
+      "settings": {
+        "vector_bits": null,
+        "minimum_length": null,
+        "native_source_sha256": "e7a20a881012b87cca4bb8b422183c0e22a56c6edb8e13e4d33a6489ba8f1ca5"
+      }
+    },
+    "split256_middle": {
+      "patch": "patches/split256_middle.patch",
+      "changed_files_sha256": {
+        "lpsd_fast/_native/fast_dft.c": "77b2d04053f5f4ebc5fad0b609804473af52f13b7a02b001a23b88bcb61c8808"
+      },
+      "native_source_sha256": "77b2d04053f5f4ebc5fad0b609804473af52f13b7a02b001a23b88bcb61c8808",
+      "original_build_report": "builds/split256_middle.json",
+      "settings": {
+        "vector_bits": 256,
+        "minimum_length": 256,
+        "maximum_length_exclusive": 1024,
+        "native_source_sha256": "77b2d04053f5f4ebc5fad0b609804473af52f13b7a02b001a23b88bcb61c8808",
+        "preserves_8_outside_middle": true,
+        "eligible_navg_guard": "16 for old-eight route, 10 for old-single route"
+      }
+    }
+  },
+  "raw_files_sha256": {
+    "api-screen.json": "735a5a600ca3dcc2089035f36af0b099537cc19f36985bc76df4ed13e6e4485f",
+    "frequency-screen.json": "530ff05d21f429df28fd47810bf238d3a9d6ca9c231c7a5faf549f2a241f9e6a",
+    "prepare.json": "b940d8b5a5249d53dfa63ee999d4b3d776c27d7896feb4f88ce63254b8aac69f"
+  },
+  "original_scripts_sha256": {
+    "four_fma_api_screen.py": "f54709d2dba0c1dceb57c567068ca4c443e9dfd587d8add5cac7ce47b6b87de9",
+    "four_fma_frequency_screen.py": "d8ba15dec76a7639f0125c7ef12ccc208f9065b78277348e6a250ef72d15e47c",
+    "four_fma_prepare.py": "cad5ffa048beba7f589576bfd5c3298886ae24e5ef30554d7dfa2f69608f9256"
+  },
+  "replay_scripts_sha256": {
+    "prepare.py": "39814cce8753cb1519c4076f5aeedbf8d856f21ee0593578cdba694f5fa7beb2",
+    "replay_api.py": "cf761175b34e7fbf34c63747abff9fc438234e9b126d6da5cb8f2d469cf1dbf7",
+    "replay_frequency.py": "ec60244d204b2afb9f8a736ff762f53a3c60d350e32cfd1b3ca0c235ab127da5"
+  },
+  "patch_files_sha256": {
+    "patches/fc838-to-control8.patch": "ae92b3d7e89fb40ce9dda7f35926da67d3d07cf0bad0aebd2987855077b82d38",
+    "patches/selective8.patch": "214ab4b69f29744bcbb82927ccf76485c7489c5eaa025fbf253d2e39bdcce534",
+    "patches/split256_all.patch": "332a5d51b4363b9a427d8772e2b4d3236589738a7b4b3434f882de637b6f3193",
+    "patches/split256_large.patch": "55b043e5f4cfdd7e26d3c1bab3fb6d4eb475eeacd56a0b3b45e54854e3f879a1",
+    "patches/split256_middle.patch": "4801217ab151a36d911360276381d5a14ffeda4c562b8eee49f4f8921af8e7f7",
+    "patches/split512_large.patch": "f8a77c23745a7a4ddf9643caf5f303ff08d186ae77242b270ec20c6debdb8125",
+    "patches/strict.patch": "d08978e0ec67840a0cf9f0ccf4591bb064a340143f7b7339bfd6f760375d6bb8"
+  }
+}

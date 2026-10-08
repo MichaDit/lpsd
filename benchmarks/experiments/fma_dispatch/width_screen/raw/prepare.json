@@ -1,0 +1,50 @@
+{
+  "base_native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+  "variants": {
+    "control8": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/control8",
+      "vector_bits": null,
+      "minimum_length": null,
+      "native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730"
+    },
+    "strict": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/strict",
+      "vector_bits": null,
+      "minimum_length": null,
+      "native_source_sha256": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730"
+    },
+    "split256_large": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/split256_large",
+      "vector_bits": 256,
+      "minimum_length": 2048,
+      "native_source_sha256": "94815e09697e5fdd2d20e2b239684308f57fff587f9a30e19d50e89b533c32de"
+    },
+    "split256_all": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/split256_all",
+      "vector_bits": 256,
+      "minimum_length": 128,
+      "native_source_sha256": "0ce1d376d464848247c3c269a2bb8d95d324c2e42f494b3c9d7e7aa7c8bc2d33"
+    },
+    "split512_large": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/split512_large",
+      "vector_bits": 512,
+      "minimum_length": 2048,
+      "native_source_sha256": "f3ba80b043ee1d9592df2d09efb5cd476180a1a63a581921e8599c562c44366b"
+    },
+    "selective8": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/selective8",
+      "vector_bits": null,
+      "minimum_length": null,
+      "native_source_sha256": "e7a20a881012b87cca4bb8b422183c0e22a56c6edb8e13e4d33a6489ba8f1ca5"
+    },
+    "split256_middle": {
+      "root": "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/four-fma/split256_middle",
+      "vector_bits": 256,
+      "minimum_length": 256,
+      "maximum_length_exclusive": 1024,
+      "native_source_sha256": "77b2d04053f5f4ebc5fad0b609804473af52f13b7a02b001a23b88bcb61c8808",
+      "preserves_8_outside_middle": true,
+      "eligible_navg_guard": "16 for old-eight route, 10 for old-single route"
+    }
+  }
+}

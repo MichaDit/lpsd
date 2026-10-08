@@ -1,0 +1,12 @@
+diff --git a/lpsd_fast/_native/fast_dft.c b/lpsd_fast/_native/fast_dft.c
+--- a/lpsd_fast/_native/fast_dft.c
++++ b/lpsd_fast/_native/fast_dft.c
+@@ -561,6 +561,8 @@
+     }
+ 
+     const bool fused_psd = batched && mode >= 2 && !csd && segLen >= 128 &&
++        (segLen < 256 || (segLen >= 1024 && segLen < 2048) ||
++         (segLen >= 8192 && segLen < 65536)) &&
+         navg >= 10 && input_peak >= 0.0 && input_peak <= 0x1p100 &&
+         native_segment_fma_supported() &&
+         bounded_fused_coefficients(projected_r, projected_i, segLen);

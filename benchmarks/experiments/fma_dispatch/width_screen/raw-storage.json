@@ -1,0 +1,10 @@
+{
+  "api-screen.json": {
+    "stored_path": "raw/api-screen.json.gz",
+    "compression": "gzip",
+    "uncompressed_sha256": "735a5a600ca3dcc2089035f36af0b099537cc19f36985bc76df4ed13e6e4485f",
+    "stored_sha256": "38c06dd619f6f3caf7bcfe1806c03aa090c304088ee791833f45102fae7ad130",
+    "uncompressed_bytes": 3380620,
+    "stored_bytes": 470816
+  }
+}

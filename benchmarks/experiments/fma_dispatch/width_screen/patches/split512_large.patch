@@ -1,0 +1,86 @@
+diff --git a/lpsd_fast/_native/fast_dft.c b/lpsd_fast/_native/fast_dft.c
+--- a/lpsd_fast/_native/fast_dft.c
++++ b/lpsd_fast/_native/fast_dft.c
+@@ -272,6 +272,64 @@
+     (defined(__AVX512F__) || (defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES))
+ #define LPSD_HAVE_FUSED_PSD 1
+ #include <immintrin.h>
++
++static __attribute__((target("avx512f"))) void dot_psd_four_fused_private(
++    const double *x0, const double *x1, const double *x2, const double *x3,
++    const double *qr, const double *qi, long int length, double *rr, double *ri)
++{
++    const __m512d a0 = _mm512_set1_pd(x0[0]);
++    __m512d r0 = _mm512_setzero_pd(), i0 = _mm512_setzero_pd();
++    const __m512d a1 = _mm512_set1_pd(x1[0]);
++    __m512d r1 = _mm512_setzero_pd(), i1 = _mm512_setzero_pd();
++    const __m512d a2 = _mm512_set1_pd(x2[0]);
++    __m512d r2 = _mm512_setzero_pd(), i2 = _mm512_setzero_pd();
++    const __m512d a3 = _mm512_set1_pd(x3[0]);
++    __m512d r3 = _mm512_setzero_pd(), i3 = _mm512_setzero_pd();
++    long int j = 0;
++    for (; j <= length - 8; j += 8) {
++        __m512d real = _mm512_loadu_pd(qr + j);
++        __m512d imag = _mm512_loadu_pd(qi + j);
++        __asm__("" : "+v" (real), "+v" (imag));
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x0 + j), a0);
++            r0 = _mm512_fmadd_pd(real, value, r0);
++            i0 = _mm512_fmadd_pd(imag, value, i0);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x1 + j), a1);
++            r1 = _mm512_fmadd_pd(real, value, r1);
++            i1 = _mm512_fmadd_pd(imag, value, i1);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x2 + j), a2);
++            r2 = _mm512_fmadd_pd(real, value, r2);
++            i2 = _mm512_fmadd_pd(imag, value, i2);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x3 + j), a3);
++            r3 = _mm512_fmadd_pd(real, value, r3);
++            i3 = _mm512_fmadd_pd(imag, value, i3);
++        }
++    }
++    rr[0] = _mm512_reduce_add_pd(r0);
++    ri[0] = _mm512_reduce_add_pd(i0);
++    rr[1] = _mm512_reduce_add_pd(r1);
++    ri[1] = _mm512_reduce_add_pd(i1);
++    rr[2] = _mm512_reduce_add_pd(r2);
++    ri[2] = _mm512_reduce_add_pd(i2);
++    rr[3] = _mm512_reduce_add_pd(r3);
++    ri[3] = _mm512_reduce_add_pd(i3);
++    for (; j < length; ++j) {
++        const double value0 = x0[j] - x0[0];
++        rr[0] += qr[j] * value0; ri[0] += qi[j] * value0;
++        const double value1 = x1[j] - x1[0];
++        rr[1] += qr[j] * value1; ri[1] += qi[j] * value1;
++        const double value2 = x2[j] - x2[0];
++        rr[2] += qr[j] * value2; ri[2] += qi[j] * value2;
++        const double value3 = x3[j] - x3[0];
++        rr[3] += qr[j] * value3; ri[3] += qi[j] * value3;
++    }
++}
+ 
+ static __attribute__((target("avx512f"))) void dot_psd_eight_fused(
+     const double *x0, const double *x1, const double *x2, const double *x3,
+@@ -648,10 +706,17 @@
+                 }
+                 segments[b] = x1data + istart;
+             }
++            if (segLen >= 2048) {
++                dot_psd_four_fused_private(segments[0], segments[1], segments[2], segments[3],
++                                            projected_r, projected_i, segLen, rr, ri);
++                dot_psd_four_fused_private(segments[4], segments[5], segments[6], segments[7],
++                                            projected_r, projected_i, segLen, rr + 4, ri + 4);
++            } else {
+             dot_psd_eight_fused(
+                 segments[0], segments[1], segments[2], segments[3],
+                 segments[4], segments[5], segments[6], segments[7],
+                 projected_r, projected_i, segLen, rr, ri);
++            }
+             for (int b = 0; b < 8; ++b) {
+                 update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
+                                              statistics && ii + b == navg - 1,

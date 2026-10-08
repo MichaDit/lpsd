@@ -1,0 +1,467 @@
+diff --git a/lpsd_fast/__init__.py b/lpsd_fast/__init__.py
+index ca0b02f..921bc4e 100644
+--- a/lpsd_fast/__init__.py
++++ b/lpsd_fast/__init__.py
+@@ -1,5 +1,5 @@
+ """Parallel native implementation of the LPSD 1.0.6 estimator."""
+-__version__ = "1.0.6+fast.3"
++__version__ = "1.0.6+fast.4"
+ 
+ from .api import available_workers, lcsd, lnsd, lpsd
+ 
+diff --git a/lpsd_fast/_native/fast_dft.c b/lpsd_fast/_native/fast_dft.c
+index 19905e4..ec222b9 100644
+--- a/lpsd_fast/_native/fast_dft.c
++++ b/lpsd_fast/_native/fast_dft.c
+@@ -264,6 +264,144 @@ static LPSD_ALWAYS_INLINE void dot_psd_eight_anchored_simd(
+     ri[4] = i4; ri[5] = i5; ri[6] = i6; ri[7] = i7;
+ }
+ 
++/* Fused arithmetic is confined to an additive, range-checked fast path.
++ * AVX-512F includes packed-double FMA. Explicit intrinsics avoid the large
++ * compiler-generated OpenMP reduction workspace for sixteen accumulators.
++ * Every accumulator still belongs to one original segment. */
++#if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__) && \
++    (defined(__AVX512F__) || (defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES))
++#define LPSD_HAVE_FUSED_PSD 1
++#include <immintrin.h>
++
++static __attribute__((target("avx512f"))) void dot_psd_eight_fused(
++    const double *x0, const double *x1, const double *x2, const double *x3,
++    const double *x4, const double *x5, const double *x6, const double *x7,
++    const double *qr, const double *qi, long int length, double *rr, double *ri)
++{
++    const __m512d a0 = _mm512_set1_pd(x0[0]);
++    __m512d r0 = _mm512_setzero_pd(), i0 = _mm512_setzero_pd();
++    const __m512d a1 = _mm512_set1_pd(x1[0]);
++    __m512d r1 = _mm512_setzero_pd(), i1 = _mm512_setzero_pd();
++    const __m512d a2 = _mm512_set1_pd(x2[0]);
++    __m512d r2 = _mm512_setzero_pd(), i2 = _mm512_setzero_pd();
++    const __m512d a3 = _mm512_set1_pd(x3[0]);
++    __m512d r3 = _mm512_setzero_pd(), i3 = _mm512_setzero_pd();
++    const __m512d a4 = _mm512_set1_pd(x4[0]);
++    __m512d r4 = _mm512_setzero_pd(), i4 = _mm512_setzero_pd();
++    const __m512d a5 = _mm512_set1_pd(x5[0]);
++    __m512d r5 = _mm512_setzero_pd(), i5 = _mm512_setzero_pd();
++    const __m512d a6 = _mm512_set1_pd(x6[0]);
++    __m512d r6 = _mm512_setzero_pd(), i6 = _mm512_setzero_pd();
++    const __m512d a7 = _mm512_set1_pd(x7[0]);
++    __m512d r7 = _mm512_setzero_pd(), i7 = _mm512_setzero_pd();
++    long int j = 0;
++    for (; j <= length - 8; j += 8) {
++        const __m512d real = _mm512_loadu_pd(qr + j);
++        const __m512d imag = _mm512_loadu_pd(qi + j);
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x0 + j), a0);
++            r0 = _mm512_fmadd_pd(real, value, r0);
++            i0 = _mm512_fmadd_pd(imag, value, i0);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x1 + j), a1);
++            r1 = _mm512_fmadd_pd(real, value, r1);
++            i1 = _mm512_fmadd_pd(imag, value, i1);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x2 + j), a2);
++            r2 = _mm512_fmadd_pd(real, value, r2);
++            i2 = _mm512_fmadd_pd(imag, value, i2);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x3 + j), a3);
++            r3 = _mm512_fmadd_pd(real, value, r3);
++            i3 = _mm512_fmadd_pd(imag, value, i3);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x4 + j), a4);
++            r4 = _mm512_fmadd_pd(real, value, r4);
++            i4 = _mm512_fmadd_pd(imag, value, i4);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x5 + j), a5);
++            r5 = _mm512_fmadd_pd(real, value, r5);
++            i5 = _mm512_fmadd_pd(imag, value, i5);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x6 + j), a6);
++            r6 = _mm512_fmadd_pd(real, value, r6);
++            i6 = _mm512_fmadd_pd(imag, value, i6);
++        }
++        {
++            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x7 + j), a7);
++            r7 = _mm512_fmadd_pd(real, value, r7);
++            i7 = _mm512_fmadd_pd(imag, value, i7);
++        }
++    }
++    rr[0] = _mm512_reduce_add_pd(r0); ri[0] = _mm512_reduce_add_pd(i0);
++    rr[1] = _mm512_reduce_add_pd(r1); ri[1] = _mm512_reduce_add_pd(i1);
++    rr[2] = _mm512_reduce_add_pd(r2); ri[2] = _mm512_reduce_add_pd(i2);
++    rr[3] = _mm512_reduce_add_pd(r3); ri[3] = _mm512_reduce_add_pd(i3);
++    rr[4] = _mm512_reduce_add_pd(r4); ri[4] = _mm512_reduce_add_pd(i4);
++    rr[5] = _mm512_reduce_add_pd(r5); ri[5] = _mm512_reduce_add_pd(i5);
++    rr[6] = _mm512_reduce_add_pd(r6); ri[6] = _mm512_reduce_add_pd(i6);
++    rr[7] = _mm512_reduce_add_pd(r7); ri[7] = _mm512_reduce_add_pd(i7);
++    /* Fewer than eight remaining samples do not justify a masked load.
++     * Ordinary multiply/add here also avoids requiring the separate AVX/FMA
++     * scalar feature bit when compiling an AVX-512F-only function clone. */
++    for (; j < length; ++j) {
++        const double v0 = x0[j] - x0[0];
++        rr[0] += qr[j] * v0; ri[0] += qi[j] * v0;
++        const double v1 = x1[j] - x1[0];
++        rr[1] += qr[j] * v1; ri[1] += qi[j] * v1;
++        const double v2 = x2[j] - x2[0];
++        rr[2] += qr[j] * v2; ri[2] += qi[j] * v2;
++        const double v3 = x3[j] - x3[0];
++        rr[3] += qr[j] * v3; ri[3] += qi[j] * v3;
++        const double v4 = x4[j] - x4[0];
++        rr[4] += qr[j] * v4; ri[4] += qi[j] * v4;
++        const double v5 = x5[j] - x5[0];
++        rr[5] += qr[j] * v5; ri[5] += qi[j] * v5;
++        const double v6 = x6[j] - x6[0];
++        rr[6] += qr[j] * v6; ri[6] += qi[j] * v6;
++        const double v7 = x7[j] - x7[0];
++        rr[7] += qr[j] * v7; ri[7] += qi[j] * v7;
++    }
++}
++#else
++#define LPSD_HAVE_FUSED_PSD 0
++#endif
++
++/* This bound covers arbitrary finite custom coefficients as well as known
++ * windows. With |x|, |q| <= 2^100 and L <= INT_MAX, anchored dots are below
++ * 2^233 including a generous rounding reserve; even the inherited fourth-order variance intermediates are below
++ * 2^940. Thus FMA cannot hide an overflow that the strict path would expose.
++ * Input bounds are established once per complete Python call, not once per
++ * frequency. The additive native entry point documents that responsibility. */
++static LPSD_ALWAYS_INLINE bool bounded_fused_coefficients(
++    const double *qr, const double *qi, long int length)
++{
++    unsigned int unsafe = 0;
++    #pragma omp simd reduction(|:unsafe)
++    for (long int j = 0; j < length; ++j) {
++        /* Bitwise OR deliberately evaluates both comparisons, allowing
++         * packed comparisons under strict floating-point compilation.
++         * Negated <= also marks NaNs unsafe. */
++        unsafe |= !(fabs(qr[j]) <= 0x1p100) | !(fabs(qi[j]) <= 0x1p100);
++    }
++    return unsafe == 0;
++}
++
++int native_segment_fma_supported(void)
++{
++#if LPSD_HAVE_FUSED_PSD
++    return use_eight_segment_batch() ? 1 : 0;
++#else
++    return 0;
++#endif
++}
++
+ static LPSD_ALWAYS_INLINE void dot_csd_anchored_simd(const double *x1, const double *x2,
+                                  const double *qr, const double *qi,
+                                  long int length, double *rr1, double *ri1,
+@@ -332,8 +470,12 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
+                          double olap, int order, bool csd, int mode,
+                          bool statistics, bool batched,
+                          double *inplace_r, double *inplace_i,
+-                         double *preparation_seconds, double *segments_seconds)
++                         double *preparation_seconds, double *segments_seconds,
++                         double input_peak, long int *fused_batches)
+ {
++    if (fused_batches != NULL) {
++        *fused_batches = 0;
++    }
+     if (Pr_r == NULL || Pr_i == NULL ||
+         (statistics && (Vr_r == NULL || Vr_i == NULL)) ||
+         Navs == NULL || x1data == NULL || Cr == NULL || Ci == NULL ||
+@@ -418,6 +560,11 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
+         }
+     }
+ 
++    const bool fused_psd = batched && mode >= 2 && !csd && segLen >= 128 &&
++        navg >= 10 && input_peak >= 0.0 && input_peak <= 0x1p100 &&
++        native_segment_fma_supported() &&
++        bounded_fused_coefficients(projected_r, projected_i, segLen);
++
+     const double segments_started = profile ? monotonic_seconds() : 0.0;
+     if (profile) {
+         *preparation_seconds = segments_started - preparation_started;
+@@ -481,6 +628,44 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
+             ii += csd_batch - 1;
+             continue;
+         }
++#if LPSD_HAVE_FUSED_PSD
++        /* Preserve the old initial batch exactly. Its ii=1 mean update is
++         * P0 + (P1-P0), which can amplify even one-ulp projection changes
++         * after a large departed transient. At formerly single-segment
++         * lengths preserve the first two projections instead. */
++        if (fused_psd && ii >= (batch_eight ? 8 : 2) && navg - ii >= 8) {
++            const double *segments[8];
++            double rr[8], ri[8];
++            for (int b = 0; b < 8; ++b) {
++                const long int istart = (long int)floor(start + 0.5);
++                start += shift;
++                if (istart < 0 || istart > nData - segLen) {
++                    if (owns_projected) {
++                        free(projected_r);
++                        free(projected_i);
++                    }
++                    return 2;
++                }
++                segments[b] = x1data + istart;
++            }
++            dot_psd_eight_fused(
++                segments[0], segments[1], segments[2], segments[3],
++                segments[4], segments[5], segments[6], segments[7],
++                projected_r, projected_i, segLen, rr, ri);
++            for (int b = 0; b < 8; ++b) {
++                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
++                                             statistics && ii + b == navg - 1,
++                                             &Mr_r, &Mr_i, &M2_r, &M2_i);
++            }
++            if (fused_batches != NULL) {
++                ++*fused_batches;
++            }
++            ii += 7;
++            continue;
++        }
++#else
++        (void)fused_psd;
++#endif
+         if (batch_eight && navg - ii >= 8) {
+             const double *segments[8];
+             double rr[8], ri[8];
+@@ -634,7 +819,7 @@ int fast_dft(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+                           x1data, x2data, nData, segLen, Cr, Ci,
+                           olap, order, csd, mode, true, false,
+-                          NULL, NULL, NULL, NULL);
++                          NULL, NULL, NULL, NULL, NAN, NULL);
+ }
+ 
+ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+@@ -652,7 +837,7 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+                           x1data, x2data, nData, segLen, Cr, Ci,
+                           olap, order, csd, mode, true, false, NULL, NULL,
+-                          preparation_seconds, segments_seconds);
++                          preparation_seconds, segments_seconds, NAN, NULL);
+ }
+ 
+ int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+@@ -667,7 +852,7 @@ int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+                           x1data, x2data, nData, segLen, Cr, Ci,
+                           olap, order, csd, mode, statistics, true,
+                           inplace ? Cr : NULL, inplace ? Ci : NULL,
+-                          NULL, NULL);
++                          NULL, NULL, NAN, NULL);
+ }
+ 
+ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
+@@ -687,7 +872,32 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
+                           x1data, x2data, nData, segLen, Cr, Ci,
+                           olap, order, csd, mode, statistics, true,
+                           inplace ? Cr : NULL, inplace ? Ci : NULL,
+-                          preparation_seconds, segments_seconds);
++                          preparation_seconds, segments_seconds, NAN, NULL);
++}
++
++int fast_dft_selected_bounded(double *Pr_r, double *Pr_i,
++                              double *Vr_r, double *Vr_i, long int *Navs,
++                              const double *x1data, const double *x2data,
++                              long int nData, long int segLen,
++                              double *Cr, double *Ci,
++                              double olap, int order, bool csd, int mode,
++                              bool statistics, bool inplace, double input_peak,
++                              double *preparation_seconds, double *segments_seconds,
++                              long int *fused_batches)
++{
++    if (!(input_peak >= 0.0) ||
++        ((preparation_seconds == NULL) != (segments_seconds == NULL))) {
++        return 1;
++    }
++    if (preparation_seconds != NULL) {
++        *preparation_seconds = *segments_seconds = NAN;
++    }
++    return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
++                          x1data, x2data, nData, segLen, Cr, Ci,
++                          olap, order, csd, mode, statistics, true,
++                          inplace ? Cr : NULL, inplace ? Ci : NULL,
++                          preparation_seconds, segments_seconds,
++                          input_peak, fused_batches);
+ }
+ 
+ #include "rolling_boxcar.c"
+diff --git a/lpsd_fast/_native/fast_dft.h b/lpsd_fast/_native/fast_dft.h
+index 5851066..633b6aa 100644
+--- a/lpsd_fast/_native/fast_dft.h
++++ b/lpsd_fast/_native/fast_dft.h
+@@ -68,9 +68,8 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+  * 128..255 or >=1024; four-way batches remain available for length >=2048
+  * and batch remainders. The intervening lengths retain the single-segment loop.
+  * Means are still updated in the original segment order.
+- * Projected CSD may share these helpers between two/four segments, with
+- * a separate anchor per channel and segment. The first two CSD projections
+- * retain the original single-segment path to protect the legacy mean reset.
++ * Projected CSD also shares these helpers between two/four segments, with
++ * independent channel anchors and unchanged first two projections.
+  * Existing fast_dft[_profile] retain their original read-only contract. */
+ int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+                       long int *Navs,
+@@ -89,6 +88,30 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
+                               bool statistics, bool inplace,
+                               double *preparation_seconds, double *segments_seconds);
+ 
++/* Additive FP64 fused PSD path. input_peak must be an independently checked
++ * upper bound on fabs(x1data[j]) for every supplied sample, and inputs must
++ * remain unchanged during the call. An infinite bound requests the ordinary
++ * selected kernel. The implementation also checks the projected coefficient
++ * range. Eligible normal-range projected PSD batches use AVX-512F FMA;
++ * unsupported targets, modes, ranges and short batches use the original
++ * selected implementation. Its initial batch and all statistics remain
++ * unchanged. The optional timer pointers must both be NULL or non-NULL.
++ * fused_batches, when non-NULL, reports how many eight-segment fused batches
++ * actually ran. Existing native entry points never enable fused arithmetic. */
++int fast_dft_selected_bounded(double *Pr_r, double *Pr_i,
++                              double *Vr_r, double *Vr_i, long int *Navs,
++                              const double *x1data, const double *x2data,
++                              long int nData, long int segLen,
++                              double *Cr, double *Ci,
++                              double olap, int order, bool csd, int mode,
++                              bool statistics, bool inplace, double input_peak,
++                              double *preparation_seconds, double *segments_seconds,
++                              long int *fused_batches);
++
++/* Whether the current build and CPU support the optional fused PSD kernel.
++ * This is a dispatch capability, not a performance measurement. */
++int native_segment_fma_supported(void);
++
+ /* High-overlap order-0 auto spectrum for a known all-ones window. Cr/Ci must
+  * be the unprojected exp(i*w*j) coefficients for frequency_bin and length.
+  * It may replace them in place only when falling back to the ordinary
+diff --git a/lpsd_fast/_native/rolling_boxcar.c b/lpsd_fast/_native/rolling_boxcar.c
+index 1b88408..463fff9 100644
+--- a/lpsd_fast/_native/rolling_boxcar.c
++++ b/lpsd_fast/_native/rolling_boxcar.c
+@@ -144,7 +144,7 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
+         return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
+                              nData, segLen, Cr, Ci, olap, 0, false, mode,
+                              statistics, true, Cr, Ci,
+-                             preparation_seconds, segments_seconds);
++                             preparation_seconds, segments_seconds, NAN, NULL);
+     }
+ 
+     *Pr_r = *Pr_i = NAN;
+@@ -228,7 +228,7 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
+             const int status = fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
+                                             nData, segLen, Cr, Ci, olap, 0, false, mode,
+                                             statistics, true, Cr, Ci,
+-                                            preparation_seconds, segments_seconds);
++                                            preparation_seconds, segments_seconds, NAN, NULL);
+             if (profile) {
+                 *preparation_seconds += wasted_preparation;
+                 *segments_seconds += wasted_segments;
+diff --git a/lpsd_fast/api.py b/lpsd_fast/api.py
+index 897851a..b77fe7d 100644
+--- a/lpsd_fast/api.py
++++ b/lpsd_fast/api.py
+@@ -140,6 +140,11 @@ def _native():
+             selected.restype = ct.c_int
+             _LIB.fast_dft_selected_profile.argtypes = selected.argtypes + [dp, dp]
+             _LIB.fast_dft_selected_profile.restype = ct.c_int
++            _LIB.fast_dft_selected_bounded.argtypes = selected.argtypes + [
++                ct.c_double, dp, dp, ct.POINTER(ct.c_long)]
++            _LIB.fast_dft_selected_bounded.restype = ct.c_int
++            _LIB.native_segment_fma_supported.argtypes = []
++            _LIB.native_segment_fma_supported.restype = ct.c_int
+             _LIB.fast_dft_boxcar.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
+                                             dp, ct.c_long, ct.c_long, dp, dp,
+                                             ct.c_double, ct.c_double, ct.c_int, ct.c_bool,
+@@ -315,6 +320,14 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
+     if cosine_coefficients is not None:
+         cosine_coefficients = np.asarray(cosine_coefficients, dtype=np.float64)
+     known_window = window_kind is not None or cosine_coefficients is not None
++    use_bounded = (kernel == 'fast' and mode >= 2 and not csd and spectrum
++                   and bool(_LIB.native_segment_fma_supported()))
++    input_bound_started = time.perf_counter() if profile else 0.0
++    # One bound per complete channel, rather than per frequency or segment.
++    # min/max avoid an input-sized abs() allocation; _array already rejects
++    # nonfinite input. The native coefficient guard also covers custom windows.
++    input_peak = max(abs(float(np.min(x1))), abs(float(np.max(x1)))) if use_bounded else math.inf
++    input_bound_s = time.perf_counter() - input_bound_started if profile else 0.0
+     beta = _kaiser_alpha(psll) * np.pi
+     capacity = int(max_working_mb * 1024**2) if max_working_mb is not None else int(_available_memory() * 0.65)
+     capacity = max(64 * 1024**2, capacity)
+@@ -326,6 +339,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
+     custom_window_lock = threading.Lock()
+     rows = [None] * nf
+     rolling_boxcar = [False] * nf
++    fused_counts = [0] * nf
+     x1p, x2p = _pointer(x1), _pointer(x2)
+ 
+     def window_for(length):
+@@ -412,6 +426,15 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
+                         ct.byref(prep_s) if profile else None,
+                         ct.byref(segments_s) if profile else None, ct.byref(rebase_count))
+                     rolling_boxcar[j] = rebase_count.value >= 0
++                elif use_bounded:
++                    fused_batches = ct.c_long()
++                    status = _LIB.fast_dft_selected_bounded(
++                        ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
++                        x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
++                        order, csd, mode, statistics, True, input_peak,
++                        ct.byref(prep_s) if profile else None,
++                        ct.byref(segments_s) if profile else None, ct.byref(fused_batches))
++                    fused_counts[j] = fused_batches.value
+                 else:
+                     status = fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
+                                 x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
+@@ -446,7 +469,9 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
+                            'coefficients_s': t2 - t1,
+                            'c_kernel_s': t3 - t2, 'c_preparation_s': prep_s.value,
+                            'c_segments_s': segments_s.value,
+-                           'segment_method': 'rolling_boxcar' if rolling_boxcar[j] else 'direct',
++                           'segment_method': ('rolling_boxcar' if rolling_boxcar[j] else
++                                              'direct_fma' if fused_counts[j] else 'direct'),
++                           'fused_segment_batches': fused_counts[j],
+                            'rolling_rebases': rebase_count.value if spectrum else 0,
+                            'memory_gate_wait_s': t0 - wait_started,
+                            'worker_elapsed_s': time.perf_counter() - t0}
+@@ -481,6 +506,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
+                                 'legacy_statistics': True, 'outputs': list(outputs),
+                                 'variance_computed': statistics,
+                                 'rolling_boxcar_frequencies': sum(rolling_boxcar),
++                                'fused_segment_batches': sum(fused_counts),
+                                 'native_window': kernel != 'scalar' and known_window,
+                                 'kaiser_method': ('series_with_fallback' if kernel == 'fast'
+                                                   else 'direct') if window_kind == 0 else None,
+@@ -492,6 +518,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
+                                        'concurrency_budget_bytes': capacity,
+                                        'peak_reserved_bytes': gate.peak,
+                                        'output_assembly_s': time.perf_counter() - assembly_started,
++                                       'input_bound_s': input_bound_s,
+                                        'sample_iterations_note': 'L*K is logical segment coverage/direct reference work, not executed rolling sample visits or measured memory traffic.',
+                                        'note': 'Per-worker elapsed times overlap and must not be summed as wall clock.'}
+     return result
+@@ -543,6 +570,10 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
+     path requires length >= 256 and at least 32 segments; it rebuilds all
+     anchored sums every 32 segments and retains the original segment starts.
+     Other windows, detrending orders and CSD retain direct segment projections.
++    On supported AVX-512 CPUs, bounded order-zero fast auto spectra use
++    fused FP64 segment projections after an unchanged initial batch. An
++    input range check occurs once per channel and projected coefficients are
++    checked per frequency; extreme ranges retain the ordinary arithmetic.
+     Small additional rounding differences are accepted to reduce wall time;
+     there is no universal relative-error bound at spectral nulls. Compare
+     with ``scalar`` using relative and application-specific absolute limits.
+diff --git a/pyproject.toml b/pyproject.toml
+index 9ec8bbe..87fe59c 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
+ 
+ [project]
+ name = "lpsd"
+-version = "1.0.6+fast.3"
++version = "1.0.6+fast.4"
+ description = "LPSD spectral estimation with an optional parallel native implementation"
+ readme = "README.md"
+ requires-python = ">=3.10,<3.16"

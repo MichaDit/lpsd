@@ -1,0 +1,2721 @@
+{
+  "schema_version": 1,
+  "stage": "integrated-eight-way",
+  "snapshot_base_commit": "fc838aafa5de75fb1375574e0d8146756d4ab831",
+  "source_patch": "integrated-eight-way.patch",
+  "source_patch_sha256": "cd6f837b0bc2c6119638ac583b3e6d754298991b804ceccb0d91c7f0e0aa5489",
+  "final_production_dispatch": false,
+  "note": "Historical complete API comparison before the final single-worker FMA restriction; every call and profile is retained.",
+  "reports": [
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:45:06.389884+00:00",
+      "script_sha256": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+      "harness_sha256": {
+        "bench_segment_core.py": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+        "bench_lpsd.py": "329d8b39fca86d477fa98b9dd76e066a4a61ef2db7592ef46e106e636086dac3",
+        "bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056"
+      },
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "csd",
+      "n": 1000000,
+      "input_sha256": "0188c8ef4187fda47bc24b3163bb9c1a76abf026cc0b42cc5d096cd87ddadd38",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": true,
+        "workers": 1,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+              "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast",
+          "version": "1.0.6+fast.4",
+          "library": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+              "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+            },
+            "binary_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "721a029434969a6169b3ccd6ae054b2a2a0afea669c1fdfcf18ab9a32e6365fe",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "43c5ef0b09a090bdeabeb4cd378a855522fec7f611dbbddcb1b253c1a5159d48",
+            "build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f",
+            "_native/fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 1.170361236007011,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 0.9102570500035654,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 0.921331536002981,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 1.1610092549963156,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 1.418252688999928,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 1.1326752829991165,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 0.9713128139992477,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 1.155542107000656,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 1.1996180520000053,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 0.8718751409978722,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 1.0012937799983774,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 1.1917342499946244,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "reference_fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+      "actual_frequencies": 577,
+      "wall_repetitions_s": {
+        "baseline": [
+          1.170361236007011,
+          1.1610092549963156,
+          1.418252688999928,
+          1.155542107000656,
+          1.1996180520000053,
+          1.1917342499946244
+        ],
+        "candidate": [
+          0.9102570500035654,
+          0.921331536002981,
+          1.1326752829991165,
+          0.9713128139992477,
+          0.8718751409978722,
+          1.0012937799983774
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 1.1810477430008177,
+        "candidate": 0.9463221750011144
+      },
+      "baseline_over_candidate": 1.2480398052591624,
+      "candidate_faster_pairs": 6,
+      "completed": true,
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 1.2229106520026107,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 2377782853,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.10322706104489043,
+              "coefficients_s": 0.04899659180955496,
+              "c_kernel_s": 1.0562188082258217,
+              "c_preparation_s": 0.06984645999182248,
+              "c_segments_s": 0.9761283380503301,
+              "worker_elapsed_s": 1.2126165610243334,
+              "window_generation_s": 0.0772946029464947,
+              "window_sums_s": 0.02351000488124555,
+              "memory_gate_wait_s": 0.001691879027930554
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0006644340028287843,
+              "input_conversion_s": 0.0010237769965897314,
+              "output_assembly_s": 0.0006400380007107742
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 1.0965454449979006,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 2377782853,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.11374774802970933,
+              "coefficients_s": 0.05083744112198474,
+              "c_kernel_s": 0.9125724227851606,
+              "c_preparation_s": 0.07089397108211415,
+              "c_segments_s": 0.8293014169030357,
+              "worker_elapsed_s": 1.0828369369992288,
+              "window_generation_s": 0.08516352892183932,
+              "window_sums_s": 0.025507091944746207,
+              "memory_gate_wait_s": 0.002129407075699419
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0007037039977149107,
+              "input_conversion_s": 0.0010700179991545156,
+              "input_bound_s": 1.3419994502328336e-06,
+              "output_assembly_s": 0.0006316250000963919
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "paired_summary": {
+        "ratios": [
+          1.2857480598501565,
+          1.2601427495178663,
+          1.2521264569706643,
+          1.189670403134979,
+          1.3759057869536537,
+          1.1901944002853544
+        ],
+        "geometric_mean": 1.25740788279573,
+        "range": [
+          1.189670403134979,
+          1.3759057869536537
+        ],
+        "candidate_faster_pairs": 6,
+        "pairs": 6,
+        "interpretation": "Descriptive paired observations on a shared host; no confidence interval or excluded outliers."
+      }
+    },
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:45:25.500440+00:00",
+      "script_sha256": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+      "harness_sha256": {
+        "bench_segment_core.py": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+        "bench_lpsd.py": "329d8b39fca86d477fa98b9dd76e066a4a61ef2db7592ef46e106e636086dac3",
+        "bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056"
+      },
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "csd",
+      "n": 10000000,
+      "input_sha256": "0e3f738a56b57ef50f85d7c9013f3c52cae3c6a88cb52fbc98e4489a32f76612",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": true,
+        "workers": 8,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+              "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast",
+          "version": "1.0.6+fast.4",
+          "library": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+              "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+            },
+            "binary_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "721a029434969a6169b3ccd6ae054b2a2a0afea669c1fdfcf18ab9a32e6365fe",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "43c5ef0b09a090bdeabeb4cd378a855522fec7f611dbbddcb1b253c1a5159d48",
+            "build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f",
+            "_native/fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 4.5801816530001815,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 2.7259021979989484,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 2.778870221998659,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 4.118383505003294,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 4.558435779996216,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 2.7466752990003442,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 3.9848719099973096,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 4.7438655320002,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 3.2492897490010364,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 3.4374062920032884,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 3.371613207003975,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 5.220479014999,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "reference_fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+      "actual_frequencies": 651,
+      "wall_repetitions_s": {
+        "baseline": [
+          4.5801816530001815,
+          4.118383505003294,
+          4.558435779996216,
+          4.7438655320002,
+          3.2492897490010364,
+          5.220479014999
+        ],
+        "candidate": [
+          2.7259021979989484,
+          2.778870221998659,
+          2.7466752990003442,
+          3.9848719099973096,
+          3.4374062920032884,
+          3.371613207003975
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 4.569308716498199,
+        "candidate": 3.075241714501317
+      },
+      "baseline_over_candidate": 1.4858372579142647,
+      "candidate_faster_pairs": 5,
+      "completed": true,
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 16.139284523000242,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.9889622910704929,
+              "coefficients_s": 0.8323425920461887,
+              "c_kernel_s": 14.220397770986892,
+              "c_preparation_s": 0.6472051501914393,
+              "c_segments_s": 13.518265634826093,
+              "worker_elapsed_s": 16.066543341185024,
+              "window_generation_s": 0.7792936369150993,
+              "window_sums_s": 0.19257911000022432,
+              "memory_gate_wait_s": 0.006130994879640639
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.002811115002259612,
+              "input_conversion_s": 0.01007126899639843,
+              "output_assembly_s": 0.007515507997595705
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 11.60236717799853,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.8921176420699339,
+              "coefficients_s": 0.37976221493590856,
+              "c_kernel_s": 10.24885747906228,
+              "c_preparation_s": 0.6260924948655884,
+              "c_segments_s": 9.584382729124627,
+              "worker_elapsed_s": 11.543575663999945,
+              "window_generation_s": 0.6954857390883262,
+              "window_sums_s": 0.1837082470228779,
+              "memory_gate_wait_s": 0.004474027984542772
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.001441038999473676,
+              "input_conversion_s": 0.009156150001217611,
+              "input_bound_s": 2.3940010578371584e-06,
+              "output_assembly_s": 0.003787168003327679
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "paired_summary": {
+        "ratios": [
+          1.6802443082376313,
+          1.4820352071142102,
+          1.659619461264775,
+          1.1904687626467279,
+          0.9452736956233884,
+          1.5483623697268445
+        ],
+        "geometric_mean": 1.389626037591152,
+        "range": [
+          0.9452736956233884,
+          1.6802443082376313
+        ],
+        "candidate_faster_pairs": 5,
+        "pairs": 6,
+        "interpretation": "Descriptive paired observations on a shared host; no confidence interval or excluded outliers."
+      }
+    },
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:42:16.839964+00:00",
+      "script_sha256": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+      "harness_sha256": {
+        "bench_segment_core.py": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+        "bench_lpsd.py": "329d8b39fca86d477fa98b9dd76e066a4a61ef2db7592ef46e106e636086dac3",
+        "bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056"
+      },
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "psd",
+      "n": 1000000,
+      "input_sha256": "f3a997c521a4af7a017c5b9f020f9ce45abba2f812712a156d6856deee03877e",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": false,
+        "workers": 1,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+              "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast",
+          "version": "1.0.6+fast.4",
+          "library": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+              "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+            },
+            "binary_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "721a029434969a6169b3ccd6ae054b2a2a0afea669c1fdfcf18ab9a32e6365fe",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "43c5ef0b09a090bdeabeb4cd378a855522fec7f611dbbddcb1b253c1a5159d48",
+            "build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f",
+            "_native/fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 0.6627754330038442,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 0.6123349190020235,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 0.5582073760015192,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 0.6220432389964117,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 0.6559491959997104,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 0.5782856299993,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 0.5582339760003379,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 0.6011219830033951,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 0.5788384379993659,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 0.7849913699974422,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 0.6126106409938075,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 0.6246958260016982,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "reference_fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+      "actual_frequencies": 577,
+      "wall_repetitions_s": {
+        "baseline": [
+          0.6627754330038442,
+          0.6220432389964117,
+          0.6559491959997104,
+          0.6011219830033951,
+          0.5788384379993659,
+          0.6246958260016982
+        ],
+        "candidate": [
+          0.6123349190020235,
+          0.5582073760015192,
+          0.5782856299993,
+          0.5582339760003379,
+          0.7849913699974422,
+          0.6126106409938075
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 0.6233695324990549,
+        "candidate": 0.5953102745006618
+      },
+      "baseline_over_candidate": 1.047133837933385,
+      "candidate_faster_pairs": 5,
+      "completed": true,
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 0.602254200995958,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 2377782853,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.10998704892699607,
+              "coefficients_s": 0.04783956098253839,
+              "c_kernel_s": 0.433418382119271,
+              "c_preparation_s": 0.07598428691562731,
+              "c_segments_s": 0.3483954349794658,
+              "worker_elapsed_s": 0.5941267030211748,
+              "window_generation_s": 0.08420160711102653,
+              "window_sums_s": 0.02365839295089245,
+              "memory_gate_wait_s": 0.0015466330078197643
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0007711770012974739,
+              "input_conversion_s": 0.00035449600545689464,
+              "output_assembly_s": 0.0006245539989322424
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 0.5217742169988924,
+          "fingerprint": "917f6bae1fb1a3844f77e9c7aaf882b1dd8374f8ce34e64541987703c59a7813",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 2377782853,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.10010935783066088,
+              "coefficients_s": 0.04484274202695815,
+              "c_kernel_s": 0.36597190301836235,
+              "c_preparation_s": 0.07599203602148918,
+              "c_segments_s": 0.280783479938691,
+              "worker_elapsed_s": 0.5131487278267741,
+              "window_generation_s": 0.0748736509194714,
+              "window_sums_s": 0.023241047027113382,
+              "memory_gate_wait_s": 0.0012150810507591814
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0009023940001497976,
+              "input_conversion_s": 0.0006042239983798936,
+              "input_bound_s": 0.0004451829954632558,
+              "output_assembly_s": 0.0006077490033931099
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "paired_summary": {
+        "ratios": [
+          1.0823740610514718,
+          1.1143586877195237,
+          1.1342996643380268,
+          1.0768280127095513,
+          0.737381912875363,
+          1.019727350782359
+        ],
+        "geometric_mean": 1.0172058426559596,
+        "range": [
+          0.737381912875363,
+          1.1342996643380268
+        ],
+        "candidate_faster_pairs": 5,
+        "pairs": 6,
+        "interpretation": "Descriptive paired observations on a shared host; no confidence interval or excluded outliers."
+      }
+    },
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:42:27.807007+00:00",
+      "script_sha256": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+      "harness_sha256": {
+        "bench_segment_core.py": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+        "bench_lpsd.py": "329d8b39fca86d477fa98b9dd76e066a4a61ef2db7592ef46e106e636086dac3",
+        "bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056"
+      },
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "psd",
+      "n": 10000000,
+      "input_sha256": "245d6df91986ca742a563d641269b16ed0c3f2eabeaba31a63d806a086540e79",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": false,
+        "workers": 1,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+              "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast",
+          "version": "1.0.6+fast.4",
+          "library": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+              "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+            },
+            "binary_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "721a029434969a6169b3ccd6ae054b2a2a0afea669c1fdfcf18ab9a32e6365fe",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "43c5ef0b09a090bdeabeb4cd378a855522fec7f611dbbddcb1b253c1a5159d48",
+            "build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f",
+            "_native/fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 7.273716023999441,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 7.276488128998608,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 7.325257500000589,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 7.188534346998495,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 7.520303972996771,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 7.201419730998168,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 7.413786668999819,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 7.170523524997407,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 7.469938213995192,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 7.250606612993579,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 7.0513127939993865,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 7.63045200399938,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "reference_fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+      "actual_frequencies": 651,
+      "wall_repetitions_s": {
+        "baseline": [
+          7.273716023999441,
+          7.188534346998495,
+          7.520303972996771,
+          7.170523524997407,
+          7.469938213995192,
+          7.63045200399938
+        ],
+        "candidate": [
+          7.276488128998608,
+          7.325257500000589,
+          7.201419730998168,
+          7.413786668999819,
+          7.250606612993579,
+          7.0513127939993865
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 7.371827118997317,
+        "candidate": 7.263547370996093
+      },
+      "baseline_over_candidate": 1.014907281865276,
+      "candidate_faster_pairs": 3,
+      "completed": true,
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 7.277993203999358,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.8989916080463445,
+              "coefficients_s": 0.3456182640293264,
+              "c_kernel_s": 5.989548659970751,
+              "c_preparation_s": 0.649732072975894,
+              "c_segments_s": 5.311700898964773,
+              "worker_elapsed_s": 7.247402316934313,
+              "window_generation_s": 0.6966101391153643,
+              "window_sums_s": 0.19250310509232804,
+              "memory_gate_wait_s": 0.004092367991688661
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0008075709993136115,
+              "input_conversion_s": 0.004647367000870872,
+              "output_assembly_s": 0.0008047969968174584
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 7.200850815002923,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.8573456169397105,
+              "coefficients_s": 0.3646980229532346,
+              "c_kernel_s": 5.929473412121297,
+              "c_preparation_s": 0.6792031299701193,
+              "c_segments_s": 5.222467181018146,
+              "worker_elapsed_s": 7.162200549872068,
+              "window_generation_s": 0.6575821701408131,
+              "window_sums_s": 0.190418600999692,
+              "memory_gate_wait_s": 0.003927865043806378
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0008141009966493584,
+              "input_conversion_s": 0.004525923002802301,
+              "input_bound_s": 0.0062790540032438,
+              "output_assembly_s": 0.0013895509982830845
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "paired_summary": {
+        "ratios": [
+          0.9996190325676312,
+          0.9813353792679529,
+          1.044280746562512,
+          0.9671877334939244,
+          1.0302501035718248,
+          1.082132111695972
+        ],
+        "geometric_mean": 1.0167179613325956,
+        "range": [
+          0.9671877334939244,
+          1.082132111695972
+        ],
+        "candidate_faster_pairs": 3,
+        "pairs": 6,
+        "interpretation": "Descriptive paired observations on a shared host; no confidence interval or excluded outliers."
+      }
+    },
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:44:26.347074+00:00",
+      "script_sha256": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+      "harness_sha256": {
+        "bench_segment_core.py": "89f9ad97262e69143a1c55fb740fa475905d3bb22cd5abf119a71057642e9048",
+        "bench_lpsd.py": "329d8b39fca86d477fa98b9dd76e066a4a61ef2db7592ef46e106e636086dac3",
+        "bench_rolling_boxcar.py": "9461a1c5e191e646a03e9d43c87da30016d804f3be2315f65f549e9d06d56056"
+      },
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "psd",
+      "n": 10000000,
+      "input_sha256": "245d6df91986ca742a563d641269b16ed0c3f2eabeaba31a63d806a086540e79",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": false,
+        "workers": 8,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+              "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast",
+          "version": "1.0.6+fast.4",
+          "library": "/workspace/scratch/5346007753d8/lpsd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "source_sha256": {
+              "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+              "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+              "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+              "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+              "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+              "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+              "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+            },
+            "binary_sha256": "ba46127484e90583e71490851d2df81df6997cf91ba35658f996ab0af459b992"
+          },
+          "native_source_binding": "verified",
+          "native_source_sha256": {
+            "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+            "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4",
+            "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f"
+          },
+          "shared_python_sources": {
+            "lpsd._helpers": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_helpers.py",
+              "sha256": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+            },
+            "lpsd._lcsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/_lcsd.py",
+              "sha256": "7c5af08e3bbae9770c71c1c38c364770b7eee5841341cebebebd527766ffc429"
+            },
+            "lpsd.wrapper": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/wrapper.py",
+              "sha256": "0931a3d6e57c45d99f5d7c9511103ba55fa71485626aaf41606cd3b1e8f9ee6e"
+            },
+            "lpsd": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/__init__.py",
+              "sha256": "725e0c896d1b4c91355fd3bb4e40c0894c6532969fe45efff9d325287ec958cf"
+            },
+            "lpsd.flattop": {
+              "path": "/workspace/scratch/5346007753d8/lpsd/lpsd/flattop.py",
+              "sha256": "36db7358388434754f4cfd35fada62188eba222c9c640d51de42e9c83d5af8d9"
+            }
+          },
+          "source_sha256": {
+            "__init__.py": "721a029434969a6169b3ccd6ae054b2a2a0afea669c1fdfcf18ab9a32e6365fe",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "43c5ef0b09a090bdeabeb4cd378a855522fec7f611dbbddcb1b253c1a5159d48",
+            "build.py": "a2dc75b8536b8314fe849720d93c92d22af083fe6cd3a04e1a9ed29c9b99faaa",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "70d34dab5c064bc89b6d12d2f97e069e5e52ffccb5462a09a7b617bffa758730",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "1250798ec3893764e94a5a28b78e276be45af2f710585a051dc4e6250bf8c56f",
+            "_native/fast_dft.h": "ae1bd6557ec9bb5f99fdc678c2e18ad10c74b60292f5ec9d32b070b9639704a4"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 1.9982687779993284,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 1.6808657850051532,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 2.2019417740011704,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 1.4641699670028174,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 1.413070140995842,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 2.1066121740004746,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 2.2485722939964035,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 2.379588939002133,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 1.3838929869962158,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 1.3264062789967284,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 1.6588228840046213,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 1.4076688770001056,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "reference_fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+      "actual_frequencies": 651,
+      "wall_repetitions_s": {
+        "baseline": [
+          1.9982687779993284,
+          1.4641699670028174,
+          1.413070140995842,
+          2.379588939002133,
+          1.3838929869962158,
+          1.4076688770001056
+        ],
+        "candidate": [
+          1.6808657850051532,
+          2.2019417740011704,
+          2.1066121740004746,
+          2.2485722939964035,
+          1.3264062789967284,
+          1.6588228840046213
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 1.4386200539993297,
+        "candidate": 1.893738979502814
+      },
+      "baseline_over_candidate": 0.7596717760844887,
+      "candidate_faster_pairs": 3,
+      "completed": true,
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 7.165432890004013,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.8471437270418392,
+              "coefficients_s": 0.3301365670413361,
+              "c_kernel_s": 5.944506171043031,
+              "c_preparation_s": 0.6213907820128952,
+              "c_segments_s": 5.2967154628786375,
+              "worker_elapsed_s": 7.134333288100606,
+              "window_generation_s": 0.651953057058563,
+              "window_sums_s": 0.18670985196513357,
+              "memory_gate_wait_s": 0.003914602835720871
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0007272299990290776,
+              "input_conversion_s": 0.004221904004225507,
+              "output_assembly_s": 0.0006788660029997118
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 7.073604623998108,
+          "fingerprint": "8999288d9c752683024b40673d126a29bfb2f240ab188a2914b84f2500eb7d2d",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.8779409860289888,
+              "coefficients_s": 0.33148184897436295,
+              "c_kernel_s": 5.816216302977409,
+              "c_preparation_s": 0.6859043789736461,
+              "c_segments_s": 5.098569662943191,
+              "worker_elapsed_s": 7.036352586983412,
+              "window_generation_s": 0.678930839021632,
+              "window_sums_s": 0.19047688503633253,
+              "memory_gate_wait_s": 0.003685112955281511
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0007875110022723675,
+              "input_conversion_s": 0.004140910998103209,
+              "input_bound_s": 0.0050697249971563,
+              "output_assembly_s": 0.0014559110059053637
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "paired_summary": {
+        "ratios": [
+          1.188833038203108,
+          0.6649449064869047,
+          0.6707784937520842,
+          1.0582665922530214,
+          1.0433401959186814,
+          0.8485950432524803
+        ],
+        "geometric_mean": 0.889954621453124,
+        "range": [
+          0.6649449064869047,
+          1.188833038203108
+        ],
+        "candidate_faster_pairs": 3,
+        "pairs": 6,
+        "interpretation": "Descriptive paired observations on a shared host; no confidence interval or excluded outliers."
+      }
+    }
+  ],
+  "raw_report": {
+    "path": "integrated-eight-way-raw.json.gz",
+    "sha256": "c3226224e92283caea64fa1f1e215538447d8743f11d7c41ca296a05972d3382",
+    "uncompressed_sha256": "0be2d73e7aed8bb36183c7096132e9a4ae0367d03ae6be993519191ce8ccd8df"
+  }
+}

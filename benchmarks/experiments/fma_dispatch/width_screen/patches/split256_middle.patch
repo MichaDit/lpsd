@@ -1,0 +1,126 @@
+diff --git a/lpsd_fast/_native/fast_dft.c b/lpsd_fast/_native/fast_dft.c
+--- a/lpsd_fast/_native/fast_dft.c
++++ b/lpsd_fast/_native/fast_dft.c
+@@ -272,6 +272,95 @@
+     (defined(__AVX512F__) || (defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES))
+ #define LPSD_HAVE_FUSED_PSD 1
+ #include <immintrin.h>
++
++static __attribute__((target("avx,fma"))) void dot_psd_four_fused_private(
++    const double *x0, const double *x1, const double *x2, const double *x3,
++    const double *qr, const double *qi, long int length, double *rr, double *ri)
++{
++    const __m256d a0 = _mm256_set1_pd(x0[0]);
++    __m256d r0 = _mm256_setzero_pd(), i0 = _mm256_setzero_pd();
++    const __m256d a1 = _mm256_set1_pd(x1[0]);
++    __m256d r1 = _mm256_setzero_pd(), i1 = _mm256_setzero_pd();
++    const __m256d a2 = _mm256_set1_pd(x2[0]);
++    __m256d r2 = _mm256_setzero_pd(), i2 = _mm256_setzero_pd();
++    const __m256d a3 = _mm256_set1_pd(x3[0]);
++    __m256d r3 = _mm256_setzero_pd(), i3 = _mm256_setzero_pd();
++    long int j = 0;
++    for (; j <= length - 4; j += 4) {
++        __m256d real = _mm256_loadu_pd(qr + j);
++        __m256d imag = _mm256_loadu_pd(qi + j);
++        {
++            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x0 + j), a0);
++            r0 = _mm256_fmadd_pd(real, value, r0);
++            i0 = _mm256_fmadd_pd(imag, value, i0);
++        }
++        {
++            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x1 + j), a1);
++            r1 = _mm256_fmadd_pd(real, value, r1);
++            i1 = _mm256_fmadd_pd(imag, value, i1);
++        }
++        {
++            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x2 + j), a2);
++            r2 = _mm256_fmadd_pd(real, value, r2);
++            i2 = _mm256_fmadd_pd(imag, value, i2);
++        }
++        {
++            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x3 + j), a3);
++            r3 = _mm256_fmadd_pd(real, value, r3);
++            i3 = _mm256_fmadd_pd(imag, value, i3);
++        }
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r0),
++                                       _mm256_extractf128_pd(r0, 1));
++        rr[0] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i0),
++                                       _mm256_extractf128_pd(i0, 1));
++        ri[0] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r1),
++                                       _mm256_extractf128_pd(r1, 1));
++        rr[1] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i1),
++                                       _mm256_extractf128_pd(i1, 1));
++        ri[1] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r2),
++                                       _mm256_extractf128_pd(r2, 1));
++        rr[2] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i2),
++                                       _mm256_extractf128_pd(i2, 1));
++        ri[2] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r3),
++                                       _mm256_extractf128_pd(r3, 1));
++        rr[3] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    {
++        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i3),
++                                       _mm256_extractf128_pd(i3, 1));
++        ri[3] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
++    }
++    for (; j < length; ++j) {
++        const double value0 = x0[j] - x0[0];
++        rr[0] += qr[j] * value0; ri[0] += qi[j] * value0;
++        const double value1 = x1[j] - x1[0];
++        rr[1] += qr[j] * value1; ri[1] += qi[j] * value1;
++        const double value2 = x2[j] - x2[0];
++        rr[2] += qr[j] * value2; ri[2] += qi[j] * value2;
++        const double value3 = x3[j] - x3[0];
++        rr[3] += qr[j] * value3; ri[3] += qi[j] * value3;
++    }
++}
+ 
+ static __attribute__((target("avx512f"))) void dot_psd_eight_fused(
+     const double *x0, const double *x1, const double *x2, const double *x3,
+@@ -561,7 +650,7 @@
+     }
+ 
+     const bool fused_psd = batched && mode >= 2 && !csd && segLen >= 128 &&
+-        navg >= 10 && input_peak >= 0.0 && input_peak <= 0x1p100 &&
++        navg >= ((segLen >= 256 && segLen < 1024) ? 10 : 16) && input_peak >= 0.0 && input_peak <= 0x1p100 &&
+         native_segment_fma_supported() &&
+         bounded_fused_coefficients(projected_r, projected_i, segLen);
+ 
+@@ -648,10 +737,17 @@
+                 }
+                 segments[b] = x1data + istart;
+             }
++            if (segLen >= 256 && segLen < 1024 && __builtin_cpu_supports("fma")) {
++                dot_psd_four_fused_private(segments[0], segments[1], segments[2], segments[3],
++                                            projected_r, projected_i, segLen, rr, ri);
++                dot_psd_four_fused_private(segments[4], segments[5], segments[6], segments[7],
++                                            projected_r, projected_i, segLen, rr + 4, ri + 4);
++            } else {
+             dot_psd_eight_fused(
+                 segments[0], segments[1], segments[2], segments[3],
+                 segments[4], segments[5], segments[6], segments[7],
+                 projected_r, projected_i, segLen, rr, ri);
++            }
+             for (int b = 0; b < 8; ++b) {
+                 update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
+                                              statistics && ii + b == navg - 1,

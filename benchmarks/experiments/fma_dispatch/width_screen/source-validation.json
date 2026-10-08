@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-08T21:08:08.307631+00:00",
+  "command": [
+    "python",
+    "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/curated_fma_dispatch/prepare.py",
+    "--repo",
+    "/workspace/scratch/5346007753d8/lpsd",
+    "--output",
+    "/workspace/scratch/5346007753d8/lpsd-kernel/.validation/archive-source-check"
+  ],
+  "manifest_sha256": "f9fe9c78cd7ddd63bbf779ae1bc89b2320a5a226e31437eb15c991739d17c77c",
+  "source_reconstruction": {
+    "base_commit": "fc838aafa5de75fb1375574e0d8146756d4ab831",
+    "variants": [
+      "control8",
+      "strict",
+      "split256_large",
+      "split256_all",
+      "split512_large",
+      "selective8",
+      "split256_middle"
+    ],
+    "expected_files_per_variant": 25,
+    "verified_file_hashes": 175,
+    "passed": true,
+    "native_libraries_created": false
+  },
+  "python_source_parse_sha256": {
+    "original/four_fma_api_screen.py": "f54709d2dba0c1dceb57c567068ca4c443e9dfd587d8add5cac7ce47b6b87de9",
+    "original/four_fma_frequency_screen.py": "d8ba15dec76a7639f0125c7ef12ccc208f9065b78277348e6a250ef72d15e47c",
+    "original/four_fma_prepare.py": "cad5ffa048beba7f589576bfd5c3298886ae24e5ef30554d7dfa2f69608f9256",
+    "prepare.py": "39814cce8753cb1519c4076f5aeedbf8d856f21ee0593578cdba694f5fa7beb2",
+    "replay_api.py": "cf761175b34e7fbf34c63747abff9fc438234e9b126d6da5cb8f2d469cf1dbf7",
+    "replay_frequency.py": "ec60244d204b2afb9f8a736ff762f53a3c60d350e32cfd1b3ca0c235ab127da5"
+  },
+  "replay_paths": "Artifact root and output are CLI arguments; imports use the reconstructed control8 snapshot; README paths target fma_dispatch/width_screen.",
+  "scope": "Source reconstruction, hash comparisons and Python source parsing only; no compiler, native library or benchmark was run."
+}

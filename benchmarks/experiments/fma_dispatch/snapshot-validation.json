@@ -1,0 +1,21 @@
+{
+  "base_git_commit": "fc838aafa5de75fb1375574e0d8146756d4ab831",
+  "snapshots": [
+    {
+      "snapshot": "integrated-eight-way",
+      "package_source_hashes_verified": 11,
+      "harness_hashes_verified": 3,
+      "source_patch_sha256": "cd6f837b0bc2c6119638ac583b3e6d754298991b804ceccb0d91c7f0e0aa5489",
+      "harness_patch_sha256": "2cd4fb64f980b5ac3d322470347ce8e6a2fcbd74204ff38371a51d9d2a59c76a",
+      "built_or_benchmarked": false
+    },
+    {
+      "snapshot": "unrestricted-four-eight",
+      "package_source_hashes_verified": 11,
+      "harness_hashes_verified": 3,
+      "source_patch_sha256": "651d3707dcaff4f252031b049a960b5b79e1fe1f63f4990f05967198c0524ceb",
+      "harness_patch_sha256": "2cd4fb64f980b5ac3d322470347ce8e6a2fcbd74204ff38371a51d9d2a59c76a",
+      "built_or_benchmarked": false
+    }
+  ]
+}

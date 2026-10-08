@@ -1,0 +1,12 @@
+diff --git a/lpsd_fast/api.py b/lpsd_fast/api.py
+--- a/lpsd_fast/api.py
++++ b/lpsd_fast/api.py
+@@ -320,7 +320,7 @@
+     if cosine_coefficients is not None:
+         cosine_coefficients = np.asarray(cosine_coefficients, dtype=np.float64)
+     known_window = window_kind is not None or cosine_coefficients is not None
+-    use_bounded = (kernel == 'fast' and mode >= 2 and not csd and spectrum
++    use_bounded = False and (kernel == 'fast' and mode >= 2 and not csd and spectrum
+                    and bool(_LIB.native_segment_fma_supported()))
+     input_bound_started = time.perf_counter() if profile else 0.0
+     # One bound per complete channel, rather than per frequency or segment.
