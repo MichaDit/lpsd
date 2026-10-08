@@ -48,6 +48,7 @@ jobs:
         run: |
           mkdir -p benchmark-results
           python benchmarks/probe_accelerators.py --inventory-only --probe-commands --timeout 15 > benchmark-results/accelerators.json
+          cat benchmark-results/accelerators.json
       - name: Install package and test dependencies
         run: python -m pip install '.[test]'
       - name: Build both source-tree C backends
@@ -107,6 +108,7 @@ jobs:
         run: |
           mkdir -p benchmark-results
           python benchmarks/probe_accelerators.py --inventory-only --probe-commands --timeout 15 > benchmark-results/accelerators.json
+          cat benchmark-results/accelerators.json
       - name: Build sdist and wheel
         run: |
           python -m pip install build
