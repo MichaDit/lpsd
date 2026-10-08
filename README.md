@@ -26,6 +26,13 @@ retained separately from this new incremental comparison. The final code
 passed [all eight native CI jobs](https://github.com/MichaDit/lpsd/actions/runs/37803974329),
 including real ARM64 Linux and Apple Silicon runners.
 
+The additional [FFTW comparison and headroom report](docs/fftw-comparison.md)
+measures the official FFTW 3.3.11 testbench and complete spectral pipelines on
+the same host. It separates plan reuse, fresh setup and awkward transform
+lengths, and documents why FFT-based logarithmic power averaging estimates a
+different spectrum from segmented LPSD. Reproducible scripts and all timing
+repetitions are included; FFTW remains an optional benchmark dependency.
+
 ## Install from source
 
 Python 3.10 or newer, NumPy, pandas and SciPy are required; pip installs
