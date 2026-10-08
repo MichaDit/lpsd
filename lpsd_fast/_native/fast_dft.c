@@ -182,6 +182,35 @@ static void dot_psd_anchored_simd(const double *x,
     *ri = im;
 }
 
+/* Four independent overlapping segments share each coefficient load.
+ * Each segment keeps its own anchor and SIMD reduction; there is no
+ * decimation, change of segment starts, or cross-segment averaging. */
+static void dot_psd_four_anchored_simd(const double *x0, const double *x1,
+                                      const double *x2, const double *x3,
+                                      const double *qr, const double *qi,
+                                      long int length, double *rr, double *ri)
+{
+    const double a0 = x0[0], a1 = x1[0], a2 = x2[0], a3 = x3[0];
+    double r0 = 0.0, r1 = 0.0, r2 = 0.0, r3 = 0.0;
+    double i0 = 0.0, i1 = 0.0, i2 = 0.0, i3 = 0.0;
+    #pragma omp simd reduction(+:r0,r1,r2,r3,i0,i1,i2,i3)
+    for (long int j = 0; j < length; ++j) {
+        const double real = qr[j], imag = qi[j];
+        const double v0 = x0[j] - a0, v1 = x1[j] - a1;
+        const double v2 = x2[j] - a2, v3 = x3[j] - a3;
+        r0 += real * v0;
+        i0 += imag * v0;
+        r1 += real * v1;
+        i1 += imag * v1;
+        r2 += real * v2;
+        i2 += imag * v2;
+        r3 += real * v3;
+        i3 += imag * v3;
+    }
+    rr[0] = r0; rr[1] = r1; rr[2] = r2; rr[3] = r3;
+    ri[0] = i0; ri[1] = i1; ri[2] = i2; ri[3] = i3;
+}
+
 static void dot_csd_anchored_simd(const double *x1, const double *x2,
                                  const double *qr, const double *qi,
                                  long int length, double *rr1, double *ri1,
@@ -213,13 +242,42 @@ static double monotonic_seconds(void)
     return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
 }
 
+static void update_original_statistics(long int ii,
+                                        double rxsum1, double ixsum1,
+                                        double rxsum2, double ixsum2,
+                                        bool statistics,
+                                        double *Mr_r, double *Mr_i,
+                                        double *M2_r, double *M2_i)
+{
+    ixsum2 = -1.0 * ixsum2;
+    const double Xr_r = rxsum1 * rxsum2 - ixsum2 * ixsum1;
+    const double Xr_i = rxsum1 * ixsum2 + ixsum1 * rxsum2;
+    if (ii == 0) {
+        *Mr_r = Xr_r;
+        *Mr_i = Xr_i;
+    } else {
+        const double Qr_r = Xr_r - *Mr_r;
+        const double Qr_i = Xr_i - *Mr_i;
+        /* Preserve upstream 1.0.6 exactly: ii, NOT ii + 1. */
+        *Mr_r += Qr_r / ii;
+        *Mr_i += Qr_i / ii;
+        if (statistics) {
+            const double XM_diff_r = Xr_r - *Mr_r;
+            const double XM_diff_i = Xr_i - *Mr_i;
+            /* Preserve assignment, NOT the corrected accumulating +=. */
+            *M2_r = Qr_r * XM_diff_r - Qr_i * XM_diff_i;
+            *M2_i = Qr_r * XM_diff_i + Qr_i * XM_diff_r;
+        }
+    }
+}
+
 static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                          long int *Navs,
                          const double *x1data, const double *x2data,
                          long int nData, long int segLen,
                          const double *Cr, const double *Ci,
                          double olap, int order, bool csd, int mode,
-                         bool statistics,
+                         bool statistics, bool batched,
                          double *inplace_r, double *inplace_i,
                          double *preparation_seconds, double *segments_seconds)
 {
@@ -310,6 +368,39 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     double start = 0.0;
     double Mr_r = 0.0, Mr_i = 0.0, M2_r = 0.0, M2_i = 0.0;
     for (long int ii = 0; ii < navg; ++ii) {
+        /* Short coefficient vectors already fit well in L1. Their extra
+         * batch bookkeeping did not give a consistent measured benefit. */
+        if (batched && mode == 2 && !csd && segLen >= 2048 && navg - ii >= 4) {
+            const double *segments[4];
+            double rr[4], ri[4];
+            for (int b = 0; b < 4; ++b) {
+                const long int istart = (long int)floor(start + 0.5);
+                start += shift;
+                if (istart < 0 || istart > nData - segLen) {
+                    free(residual1);
+                    free(residual2);
+                    if (owns_projected) {
+                        free(projected_r);
+                        free(projected_i);
+                    }
+                    return 2;
+                }
+                segments[b] = x1data + istart;
+            }
+            dot_psd_four_anchored_simd(segments[0], segments[1],
+                                       segments[2], segments[3],
+                                       projected_r, projected_i, segLen, rr, ri);
+            for (int b = 0; b < 4; ++b) {
+                /* Legacy M2 is overwritten, so only its final assignment
+                 * can affect the output. Every mean update is retained. */
+                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
+                                             statistics && ii + b == navg - 1,
+                                             &Mr_r, &Mr_i,
+                                             &M2_r, &M2_i);
+            }
+            ii += 3;
+            continue;
+        }
         const long int istart = (long int)floor(start + 0.5);
         start += shift;
         if (istart < 0 || istart > nData - segLen) {
@@ -360,26 +451,10 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
             ixsum2 = ixsum1;
         }
 
-        ixsum2 = -1.0 * ixsum2;
-        const double Xr_r = rxsum1 * rxsum2 - ixsum2 * ixsum1;
-        const double Xr_i = rxsum1 * ixsum2 + ixsum1 * rxsum2;
-        if (ii == 0) {
-            Mr_r = Xr_r;
-            Mr_i = Xr_i;
-        } else {
-            const double Qr_r = Xr_r - Mr_r;
-            const double Qr_i = Xr_i - Mr_i;
-            /* Preserve upstream 1.0.6 exactly: ii, NOT ii + 1. */
-            Mr_r += Qr_r / ii;
-            Mr_i += Qr_i / ii;
-            if (statistics) {
-                const double XM_diff_r = Xr_r - Mr_r;
-                const double XM_diff_i = Xr_i - Mr_i;
-                /* Preserve assignment, NOT the corrected accumulating +=. */
-                M2_r = Qr_r * XM_diff_r - Qr_i * XM_diff_i;
-                M2_i = Qr_r * XM_diff_i + Qr_i * XM_diff_r;
-            }
-        }
+        /* Only the final (overwriting) legacy M2 value is observable. */
+        update_original_statistics(ii, rxsum1, ixsum1, rxsum2, ixsum2,
+                                     statistics && ii == navg - 1,
+                                     &Mr_r, &Mr_i, &M2_r, &M2_i);
     }
 
     if (profile) {
@@ -415,7 +490,8 @@ int fast_dft(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
 {
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
-                          olap, order, csd, mode, true, NULL, NULL, NULL, NULL);
+                          olap, order, csd, mode, true, false,
+                          NULL, NULL, NULL, NULL);
 }
 
 int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -432,7 +508,7 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     *preparation_seconds = *segments_seconds = NAN;
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
-                          olap, order, csd, mode, true, NULL, NULL,
+                          olap, order, csd, mode, true, false, NULL, NULL,
                           preparation_seconds, segments_seconds);
 }
 
@@ -446,7 +522,7 @@ int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
 {
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
-                          olap, order, csd, mode, statistics,
+                          olap, order, csd, mode, statistics, true,
                           inplace ? Cr : NULL, inplace ? Ci : NULL,
                           NULL, NULL);
 }
@@ -466,7 +542,7 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
     *preparation_seconds = *segments_seconds = NAN;
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
-                          olap, order, csd, mode, statistics,
+                          olap, order, csd, mode, statistics, true,
                           inplace ? Cr : NULL, inplace ? Ci : NULL,
                           preparation_seconds, segments_seconds);
 }
@@ -508,6 +584,54 @@ int generate_coefficients(double *Cr, double *Ci, const double *window,
         const double imag = sin(phase);
         Cr[j] = value * real;
         Ci[j] = value * imag;
+    }
+    return 0;
+}
+
+int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
+                                   long int length, double frequency_bin)
+{
+    if (Cr == NULL || Ci == NULL || window == NULL ||
+        length < 1 || length > INT_MAX || !isfinite(frequency_bin)) {
+        return 1;
+    }
+    enum { BLOCK = 64 };
+    const double pi = 3.141592653589793238462643383279502884;
+    const double scale = (2.0 * pi) * frequency_bin / (double)length;
+    /* Short vectors cannot amortize the offset table. For unusually large
+     * total phase, keep direct argument reduction rather than magnifying
+     * differences between rounded block+offset and independent phases. */
+    if (length < 4 * BLOCK || !isfinite(scale) ||
+        fabs(scale) * (double)(length - 1) > 8192.0) {
+        return generate_coefficients(Cr, Ci, window, length, frequency_bin);
+    }
+    double offsets_r[BLOCK], offsets_i[BLOCK], offsets_phase[BLOCK];
+    for (int j = 0; j < BLOCK; ++j) {
+        const double phase = scale * (double)j;
+        offsets_phase[j] = phase;
+        offsets_r[j] = cos(phase);
+        offsets_i[j] = sin(phase);
+    }
+    for (long int start = 0; start < length; start += BLOCK) {
+        const double phase = scale * (double)start;
+        const double base_r = cos(phase), base_i = sin(phase);
+        const int first = (int)start;
+        const int count = length - start < BLOCK ? (int)(length - start) : BLOCK;
+        #pragma omp simd
+        for (int j = 0; j < count; ++j) {
+            const double real = base_r * offsets_r[j] - base_i * offsets_i[j];
+            const double imag = base_i * offsets_r[j] + base_r * offsets_i[j];
+            /* Recover the independently rounded sample phase. Subtraction
+             * of nearby block/sample phases avoids the larger rounding
+             * error of simply treating rounded phases as exactly additive.
+             * The correction is tiny under the total-phase guard above;
+             * the omitted second-order rotation term is below 2e-24. */
+            const double delta = (scale * (double)(first + j) - phase) -
+                offsets_phase[j];
+            const double value = window[start + j];
+            Cr[start + j] = value * (real - delta * imag);
+            Ci[start + j] = value * (imag + delta * real);
+        }
     }
     return 0;
 }
