@@ -59,8 +59,11 @@ standard-deviation columns are not validated statistical uncertainties.
   never changes the input samples. Variance outputs may be NULL when not
   requested; supplied variance outputs are then NAN.
 - Selected modes 2/3 PSD share coefficient loads across four segments when
-  L is at least 2048. AVX-512 uses eight segments when L is at least 128,
-  followed by four-way and single-segment remainders where applicable.
+  L is at least 2048. On x86-64, AVX-512 uses eight segments for lengths
+  128..255 or at least 1024, followed by four-way and single-segment
+  remainders where applicable. Paired probes over all 135 actual lengths
+  in the 256..2047 band support retaining the single-segment loop for
+  256..1023; those lengths did not benefit from the wider batch on this host.
   The wider batch keeps sixteen SIMD accumulators and eight input anchors
   in the larger register file; narrower targets retain the four-way path.
   Portable x86 builds check AVX-512 at run time, including in target clones,
