@@ -4,6 +4,7 @@ all: compile test package
 
 compile:
 	$(PYTHON) build.py
+	$(PYTHON) -m lpsd_fast.build
 
 test:
 	$(PYTHON) -m pytest

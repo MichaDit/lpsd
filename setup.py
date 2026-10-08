@@ -1,5 +1,6 @@
 """Build platform wheels for the plain C ABI used through ctypes."""
 import importlib.util
+import os
 from pathlib import Path
 
 from setuptools import Distribution, setup
@@ -21,6 +22,9 @@ class BuildNative(build_py):
         destination = root if self.editable_mode else Path(self.build_lib)
         legacy = load_build_module(root / "build.py", "lpsd_legacy_build")
         legacy.build_legacy(destination / "lpsd")
+        fast = load_build_module(root / "lpsd_fast" / "build.py", "lpsd_fast_build")
+        fast.build(native=os.environ.get("LPSD_NATIVE") == "1",
+                   output_directory=destination / "lpsd_fast" / "_native")
 
 
 class NativeDistribution(Distribution):
