@@ -1,62 +1,51 @@
-[tool.poetry]
-name = "lpsd"
-version = "1.0.6"
-description = "Python and C implementation for logarithmical power spectral density (LPSD) calculation."
-authors = ["Christoph Bode <christoph.bode@aei.mpg.de>",
-    "Gerhard Heinzel",
-    "Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>",
-    "Artem Basalaev <artem.basalaev@physikDOTuni-hamburg.de>"]
-maintainers = ["Christian Darsow-Fromm <cdarsowf@physnet.uni-hamburg.de>"]
-readme = "README.md"
-repository = "https://gitlab.com/uhh-gwd/lpsd"
-documentation = "https://gitlab.com/uhh-gwd/lpsd/-/blob/main/README.md"
-include = ["**/*.so"]
-exclude = ["**/*.h", "**/*.c"]
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.16"
-pandas = ">=1.0,<3.0"
-numpy = ">=1.18,<3.0"
-scipy = ">=1.5,<2.0"
-importlib-metadata = {version = "^1.1.3", python = "<=3.7"}
-
-[tool.poetry.group.dev.dependencies]
-black = "^25.1.0"
-pytest = "^8.1.1"
-pytest-cov = "^6.0.0"
-pre-commit = "^4.2.0"
-mypy = "^1.9.0"
-pylint = "^3.1.0"
-isort = "^6.0.1"
-pytest-watch = "^4.2.0"
-
 [build-system]
-requires = ["poetry-core>=1.3.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry.build]
-generate-setup-file = false
-script = "build.py"
+[project]
+name = "lpsd"
+version = "1.0.6+fast.1"
+description = "LPSD spectral estimation with an optional parallel native implementation"
+readme = "README.md"
+requires-python = ">=3.10,<3.16"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Christoph Bode", email = "christoph.bode@aei.mpg.de"},
+    {name = "Gerhard Heinzel"},
+    {name = "Christian Darsow-Fromm", email = "cdarsowf@physnet.uni-hamburg.de"},
+    {name = "Artem Basalaev", email = "artem.basalaev@physikDOTuni-hamburg.de"},
+]
+dependencies = ["numpy>=1.24,<3", "pandas>=1.5,<3", "scipy>=1.5,<2"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-cov>=6"]
+dev = ["build>=1", "black>=25", "isort>=6", "mypy>=1.9", "pylint>=3", "pre-commit>=4", "pytest-watch>=4"]
+
+[project.urls]
+Repository = "https://github.com/MichaDit/lpsd"
+Upstream = "https://gitlab.com/uhh-gwd/lpsd"
+
+[tool.setuptools.packages.find]
+include = ["lpsd", "lpsd.*"]
+
+[tool.setuptools.package-data]
+lpsd = ["*.c", "*.h", "c_sources/*.c", "c_sources/*.h"]
 
 [tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "--verbose -x --log-level=INFO --cov lpsd --cov-report term-missing --no-cov-on-fail --cov-report=html --cov-report=xml --last-failed --new-first"
+minversion = "8.0"
+addopts = "-ra"
 testpaths = ["test"]
 
-[tool.coverage]
-    [tool.coverage.run]
-    omit =[]
-    [tool.coverage.report]
-    fail_under = 60
-    omit =[]
+[tool.coverage.run]
+source = ["lpsd"]
 
-    [tool.coverage.html]
-    directory = "htmlcov"
+[tool.coverage.report]
+fail_under = 60
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
+profile = "black"
 line_length = 88
