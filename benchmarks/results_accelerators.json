@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-10-08T18:01:06.389583+00:00",
+  "kind": "accelerator_inventory_and_lpsd_payload_model_not_performance",
+  "probe_sha256": "a71c3496a374acd86865edf6556495c4126c50533fb964a87fa8a8f918c96d18",
+  "inventory": {
+    "platform": "Linux",
+    "machine": "x86_64",
+    "python": "3.12.14",
+    "cpu_count": 9,
+    "cpu_affinity_count": 9,
+    "cpu_max": "800000 100000",
+    "memory_max": "8589934592",
+    "device_nodes": {
+      "/dev/nvidia*": [],
+      "/dev/dri/renderD*": [],
+      "/dev/kfd": [],
+      "/dev/accel/accel*": [],
+      "/dev/dxg": []
+    },
+    "pci_display_or_processing_devices": [],
+    "commands": {
+      "nvidia-smi": null,
+      "nvcc": null,
+      "rocminfo": null,
+      "amd-smi": null,
+      "rocm-smi": null,
+      "hipcc": null,
+      "sycl-ls": null,
+      "clinfo": null,
+      "system_profiler": null
+    },
+    "python_modules_present_not_imported": {
+      "cupy": false,
+      "torch": false,
+      "numba": false,
+      "dpctl": false,
+      "dpnp": false,
+      "jax": false,
+      "pyopencl": false,
+      "mlx": false
+    },
+    "runtime_computation": "not_tested",
+    "fp64_computation": "not_tested",
+    "notes": [
+      "Device nodes, PCI devices, executables, and packages are prerequisite evidence only.",
+      "No CUDA, HIP, SYCL, OpenCL, Metal, or NPU kernel is executed by this probe.",
+      "Absent container devices do not prove the physical host has no accelerator.",
+      "Check the selected runtime device's FP64 support before running a numerical benchmark."
+    ],
+    "command_probes": {}
+  },
+  "workloads": [
+    {
+      "parameters": {
+        "n": 10000000,
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "psll": 200.0,
+        "overlap": 0.7658465180619339,
+        "n_min_bins": 1,
+        "min_segment_length": 0
+      },
+      "source_sha256": {
+        "lpsd_fast.api": "22a1c9fc8858ae9bc008027758463dd1135004eea58edf1f7a35bad3e81b574a",
+        "lpsd._helpers": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+      },
+      "native_vs_planner_segment_count_differences": 0,
+      "storage": {
+        "frequencies": 651,
+        "distinct_lengths": 649,
+        "sum_lengths": 223491711,
+        "sum_segments": 21624884,
+        "sample_iterations": 27072536884,
+        "input_fp64_bytes": 80000000,
+        "all_frequency_coefficients_fp64_bytes": 3575867376,
+        "all_segment_starts_int32_bytes": 86499536,
+        "all_segment_powers_fp64_bytes": 172999072,
+        "materialized_segment_samples_fp64_bytes_avoid": 216580295072,
+        "one_frequency_streamed_payload_peak_bytes": 240000012,
+        "host_prepared_h2d_payload_bytes": 3742366912,
+        "host_legacy_reduction_d2h_segment_powers_bytes": 172999072,
+        "device_reduced_d2h_psd_fp64_bytes": 5208,
+        "notes": [
+          "Payload counts are not measured transfers, peak device allocation, or runtime predictions.",
+          "Coefficients differ by frequency even where lengths match.",
+          "Starts may use int32 because the current API limits N to INT_MAX.",
+          "Keeping starts/coefficients on device across calls changes the transfer budget.",
+          "Device reduction must preserve the inherited estimator's mean and special-value behavior."
+        ]
+      }
+    },
+    {
+      "parameters": {
+        "n": 30000000,
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "psll": 200.0,
+        "overlap": 0.7658465180619339,
+        "n_min_bins": 1,
+        "min_segment_length": 0
+      },
+      "source_sha256": {
+        "lpsd_fast.api": "22a1c9fc8858ae9bc008027758463dd1135004eea58edf1f7a35bad3e81b574a",
+        "lpsd._helpers": "335e61a63951fc2af55459e271f5581e53cefc55a2deac58cb02b249727041cf"
+      },
+      "native_vs_planner_segment_count_differences": 0,
+      "storage": {
+        "frequencies": 678,
+        "distinct_lengths": 676,
+        "sum_lengths": 627257633,
+        "sum_segments": 64485173,
+        "sample_iterations": 84820913705,
+        "input_fp64_bytes": 240000000,
+        "all_frequency_coefficients_fp64_bytes": 10036122128,
+        "all_segment_starts_int32_bytes": 257940692,
+        "all_segment_powers_fp64_bytes": 515881384,
+        "materialized_segment_samples_fp64_bytes_avoid": 678567309640,
+        "one_frequency_streamed_payload_peak_bytes": 720000012,
+        "host_prepared_h2d_payload_bytes": 10534062820,
+        "host_legacy_reduction_d2h_segment_powers_bytes": 515881384,
+        "device_reduced_d2h_psd_fp64_bytes": 5424,
+        "notes": [
+          "Payload counts are not measured transfers, peak device allocation, or runtime predictions.",
+          "Coefficients differ by frequency even where lengths match.",
+          "Starts may use int32 because the current API limits N to INT_MAX.",
+          "Keeping starts/coefficients on device across calls changes the transfer budget.",
+          "Device reduction must preserve the inherited estimator's mean and special-value behavior."
+        ]
+      }
+    }
+  ]
+}
