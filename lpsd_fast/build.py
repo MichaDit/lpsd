@@ -66,13 +66,19 @@ _CLONES_PROBE = """
 #error The supported x86 IFUNC loader requires glibc 2.23 or newer
 #endif
 #endif
-__attribute__((target_clones("default", "avx2", "avx512f")))
-double lpsd_probe(const double *x, int n) {
+#define LPSD_PROBE_CLONES __attribute__((target_clones("default", "avx2", "avx512f")))
+/* Match the actual header/definition structure and calls between clones.
+ * Clang requires matching attributes on both declaration and definition. */
+LPSD_PROBE_CLONES double lpsd_probe(const double *x, int n);
+LPSD_PROBE_CLONES double lpsd_probe(const double *x, int n) {
     double sum = 0.0;
     for (int i = 0; i < n; ++i) sum += x[i];
     return sum;
 }
-double lpsd_probe_caller(const double *x, int n) { return lpsd_probe(x, n); }
+LPSD_PROBE_CLONES double lpsd_probe_caller(const double *x, int n);
+LPSD_PROBE_CLONES double lpsd_probe_caller(const double *x, int n) {
+    return lpsd_probe(x, n);
+}
 """
 
 

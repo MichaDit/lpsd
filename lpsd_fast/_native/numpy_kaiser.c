@@ -155,7 +155,7 @@ static LPSD_ALWAYS_INLINE void numpy_cheb_block(const double *x, double *out, in
     }
 }
 
-int generate_kaiser(double *window, long int length, double beta)
+LPSD_TARGET_CLONES int generate_kaiser(double *window, long int length, double beta)
 {
     if (window == NULL || length < 1 || length > INT_MAX || !isfinite(beta)) {
         return 1;
@@ -219,7 +219,7 @@ int generate_kaiser(double *window, long int length, double beta)
     return 0;
 }
 
-int generate_window(double *window, long int length, int kind, double beta)
+LPSD_TARGET_CLONES int generate_window(double *window, long int length, int kind, double beta)
 {
     if (kind == LPSD_WINDOW_KAISER) {
         return generate_kaiser(window, length, beta);
