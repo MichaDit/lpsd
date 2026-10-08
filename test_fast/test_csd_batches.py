@@ -95,8 +95,32 @@ def test_csd_batches_preserve_native_exceptional_arithmetic(length, value):
     np.testing.assert_array_equal(np.isnan(actual), np.isnan(expected))
     np.testing.assert_array_equal(np.isposinf(actual), np.isposinf(expected))
     np.testing.assert_array_equal(np.isneginf(actual), np.isneginf(expected))
-    finite = np.isfinite(expected)
-    np.testing.assert_allclose(actual[finite], expected[finite], rtol=2e-12, atol=0)
+    # CSD is complex: a nearly cancelled component can have a large
+    # component-relative error while the complex value remains accurate.
+    # Power and legacy variance have different units; compare each pair
+    # separately and retain the same 2e-12 complex relative tolerance.
+    for start in (0, 2):
+        reference_pair = expected[start:start + 2]
+        actual_pair = actual[start:start + 2]
+        finite = np.isfinite(reference_pair)
+        if finite.all():
+            scale = max(float(np.max(np.abs(reference_pair))),
+                        float(np.max(np.abs(actual_pair))))
+            if scale == 0.0:
+                np.testing.assert_array_equal(actual_pair, reference_pair)
+            else:
+                # A shared max-absolute scale bounds both vectors before
+                # subtraction and hypot, including values close to DBL_MAX.
+                reference_scaled = reference_pair / scale
+                difference_scaled = actual_pair / scale - reference_scaled
+                error_norm = np.hypot(*difference_scaled)
+                reference_norm = np.hypot(*reference_scaled)
+                assert error_norm <= 2e-12 * reference_norm, (start, error_norm, reference_norm)
+        else:
+            # A finite component beside NaN/Inf has no finite pair norm.
+            # Do not let the nonfinite component grant an infinite allowance.
+            np.testing.assert_allclose(actual_pair[finite], reference_pair[finite],
+                                       rtol=2e-12, atol=0)
 
 
 @pytest.mark.parametrize("relation", ("same", "negated", "zero", "unequal_scale"))
