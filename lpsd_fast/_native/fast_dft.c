@@ -221,10 +221,10 @@ static LPSD_ALWAYS_INLINE void dot_psd_four_anchored_simd(const double *x0, cons
  * for portable target_clones builds, whose preprocessing has baseline flags. */
 static LPSD_ALWAYS_INLINE bool use_eight_segment_batch(void)
 {
-#if defined(__AVX512F__)
+#if defined(__AVX512F__) && defined(__x86_64__)
     return true;
 #elif defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES && \
-      defined(__ELF__) && (defined(__x86_64__) || defined(__i386__))
+      defined(__ELF__) && defined(__x86_64__)
     return __builtin_cpu_supports("avx512f") != 0;
 #else
     return false;
@@ -424,8 +424,12 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
     }
     double start = 0.0;
     double Mr_r = 0.0, Mr_i = 0.0, M2_r = 0.0, M2_i = 0.0;
+    /* Matched per-length probes favor eight-way reuse for the smallest
+     * vectors and for L>=1024. For 256<=L<1024 the single-segment loop
+     * was consistently faster; retain it instead of over-batching. */
     const bool batch_eight = batched && mode >= 2 && !csd &&
-        segLen >= 128 && use_eight_segment_batch();
+        segLen >= 128 && (segLen < 256 || segLen >= 1024) &&
+        use_eight_segment_batch();
     for (long int ii = 0; ii < navg; ++ii) {
         if (batch_eight && navg - ii >= 8) {
             const double *segments[8];

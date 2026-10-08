@@ -27,7 +27,7 @@ def native_result(samples, real, imag, mode, order, *, selected, statistics=True
 
 @pytest.mark.parametrize("length,segments", (
     (127, 8), (128, 8), (129, 9), (255, 15), (256, 16),
-    (511, 17), (512, 31), (1023, 7), (1024, 9),
+    (511, 17), (512, 31), (1023, 7), (1023, 9), (1024, 9),
     (2047, 8), (2048, 7), (2049, 13), (16384, 17),
 ))
 @pytest.mark.parametrize("mode,order", ((2, 0), (2, 1), (3, 0)))
@@ -80,3 +80,47 @@ def test_native_batch_exceptional_arithmetic_is_not_simplified(value):
     np.testing.assert_array_equal(np.isneginf(actual), np.isneginf(expected))
     finite = np.isfinite(expected)
     np.testing.assert_allclose(actual[finite], expected[finite], rtol=2e-12, atol=0)
+
+
+@pytest.mark.parametrize("length", (128, 132, 256, 260, 512, 516, 1024, 1028, 2048, 2052, 4096, 4100))
+@pytest.mark.parametrize("segments", (9, 17, 33))
+def test_first_periodogram_cancellation_keeps_the_legacy_reset(length, segments):
+    # The unique ii=1 update is P0 + (P1-P0). An O(eps*P0) dot-product
+    # difference can become a material final PSD error when P0/P1~1/eps.
+    # Keep the first four starts exactly equal to the old <=4-segment path;
+    # the fractional eighth-sample hop still exercises later start rounding.
+    hop = length / 4 + 0.125
+    n = int(length + (segments - 1) * hop)
+    samples = np.random.default_rng(9191 + length).normal(size=n)
+    samples[0] = 0.0
+    phase = 2 * np.pi * 4.371 * np.arange(length) / length
+    window = np.kaiser(length + 1, 23.7)[:-1]
+    cr, ci = window * np.cos(phase), window * np.sin(phase)
+    first_hop = int(np.floor(hop + 0.5))
+    p1 = native_result(samples[first_hop:first_hop + length], cr, ci, 2, 0, selected=False)[0][0]
+    impulse = np.zeros(length)
+    impulse[1] = 1.0
+    impulse_power = native_result(impulse, cr, ci, 2, 0, selected=False)[0][0]
+    assert p1 > 0 and impulse_power > 0
+    tail_powers = []
+    start = 0.0
+    for index in range(segments):
+        offset = int(np.floor(start + 0.5))
+        start += hop
+        if index >= 4:
+            power = native_result(samples[offset:offset + length], cr, ci, 2, 0, selected=False)[0][0]
+            tail_powers.append(power)
+    for exponent in (50, 53, 56):
+        amplitude = np.sqrt(p1 * 2.0**exponent / impulse_power)
+        for scale in (np.nextafter(1.0, 0.0), 1.0, np.nextafter(1.0, 2.0)):
+            samples[1] = amplitude * scale
+            prefix = length + 3 * (length // 4)
+            expected, count = native_result(samples[:prefix], cr, ci, 2, 0, selected=True)
+            assert count == 4
+            mean = float(expected[0])
+            for index, power in enumerate(tail_powers, 4):
+                mean += (float(power) - mean) / index
+            actual, count = native_result(samples, cr, ci, 2, 0, selected=True)
+            assert count == segments
+            assert actual[1] == 0.0
+            np.testing.assert_allclose(actual[0], mean, rtol=0.01, atol=0.0)

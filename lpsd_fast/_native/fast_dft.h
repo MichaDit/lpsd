@@ -64,8 +64,9 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
  * arrays must be writable, distinct, nonoverlapping and private to the call.
  * The input samples remain unchanged. Modes 0/1 do not modify Cr/Ci.
  * Modes 2/3 PSD may process four or eight segments together to share
- * coefficient loads. Eight-way batches require AVX-512 and length >= 128;
- * four-way batches remain available for length >= 2048 and batch remainders.
+ * coefficient loads. Eight-way batches require x86-64 AVX-512 and lengths
+ * 128..255 or >=1024; four-way batches remain available for length >=2048
+ * and batch remainders. The intervening lengths retain the single-segment loop.
  * Means are still updated in the original segment order.
  * Existing fast_dft[_profile] retain their original read-only contract. */
 int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
