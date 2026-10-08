@@ -17,7 +17,7 @@ repos:
         #name: seed-isort-config
         #stages: [commit]
         #language: system
-        #entry: poetry run seed-isort-config
+        #entry: python -m seed-isort-config
         #pass_filenames: false
         #types: [python]
 
@@ -25,19 +25,19 @@ repos:
         #name: isort
         #stages: [commit]
         #language: system
-        #entry: poetry run isort
+        #entry: python -m isort
         #types: [python]
 
       - id: black
         name: black
         stages: [pre-commit]
         language: system
-        entry: poetry run black
+        entry: python -m black
         types: [python]
 
       - id: mypy
         name: mypy
         stages: [pre-commit]
         language: system
-        entry: poetry run mypy
+        entry: python -m mypy
         types: [python]

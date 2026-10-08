@@ -1,17 +1,9 @@
-ARG PYTHON_VERSION=3
-
-FROM python:$PYTHON_VERSION
-
-ENV PYTHONUNBUFFERED 1
-
-RUN mkdir /code
+ARG PYTHON_VERSION=3.12
+FROM python:${PYTHON_VERSION}
+ENV PYTHONUNBUFFERED=1
 WORKDIR /code
-
-ENV BUILD_PACKAGES build-essential python3-distutils python3-poetry python3-setuptools
-
-RUN apt-get update -y && apt-get install -y $BUILD_PACKAGES
-
-RUN poetry config virtualenvs.create false
-
-COPY README.md pyproject.toml poetry.lock /code/
-RUN poetry install -vvv --no-interaction
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+COPY . /code
+RUN python -m pip install --no-cache-dir '.[test,dev]'
+CMD ["make", "test"]

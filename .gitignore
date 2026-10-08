@@ -8,3 +8,13 @@ dist/
 .isort.cfg
 coverage.xml
 .ipynb_checkpoints/
+*.dll
+*.dylib
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.venv/
+.validation/
+htmlcov/
+benchmark-results/
