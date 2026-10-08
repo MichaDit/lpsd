@@ -1,0 +1,541 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-08T18:02:02.029350+00:00",
+  "repository": "MichaDit/lpsd",
+  "base": "2fd15da6930d19f5978f7e37b7b0785ce560f7d3",
+  "head": "88b5166e60e9d3ff135b9cb105e096bdda656f9a",
+  "required_coauthor": "Codex <267193182+codex@users.noreply.github.com>",
+  "github_checked": true,
+  "commit_count": 44,
+  "passed": true,
+  "commits": [
+    {
+      "sha": "5a0a14a7f2bad92b59b432723e2f5e1316ada273",
+      "subject": "build: compile ctypes libraries from source in platform wheels",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/5a0a14a7f2bad92b59b432723e2f5e1316ada273",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "2bb665b721cdbe00d31b97fb08e24edad0617420",
+      "subject": "perf(native): add scalar, SIMD and projected LPSD kernels",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/2bb665b721cdbe00d31b97fb08e24edad0617420",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "2f9c25616481132f51ddbf0967b3a3d70047c193",
+      "subject": "feat(api): add memory-budgeted parallel lpsd_fast interface",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/2f9c25616481132f51ddbf0967b3a3d70047c193",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "c7eee9daab01566c758034e6f55a0d795f2fcfa4",
+      "subject": "test: add numerical regression and isolated wheel gates",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/c7eee9daab01566c758034e6f55a0d795f2fcfa4",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "7700bd0717c0af483f4f49bfac3bdd1f4c7f5015",
+      "subject": "bench: add reproducible API wall-time and stage profiling tools",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/7700bd0717c0af483f4f49bfac3bdd1f4c7f5015",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "3c43293dba9774860becc90c1b54ed5835aeeabf",
+      "subject": "docs: explain fast API, measured bottlenecks and numerical limits",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/3c43293dba9774860becc90c1b54ed5835aeeabf",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "22dd18ac4dfa368cf9532a8a10d9b47c87aaf610",
+      "subject": "feat(native): add selected outputs and built-in window kernels",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/22dd18ac4dfa368cf9532a8a10d9b47c87aaf610",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "e03b3837638735ea97a0cf730edd45315121ece3",
+      "subject": "feat(api): add selective spectral outputs and direct NSD",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/e03b3837638735ea97a0cf730edd45315121ece3",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "568ecb63af3143420b05fe545b7f4d65fba88568",
+      "subject": "test: verify selected outputs and accelerated window semantics",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/568ecb63af3143420b05fe545b7f4d65fba88568",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "ed5546b4fc7fb3ac09a2c18aad46436a770ab276",
+      "subject": "bench: measure selected outputs and alternative windows",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/ed5546b4fc7fb3ac09a2c18aad46436a770ab276",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "8c6467c32b20ffc63305980c12e9877360276c6d",
+      "subject": "perf(windows): accelerate all upstream flat-top cosine windows",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/8c6467c32b20ffc63305980c12e9877360276c6d",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "d5c18b2dbcfbcc004b0ad07f0b1bb04638a26faf",
+      "subject": "build: make native compiler policy portable and auditable",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/d5c18b2dbcfbcc004b0ad07f0b1bb04638a26faf",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "df1031a0029d8547b27d45ff277c6d6c2886f703",
+      "subject": "ci: validate native ARM and Apple builds with reproducible profiles",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/df1031a0029d8547b27d45ff277c6d6c2886f703",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "43e682e1cb53aef98df8d8eef94ac6fa0c76a160",
+      "subject": "bench: audit candidate PSD and NSD accuracy against scalar",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/43e682e1cb53aef98df8d8eef94ac6fa0c76a160",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "04ef6bc75c212400da371eb617ffe68d6914b408",
+      "subject": "perf(native): batch projections and rotate bounded phase blocks",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/04ef6bc75c212400da371eb617ffe68d6914b408",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "358907a55e0619725964303bf99a48ace3f35108",
+      "subject": "fix(native): bound the final phase-block increment",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/358907a55e0619725964303bf99a48ace3f35108",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "68dd1d037a28ecf79b39b31d6715442356a648ae",
+      "subject": "perf(native): dispatch SIMD loops and add compensated projection",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/68dd1d037a28ecf79b39b31d6715442356a648ae",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "729026f2098bfc3e4f0f08c5ab4d573401e517dc",
+      "subject": "feat(api): expose faster coefficients and compensated preparation",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/729026f2098bfc3e4f0f08c5ab4d573401e517dc",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "464777a38a99dfbb7f74b3f411634c87b954310d",
+      "subject": "build: prepare fast.2 and verify selected native outputs in wheels",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/464777a38a99dfbb7f74b3f411634c87b954310d",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "7d6a8a6921c0249b9c2d34237b50037fad2639a5",
+      "subject": "docs: clarify runtime dispatch and compensated projector limits",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/7d6a8a6921c0249b9c2d34237b50037fad2639a5",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "d273cbfccfeaace71d8848305624ae3a48a6eea6",
+      "subject": "bench: report explicit absolute accuracy allowances",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/d273cbfccfeaace71d8848305624ae3a48a6eea6",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "4aada56886751d71085b50c6b5ecd285912a93e1",
+      "subject": "fix(memory): account for reclaimable cgroup file cache",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/4aada56886751d71085b50c6b5ecd285912a93e1",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "7b212810c9304179521de80561ce9dfc4d2ff3ce",
+      "subject": "docs: explain fast arithmetic and explicit accuracy limits",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/7b212810c9304179521de80561ce9dfc4d2ff3ce",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "96080cd3b6d8c4885da1908cc80ceae5a88cdf9c",
+      "subject": "fix(numerics): preserve residual detrending on 53-bit long-double targets",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/96080cd3b6d8c4885da1908cc80ceae5a88cdf9c",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "21eb307d8400a76399607dbbbbeb2245cd032a85",
+      "subject": "fix(build): match clone declarations and definitions for Clang",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/21eb307d8400a76399607dbbbbeb2245cd032a85",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "3b7ea5095045ceac9d1b6959f547648e0fb3e568",
+      "subject": "perf(native): add positive-series Kaiser generator",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/3b7ea5095045ceac9d1b6959f547648e0fb3e568",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "33bc95af22fe9eb0c4724848bf7198121464d864",
+      "subject": "fix(packaging): tag macOS wheels for the compiled architecture",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/33bc95af22fe9eb0c4724848bf7198121464d864",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "1cd597a995c2a2e85c256e9ed02eaf3bd78ea2dc",
+      "subject": "perf(api): use SIMD Kaiser series in the optional fast path",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/1cd597a995c2a2e85c256e9ed02eaf3bd78ea2dc",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "31329a2e044b2eb79be2c64598681e78ea3b623a",
+      "subject": "bench: archive first fast.2 timing and accuracy evidence",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/31329a2e044b2eb79be2c64598681e78ea3b623a",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "411145822d431b84d85775a9924944deb6c57aca",
+      "subject": "docs: record successful native CI and architecture measurements",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/411145822d431b84d85775a9924944deb6c57aca",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "6f28c7d1f99254ce8bd282060741c0a581ebb8f8",
+      "subject": "docs: distinguish final accuracy totals and absolute-only exceptions",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/6f28c7d1f99254ce8bd282060741c0a581ebb8f8",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "1c2da0c24134594c3d94bf5d9da3d565f04b45eb",
+      "subject": "docs: publish fast.2 wall-time results and usage guidance",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/1c2da0c24134594c3d94bf5d9da3d565f04b45eb",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "6b84fb09384a6eaf1a9e939ce1587e22fe6b8b80",
+      "subject": "bench: archive final fast.2 Kaiser-series evidence",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/6b84fb09384a6eaf1a9e939ce1587e22fe6b8b80",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "8782339b1d7d9f27a9f6d5fce17859aa614cb5da",
+      "subject": "bench: compare FFTW plans and complete spectral pipelines",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/8782339b1d7d9f27a9f6d5fce17859aa614cb5da",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "8cf35e2ce5012bbb4c41ff19b22fb479aad64664",
+      "subject": "bench: allow full problem warm-up for matched API comparisons",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/8cf35e2ce5012bbb4c41ff19b22fb479aad64664",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "f095fde5c0ed63473b7a980a37573642c07d0c5d",
+      "subject": "bench: compare LPSD and FFTW log-periodogram estimators",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/f095fde5c0ed63473b7a980a37573642c07d0c5d",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "c93e220ff87d6221d858d4af98f080763e406f45",
+      "subject": "bench: preserve official FFTW kernel measurements and provenance",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/c93e220ff87d6221d858d4af98f080763e406f45",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "521f58660bf51a7a2b25b56941d8ea7a75e620a6",
+      "subject": "ci: require FFTW adapter validation on Linux x64",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/521f58660bf51a7a2b25b56941d8ea7a75e620a6",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "0454213cef076551aff0093938432ab878e213e6",
+      "subject": "bench: archive rejected global FMA contraction experiment",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/0454213cef076551aff0093938432ab878e213e6",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "e9bb8713207ecc2af6df1f329ffa502b603ce07e",
+      "subject": "bench: build FMA reproduction pair from a shared source snapshot",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/e9bb8713207ecc2af6df1f329ffa502b603ce07e",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "946adc7d18ab463e4900c7f7e2d6957ff7be8037",
+      "subject": "bench: record matched LPSD and FFTW wall-time evidence",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/946adc7d18ab463e4900c7f7e2d6957ff7be8037",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "02f31aba64b170e54eeda5b229bc8a03fc9d606d",
+      "subject": "docs: plot FFTW runtime and estimator comparisons",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/02f31aba64b170e54eeda5b229bc8a03fc9d606d",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "3f2864391db3bfb22942d99106026358fef5fe96",
+      "subject": "docs: explain FFTW comparison and remaining LPSD headroom",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/3f2864391db3bfb22942d99106026358fef5fe96",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    },
+    {
+      "sha": "88b5166e60e9d3ff135b9cb105e096bdda656f9a",
+      "subject": "chore: use GitHub-linked Codex coauthor identity [skip ci]",
+      "linked_trailer": true,
+      "url": "https://github.com/MichaDit/lpsd/commit/88b5166e60e9d3ff135b9cb105e096bdda656f9a",
+      "rendered_logins": [
+        "MichaDit",
+        "codex"
+      ],
+      "codex_visible": true,
+      "error": null
+    }
+  ]
+}
