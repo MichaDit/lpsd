@@ -64,6 +64,13 @@ It is a conservative trigger, not a universal rounding-error proof. That fallbac
 retains its finite/nonfinite behavior and is included in profiling times.
 Projections approaching the exponent limits of squared PSDs or the inherited
 fourth-power variance intermediates also use the direct fallback.
+The exponent-limit guard depends on whether deviations are requested: their
+inherited fourth-power intermediates require more headroom than PSD alone.
+At extreme input scales, a full-output call can therefore use direct
+projections where a PSD-only call still uses overlap reuse. The two
+evaluations may differ in rounding, including after normalization. This
+does not change the within-call identity of NSD and ASD as the square root
+of that call's rounded PSD.
 The first legacy mean update is uniquely sensitive: it evaluates
 `P0 + (P1-P0)`, rather than a stable assignment of `P1`. If the second
 projection's absolute real-plus-imaginary amplitude is at most 0.001 times
