@@ -99,6 +99,14 @@ int native_long_double_mantissa_bits(void);
  * Returns 0 on success, 1 for invalid arguments. */
 LPSD_TARGET_CLONES int generate_kaiser(double *window, long int length, double beta);
 
+/* Optional positive-series Kaiser evaluation for long windows and |beta|<=32.
+ * Keeps the periodic convention and original normalized coordinate. The
+ * adaptive tail bound limits series truncation, not floating-point error.
+ * Vectors shorter than 2048, beta=0 and |beta|>32 use generate_kaiser.
+ * Original exports and their window evaluation are unchanged. */
+LPSD_TARGET_CLONES int generate_kaiser_series(double *window, long int length,
+                                              double beta);
+
 enum lpsd_window_kind {
     LPSD_WINDOW_KAISER = 0,
     LPSD_WINDOW_HANN = 1,
