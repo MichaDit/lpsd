@@ -1,0 +1,714 @@
+{
+  "libraries": {
+    "baseline": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "baseline-final.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": true,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": false,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "binary_sha256": "b0ab2e54a6231bd54b8d01c9c364efadb924c8e41dcc0398ef637f29d3e9e623"
+    },
+    "fma": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "experimental-fma.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=fast",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": true,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": false,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "binary_sha256": "4ec423046695c19d8b78ac6516982b97f2dd5e156b8cc78390dc2b0a726a2d0b",
+      "experimental": true,
+      "source_commit": "f97b8b8",
+      "baseline_sha256": "b0ab2e54a6231bd54b8d01c9c364efadb924c8e41dcc0398ef637f29d3e9e623",
+      "compile_command": [
+        "cc",
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=fast",
+        "-fPIC",
+        "-march=native",
+        "-fopenmp-simd",
+        "/workspace/scratch/1a083f70b5d7/lpsd_headroom_opt/lpsd_fast/_native/fast_dft.c",
+        "-o",
+        "/workspace/scratch/1a083f70b5d7/lpsd_headroom_opt/experiments/fp_contract/experimental-fma.so",
+        "-shared",
+        "-lm"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "signal": "white",
+      "amplitude": 1.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 8.303526434070154e-19,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 8.303526434070154e-19,
+          "complex_max_relative_error": 2.0134882636034573e-17,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.3096674065494593e-19,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.0990956061940338e-10,
+          "complex_max_relative_error": 1.1794494540341856,
+          "changed_exact_zeros": 0
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.0444469874817218e-18,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 2.0444469874817218e-18,
+          "complex_max_relative_error": 1.0067441688350639e-17,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "offbin_tone",
+      "amplitude": 1.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.886479576234351e-19,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 2.886479576234351e-19,
+          "complex_max_relative_error": 6.240447724840901e-05,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.6612366792717622e-20,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 1.9046124336564735e-19,
+          "complex_max_relative_error": 1.183214904983828,
+          "changed_exact_zeros": 0
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 3.161979575569438e-19,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 6.245004513516506e-17,
+          "complex_max_relative_error": 3.122113150763537e-05,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "dc_nanovolt",
+      "amplitude": 1.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 8.938238530842173e-37,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 8.938238530842173e-37,
+          "complex_max_relative_error": 2.6617783998474712e-17,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.680630747384196e-28,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.680630747384196e-28,
+          "complex_max_relative_error": 1.1370961858911414e-15,
+          "changed_exact_zeros": 1
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.2007229770033677e-27,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 2.2007229770033677e-27,
+          "complex_max_relative_error": 1.3308891298552403e-17,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "phase_shifted_csd",
+      "amplitude": 1.0,
+      "csd": true,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.1350860595703125,
+          "fma_imag_max": 0.1350860595703125,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.0,
+          "complex_max_relative_error": 0.0,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 7.777326572977472e-06,
+          "fma_imag_max": 7.777326572977472e-06,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 1.026285924125889e-13,
+          "complex_max_relative_error": 0.740612523234523,
+          "changed_exact_zeros": 0
+        },
+        "asd": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.15731674432754517,
+          "fma_imag_max": 0.15731674432754517,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.0,
+          "complex_max_relative_error": 0.0,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "white",
+      "amplitude": 1000000.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 3.944863635751972e-07,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 3.944863635751972e-07,
+          "complex_max_relative_error": 1.4799853333096133e-17,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.5120602370188863e-07,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 176.1561279296875,
+          "complex_max_relative_error": 3.755941490188134e-16,
+          "changed_exact_zeros": 1
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.1942327552208476e-12,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.1942327552208476e-12,
+          "complex_max_relative_error": 7.399926562114054e-18,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "offbin_tone",
+      "amplitude": 1000000.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.0678147905073274e-07,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 2.0678147905073274e-07,
+          "complex_max_relative_error": 6.348810868815132e-05,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.5264164094096486e-08,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 2.0867708056599338e-07,
+          "complex_max_relative_error": 0.0007119227603800648,
+          "changed_exact_zeros": 1
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 2.4459899166870414e-13,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 6.230038707144558e-11,
+          "complex_max_relative_error": 3.168964084993068e-05,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "dc_nanovolt",
+      "amplitude": 1000000.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 5.50171563342797e-25,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 5.50171563342797e-25,
+          "complex_max_relative_error": 1.3340905893757185e-17,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 7.741151843799263e-26,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 2.364332859489381e-16,
+          "complex_max_relative_error": 1.1554847941746485e-15,
+          "changed_exact_zeros": 1
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.3546020580835445e-21,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.3546020580835445e-21,
+          "complex_max_relative_error": 6.670452920366052e-18,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "phase_shifted_csd",
+      "amplitude": 1000000.0,
+      "csd": true,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 135086055424.0,
+          "fma_imag_max": 135086055424.0,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.0,
+          "complex_max_relative_error": 0.0,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 7777326.5,
+          "fma_imag_max": 7777326.5,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.10518200709190613,
+          "complex_max_relative_error": 0.7238760457994708,
+          "changed_exact_zeros": 0
+        },
+        "asd": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 157316.734375,
+          "fma_imag_max": 157316.734375,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.0,
+          "complex_max_relative_error": 0.0,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "white",
+      "amplitude": 1000000000.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 0.34419605135917664,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 0.34419605135917664,
+          "complex_max_relative_error": 3.295340820262063e-17,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 0.20271183550357819,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 7721904.0,
+          "complex_max_relative_error": 0.04653739179469892,
+          "changed_exact_zeros": 0
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.2922891645672507e-09,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.2922891645672507e-09,
+          "complex_max_relative_error": 1.6476702929494507e-17,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "offbin_tone",
+      "amplitude": 1000000000.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 0.07143833488225937,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 0.07143833488225937,
+          "complex_max_relative_error": 3.866213457991646e-05,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 0.024756481871008873,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 0.11214175858987407,
+          "complex_max_relative_error": 0.0007403821940344194,
+          "changed_exact_zeros": 1
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.1960454848747304e-10,
+          "new_imaginary_points": 29,
+          "complex_max_absolute_error": 6.379559636116028e-08,
+          "complex_max_relative_error": 1.9321483979145677e-05,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "dc_nanovolt",
+      "amplitude": 1000000000.0,
+      "csd": false,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 5.883524766033485e-19,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 5.883524766033485e-19,
+          "complex_max_relative_error": 3.803536211976538e-17,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 4.78387809753585e-19,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.9768008063802966e-10,
+          "complex_max_relative_error": 1.2397940017088292e-15,
+          "changed_exact_zeros": 1
+        },
+        "nsd": {
+          "baseline_dtype": "float32",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 0.0,
+          "fma_imag_max": 1.448607905949309e-18,
+          "new_imaginary_points": 28,
+          "complex_max_absolute_error": 1.448607905949309e-18,
+          "complex_max_relative_error": 1.9017680483522268e-17,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    },
+    {
+      "signal": "phase_shifted_csd",
+      "amplitude": 1000000000.0,
+      "csd": true,
+      "n": 4097,
+      "frequencies": 29,
+      "frequency_index_exact": true,
+      "columns": {
+        "psd": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 1.3508605012816691e+17,
+          "fma_imag_max": 1.3508605012816691e+17,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.0,
+          "complex_max_relative_error": 0.0,
+          "changed_exact_zeros": 0
+        },
+        "psd_std": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 7777326465024.0,
+          "fma_imag_max": 7777326465024.0,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 22070.602203021193,
+          "complex_max_relative_error": 0.08679749944902136,
+          "changed_exact_zeros": 0
+        },
+        "asd": {
+          "baseline_dtype": "complex64",
+          "fma_dtype": "complex64",
+          "baseline_nonfinite": 0,
+          "fma_nonfinite": 0,
+          "baseline_imag_max": 157316736.0,
+          "fma_imag_max": 157316736.0,
+          "new_imaginary_points": 0,
+          "complex_max_absolute_error": 0.0,
+          "complex_max_relative_error": 0.0,
+          "changed_exact_zeros": 0
+        }
+      },
+      "warnings": {
+        "baseline": [],
+        "fma": []
+      }
+    }
+  ],
+  "summary": {
+    "cases": 12,
+    "dtype_mismatch_columns": 27,
+    "new_imaginary_psd_points": 255,
+    "nonfinite_values": 0
+  },
+  "notes": [
+    "No execution times are measured.",
+    "Complex differences retain imaginary components; no float casting hides them.",
+    "Baseline and candidate both use public kernel=fast; only compiler contraction differs.",
+    "This finite probe does not prove a universal error bound."
+  ],
+  "provenance": {
+    "original_probe_script_sha256": "ec7d3258ae7d4254b8483e172530a447737b7392654f0f208827967064f77756",
+    "original_report_sha256": "94d7bf9a90b3540ef2609fc7740d6746fd262dc1ded9a87e29256965711f4c6d",
+    "source_commit": "f97b8b8",
+    "curation_note": "The replay/probe scripts are archived under a different directory; native algorithms and measured data are unchanged. No fresh numerical calls were run while curating."
+  }
+}
