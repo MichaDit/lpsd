@@ -5,3 +5,4 @@ global-exclude *.so *.o *.a *.pyc
 recursive-include lpsd_fast *.py *.c *.h *.md LICENSE*
 recursive-include test *.py *.csv
 recursive-include test_fast *.py *.md *.json
+recursive-include benchmarks *.py *.json
