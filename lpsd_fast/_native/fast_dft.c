@@ -33,7 +33,10 @@
 #include "numpy_kaiser.c"
 #include "cosine_windows.c"
 
-static void detrend_original(int order, const double *px, int length,
+/* Optional order-0 preparation without software long-double arithmetic. */
+#include "projected_dd.c"
+
+static LPSD_ALWAYS_INLINE void detrend_original(int order, const double *px, int length,
                              double *out, double *a)
 {
     /* Upstream signatures are non-const; these functions only read px. */
@@ -53,7 +56,7 @@ static void detrend_original(int order, const double *px, int length,
     }
 }
 
-static void dot_psd_serial(const double *x, const double *cr, const double *ci,
+static LPSD_ALWAYS_INLINE void dot_psd_serial(const double *x, const double *cr, const double *ci,
                            long int length, double *rr, double *ri)
 {
     double r = 0.0, im = 0.0;
@@ -66,7 +69,7 @@ static void dot_psd_serial(const double *x, const double *cr, const double *ci,
     *ri = im;
 }
 
-static void dot_psd_simd(const double *x, const double *cr, const double *ci,
+static LPSD_ALWAYS_INLINE void dot_psd_simd(const double *x, const double *cr, const double *ci,
                          long int length, double *rr, double *ri)
 {
     double r = 0.0, im = 0.0;
@@ -80,7 +83,7 @@ static void dot_psd_simd(const double *x, const double *cr, const double *ci,
     *ri = im;
 }
 
-static void dot_csd_serial(const double *x1, const double *x2,
+static LPSD_ALWAYS_INLINE void dot_csd_serial(const double *x1, const double *x2,
                            const double *cr, const double *ci,
                            long int length, double *rr1, double *ri1,
                            double *rr2, double *ri2)
@@ -99,7 +102,7 @@ static void dot_csd_serial(const double *x1, const double *x2,
     *ri2 = i2;
 }
 
-static void dot_csd_simd(const double *x1, const double *x2,
+static LPSD_ALWAYS_INLINE void dot_csd_simd(const double *x1, const double *x2,
                          const double *cr, const double *ci,
                          long int length, double *rr1, double *ri1,
                          double *rr2, double *ri2)
@@ -128,7 +131,7 @@ static void dot_csd_simd(const double *x1, const double *x2,
  * The projected coefficients are rounded to double. This is algebraically
  * equivalent but is NOT a bitwise reproduction of upstream residuals.
  */
-static void prepare_projected_coefficients(const double *cr, const double *ci,
+static LPSD_ALWAYS_INLINE void prepare_projected_coefficients(const double *cr, const double *ci,
                                            long int length, int order,
                                            double *qr, double *qi)
 {
@@ -163,7 +166,7 @@ static void prepare_projected_coefficients(const double *cr, const double *ci,
     }
 }
 
-static void dot_psd_anchored_simd(const double *x,
+static LPSD_ALWAYS_INLINE void dot_psd_anchored_simd(const double *x,
                                  const double *qr, const double *qi,
                                  long int length, double *rr, double *ri)
 {
@@ -185,7 +188,7 @@ static void dot_psd_anchored_simd(const double *x,
 /* Four independent overlapping segments share each coefficient load.
  * Each segment keeps its own anchor and SIMD reduction; there is no
  * decimation, change of segment starts, or cross-segment averaging. */
-static void dot_psd_four_anchored_simd(const double *x0, const double *x1,
+static LPSD_ALWAYS_INLINE void dot_psd_four_anchored_simd(const double *x0, const double *x1,
                                       const double *x2, const double *x3,
                                       const double *qr, const double *qi,
                                       long int length, double *rr, double *ri)
@@ -211,7 +214,7 @@ static void dot_psd_four_anchored_simd(const double *x0, const double *x1,
     ri[0] = i0; ri[1] = i1; ri[2] = i2; ri[3] = i3;
 }
 
-static void dot_csd_anchored_simd(const double *x1, const double *x2,
+static LPSD_ALWAYS_INLINE void dot_csd_anchored_simd(const double *x1, const double *x2,
                                  const double *qr, const double *qi,
                                  long int length, double *rr1, double *ri1,
                                  double *rr2, double *ri2)
@@ -242,7 +245,7 @@ static double monotonic_seconds(void)
     return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
 }
 
-static void update_original_statistics(long int ii,
+static LPSD_ALWAYS_INLINE void update_original_statistics(long int ii,
                                         double rxsum1, double ixsum1,
                                         double rxsum2, double ixsum2,
                                         bool statistics,
@@ -271,7 +274,7 @@ static void update_original_statistics(long int ii,
     }
 }
 
-static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                          long int *Navs,
                          const double *x1data, const double *x2data,
                          long int nData, long int segLen,
@@ -296,8 +299,9 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
         *Vr_i = NAN;
     }
     *Navs = 0;
-    if (mode < 0 || mode > 2 ||
-        (mode == 2 && order != 0 && order != 1)) {
+    if (mode < 0 || mode > 3 ||
+        (mode == 2 && order != 0 && order != 1) ||
+        (mode == 3 && order != 0)) {
         return 4;
     }
     if (order < -1 || order > 10 || !isfinite(olap) ||
@@ -336,7 +340,7 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     bool owns_projected = false;
     double coefficients1[11] = {0.0};
     double coefficients2[11] = {0.0};
-    if (mode == 2) {
+    if (mode >= 2) {
         owns_projected = inplace_r == NULL;
         projected_r = owns_projected ?
             (double *)malloc((size_t)segLen * sizeof(double)) : inplace_r;
@@ -347,8 +351,11 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
             free(projected_i);
             return 3;
         }
-        prepare_projected_coefficients(Cr, Ci, segLen, order,
-                                        projected_r, projected_i);
+        if (mode != 3 || !prepare_projected_coefficients_dd(
+                Cr, Ci, segLen, projected_r, projected_i)) {
+            prepare_projected_coefficients(Cr, Ci, segLen, order,
+                                            projected_r, projected_i);
+        }
     } else if (order >= 0) {
         residual1 = (double *)malloc((size_t)segLen * sizeof(double));
         if (csd) {
@@ -370,7 +377,7 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     for (long int ii = 0; ii < navg; ++ii) {
         /* Short coefficient vectors already fit well in L1. Their extra
          * batch bookkeeping did not give a consistent measured benefit. */
-        if (batched && mode == 2 && !csd && segLen >= 2048 && navg - ii >= 4) {
+        if (batched && mode >= 2 && !csd && segLen >= 2048 && navg - ii >= 4) {
             const double *segments[4];
             double rr[4], ri[4];
             for (int b = 0; b < 4; ++b) {
@@ -414,7 +421,7 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
         }
         const double *segment1 = x1data + istart;
         const double *segment2 = csd ? x2data + istart : segment1;
-        if (mode != 2 && order >= 0) {
+        if (mode < 2 && order >= 0) {
             detrend_original(order, segment1, (int)segLen,
                              residual1, coefficients1);
             segment1 = residual1;
@@ -427,7 +434,7 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
 
         double rxsum1, ixsum1, rxsum2, ixsum2;
         if (csd) {
-            if (mode == 2) {
+            if (mode >= 2) {
                 dot_csd_anchored_simd(segment1, segment2,
                                        projected_r, projected_i, segLen,
                                        &rxsum1, &ixsum1, &rxsum2, &ixsum2);
@@ -439,7 +446,7 @@ static int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                               &rxsum1, &ixsum1, &rxsum2, &ixsum2);
             }
         } else {
-            if (mode == 2) {
+            if (mode >= 2) {
                 dot_psd_anchored_simd(segment1, projected_r, projected_i,
                                        segLen, &rxsum1, &ixsum1);
             } else if (mode == 0) {
@@ -564,6 +571,11 @@ int window_sums(const double *window, long int length,
     *sum_window = s1;
     *sum_squares = s2;
     return 0;
+}
+
+int native_long_double_mantissa_bits(void)
+{
+    return LDBL_MANT_DIG;
 }
 
 int generate_coefficients(double *Cr, double *Ci, const double *window,

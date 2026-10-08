@@ -4,6 +4,22 @@
 
 #include <stdbool.h>
 
+/* The build enables this only after compiling and linking an ELF/x86
+ * target_clones probe. Other targets retain their ordinary compiler ISA. */
+#if defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES && \
+    defined(__ELF__) && (defined(__x86_64__) || defined(__i386__))
+#define LPSD_TARGET_CLONES \
+    __attribute__((target_clones("default", "avx2", "avx512f")))
+#else
+#define LPSD_TARGET_CLONES
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#define LPSD_ALWAYS_INLINE __attribute__((always_inline)) inline
+#else
+#define LPSD_ALWAYS_INLINE inline
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,6 +30,8 @@ extern "C" {
  * mode 1: same long-double detrending, explicit SIMD dot-product reduction.
  * mode 2: experimental projection of order-0/1 detrending into the kernel;
  *         SIMD projections use a separate input anchor for every segment.
+ * mode 3: order-0 projection with compensated FP64 pairs; avoids software
+ *         binary128 arithmetic, while retaining the anchored segment dots.
  *
  * Returns 0 on success, 1 for invalid arguments, 2 for unsupported dimensions
  * or invalid segment starts, 3 on allocation failure, 4 for unsupported mode.
@@ -42,10 +60,10 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
 /* Additive API for selected outputs and private coefficient workspaces.
  * statistics=false skips variance work, retaining the original mean update
  * and Navs exactly. Vr_r/Vr_i may be NULL; non-NULL variance outputs are NAN.
- * inplace=true lets mode 2 replace Cr/Ci with projected coefficients. These
+ * inplace=true lets modes 2/3 replace Cr/Ci with projected coefficients. These
  * arrays must be writable, distinct, nonoverlapping and private to the call.
  * The input samples remain unchanged. Modes 0/1 do not modify Cr/Ci.
- * Mode 2 PSD may process four segments together to share coefficient loads;
+ * Modes 2/3 PSD may process four segments together to share coefficient loads;
  * its means are still updated in the original segment order.
  * Existing fast_dft[_profile] retain their original read-only contract. */
 int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -71,11 +89,15 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
 int window_sums(const double *window, long int length,
                  double *sum_window, double *sum_squares);
 
+/* Inspect actual C precision rather than inferring it from type size or
+ * CPU family. Mode 3 is useful when long double is software binary128. */
+int native_long_double_mantissa_bits(void);
+
 /* NumPy/Cephes-based periodic Kaiser window, equivalent to
  * np.kaiser(length + 1, beta)[:-1]. The same approximation coefficients
  * are used; scalar libm exp can differ from NumPy by a few ulps.
  * Returns 0 on success, 1 for invalid arguments. */
-int generate_kaiser(double *window, long int length, double beta);
+LPSD_TARGET_CLONES int generate_kaiser(double *window, long int length, double beta);
 
 enum lpsd_window_kind {
     LPSD_WINDOW_KAISER = 0,
@@ -90,7 +112,7 @@ enum lpsd_window_kind {
  * NumPy's symmetric length-L definitions (L=1 gives a single one); beta is
  * used only for Kaiser. Native libm can differ from NumPy by a few ulps.
  * Returns 0 on success, 1 for invalid pointers, dimensions or kind. */
-int generate_window(double *window, long int length, int kind, double beta);
+LPSD_TARGET_CLONES int generate_window(double *window, long int length, int kind, double beta);
 
 /* Periodic sum of signed coefficients[k]*cos(2*pi*k*j/length).
  * Uses one cosine per position and a SIMD Chebyshev harmonic recurrence.
@@ -103,7 +125,7 @@ int generate_cosine_window(double *window, long int length,
  * window[j] * exp(+i * ((2*pi)*frequency_bin/length) * j).
  * Independent samples use ordinary libm sin/cos; no phase recurrence.
  * Returns 0 on success, 1 for invalid arguments. */
-int generate_coefficients(double *Cr, double *Ci, const double *window,
+LPSD_TARGET_CLONES int generate_coefficients(double *Cr, double *Ci, const double *window,
                            long int length, double frequency_bin);
 
 /* SIMD block rotations with a directly evaluated phase every 64 samples.
@@ -112,7 +134,7 @@ int generate_coefficients(double *Cr, double *Ci, const double *window,
  * A small rotation correction recovers independently rounded sample phases.
  * Coefficient rounding can still differ from generate_coefficients; the
  * original function remains available as the independent-phase reference. */
-int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
+LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
                                    long int length, double frequency_bin);
 
 #ifdef __cplusplus

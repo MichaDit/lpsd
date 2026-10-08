@@ -105,7 +105,7 @@ static const double numpy_i0_b[25] = {
 
 enum { NUMPY_KAISER_BLOCK = 128 };
 
-static double numpy_cheb_scalar(double x, const double *values, int count)
+static LPSD_ALWAYS_INLINE double numpy_cheb_scalar(double x, const double *values, int count)
 {
     double b0 = values[0], b1 = 0.0, b2 = 0.0;
     for (int i = 1; i < count; ++i) {
@@ -116,7 +116,7 @@ static double numpy_cheb_scalar(double x, const double *values, int count)
     return 0.5 * (b0 - b2);
 }
 
-static double numpy_i0_scalar(double x)
+static LPSD_ALWAYS_INLINE double numpy_i0_scalar(double x)
 {
     x = fabs(x);
     if (x <= 8.0) {
@@ -128,7 +128,7 @@ static double numpy_i0_scalar(double x)
 /* SIMD across independent sample positions, without reassociating the
  * Chebyshev recurrence within an individual sample. Small workspaces stay
  * in cache and avoid NumPy's full-length intermediate vectors. */
-static void numpy_cheb_block(const double *x, double *out, int length,
+static LPSD_ALWAYS_INLINE void numpy_cheb_block(const double *x, double *out, int length,
                              const double *values, int count)
 {
     double b0[NUMPY_KAISER_BLOCK];
