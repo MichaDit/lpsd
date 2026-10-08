@@ -5,6 +5,8 @@
  * That source identifies its i0 approximation as originating in Cephes.
  * The approximation coefficients and arithmetic recurrence are retained.
  * The periodic LPSD window is np.kaiser(length + 1, beta)[:-1].
+ * The optional positive-series generator is separately derived from the
+ * Bessel power series in NIST DLMF 10.25.2, cited at its implementation.
  *
  * Copyright (c) 2005-2025, NumPy Developers.
  * All rights reserved.
@@ -215,6 +217,84 @@ LPSD_TARGET_CLONES int generate_kaiser(double *window, long int length, double b
                 window[mirror] = value;
             }
         }
+    }
+    return 0;
+}
+
+LPSD_TARGET_CLONES int generate_kaiser_series(double *window, long int length,
+                                              double beta)
+{
+    if (window == NULL || length < 1 || length > INT_MAX || !isfinite(beta)) {
+        return 1;
+    }
+    beta = fabs(beta);
+    if (length < 2048 || beta == 0.0 || beta > 32.0) {
+        return generate_kaiser(window, length, beta);
+    }
+    /* NIST DLMF 10.25.2, nu=0:
+     * I0(beta*sqrt(u))/I0(beta) = sum_k c[k]*u^k, 0<=u<=1,
+     * c[0]=1/I0(beta), c[k]=c[k-1]*(beta^2/4)/k^2.
+     * https://dlmf.nist.gov/10.25.E2
+     * All terms are positive. Only this small coefficient preparation uses
+     * long double; the sample loop uses SIMD double Horner evaluation. */
+    enum { MAX_DEGREE = 63, SERIES_BLOCK = 128 };
+    double coefficients[MAX_DEGREE + 1];
+    const double denominator = numpy_i0_scalar(beta);
+    const long double a = (long double)beta * (long double)beta / 4.0L;
+    long double term = 1.0L / (long double)denominator;
+    coefficients[0] = (double)term;
+    int degree = 0;
+    for (int k = 1; k <= MAX_DEGREE; ++k) {
+        term *= a / ((long double)k * (long double)k);
+        coefficients[k] = (double)term;
+        const long double next = term * a /
+            ((long double)(k + 1) * (long double)(k + 1));
+        const long double ratio = a /
+            ((long double)(k + 2) * (long double)(k + 2));
+        /* Remaining ratios decrease. At u=1 their positive tail is at
+         * most next/(1-ratio); smaller u only decreases it. This bound
+         * excludes coefficient, normalization and Horner roundoff. */
+        if (ratio < 1.0L && next <= 1.0e-20L * (1.0L - ratio)) {
+            degree = k;
+            break;
+        }
+    }
+    if (degree == 0) {
+        return generate_kaiser(window, length, beta);
+    }
+    const double alpha = (double)length / 2.0;
+    const long int half = length / 2;
+    double u[SERIES_BLOCK], value[SERIES_BLOCK];
+    for (long int start = 0; start <= half;) {
+        const long int remaining = half - start + 1;
+        const int count = remaining < SERIES_BLOCK ? (int)remaining : SERIES_BLOCK;
+        #pragma omp simd
+        for (int j = 0; j < count; ++j) {
+            /* Retain upstream's operation order before eliminating sqrt. */
+            const double normalized = ((double)(start + j) - alpha) / alpha;
+            u[j] = 1.0 - normalized * normalized;
+            value[j] = coefficients[degree];
+        }
+        for (int k = degree - 1; k >= 0; --k) {
+            const double coefficient = coefficients[k];
+            #pragma omp simd
+            for (int j = 0; j < count; ++j) {
+                value[j] = value[j] * u[j] + coefficient;
+            }
+        }
+        for (int j = 0; j < count; ++j) {
+            const long int index = start + j;
+            const long int mirror = length - index;
+            window[index] = value[j];
+            if (mirror < length && mirror != index) {
+                window[mirror] = value[j];
+            }
+        }
+        start += count;
+    }
+    if (length % 2 == 0) {
+        /* The original even-length midpoint divides I0(beta) by itself. */
+        window[half] = 1.0;
     }
     return 0;
 }
