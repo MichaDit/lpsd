@@ -1,0 +1,66 @@
+name: Native tests and wheel
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LPSD_NATIVE: "0"
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+
+jobs:
+  numerical:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install package and test dependencies
+        run: python -m pip install '.[test]'
+      - name: Build both source-tree C backends
+        run: |
+          gcc --version
+          make compile
+      - name: Optimized implementation regression tests
+        run: python -m pytest -o addopts='' -q -ra test_fast --junitxml=test-results/fast.xml
+      - name: Original upstream tests
+        run: python -m pytest -o addopts='' -q -ra test --junitxml=test-results/upstream.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: test-results-python-${{ matrix.python }}
+          path: test-results/*.xml
+
+  wheel:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Install wheel into a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/lpsd-wheel-smoke"
+          "$RUNNER_TEMP/lpsd-wheel-smoke/bin/python" -m pip install dist/*.whl
+      - name: Exercise installed native libraries outside checkout
+        working-directory: ${{ runner.temp }}
+        run: '"$RUNNER_TEMP/lpsd-wheel-smoke/bin/python" -I "$GITHUB_WORKSPACE/test_fast/wheel_smoke.py"'

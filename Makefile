@@ -3,7 +3,7 @@ PYTHON ?= python
 all: compile test package
 
 compile:
-	$(PYTHON) build.py
+	$(PYTHON) build_native.py
 	$(PYTHON) -m lpsd_fast.build
 
 test:

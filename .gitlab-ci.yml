@@ -1,4 +1,4 @@
-# The fork's active workflow is .github/workflows/ci.yml.
+# The fork's active workflow is .github/workflows/tests.yml.
 # Keep a source-build smoke job for contributors who mirror it to GitLab.
 image: python:3.12
 stages: [test]
