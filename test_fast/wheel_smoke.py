@@ -45,7 +45,14 @@ def main():
     pd.testing.assert_frame_equal(scalar, original, check_exact=True)
     for column in ("ps", "psd", "enbw", "asd", "asdrms"):
         np.testing.assert_allclose(auto[column], original[column], rtol=2e-6, atol=0)
-    print(f"Installed wheel {version('lpsd')}: both native backends, scalar equality and auto passed")
+    selected = lpsd_fast.lpsd(data, workers=2, kernel="fast", outputs=("psd", "nsd"), **kwargs)
+    density = lpsd_fast.lnsd(data, workers=1, kernel="fast", **kwargs)
+    np.testing.assert_allclose(selected.psd, original.psd, rtol=.01, atol=0)
+    np.testing.assert_array_equal(selected.nsd, np.sqrt(selected.psd))
+    np.testing.assert_array_equal(density.nsd, selected.nsd)
+    bits = selected.attrs["lpsd_fast"]["native_long_double_mantissa_bits"]
+    assert selected.attrs["lpsd_fast"]["native_mode"] == (3 if bits > 64 else 2)
+    print(f"Installed wheel {version('lpsd')}: both native backends, scalar equality auto, fast and selected PSD/NSD passed")
 
 
 if __name__ == "__main__":

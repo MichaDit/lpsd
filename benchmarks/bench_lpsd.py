@@ -70,6 +70,24 @@ def installed_version(name):
         return None
 
 
+def build_evidence():
+    """Read optional build sidecars and verify they describe the binary present."""
+    reports = {}
+    for name, module, relative in (
+        ("original", original_module, "ltpda_dft"),
+        ("fast", fast_module, "_native/liblpsd_fast"),
+    ):
+        prefix = Path(module.__file__).resolve().parent / relative
+        path = prefix.with_suffix(".build.json")
+        if path.is_file():
+            report = json.loads(path.read_text())
+            library = path.parent / report["library"]
+            if hashlib.sha256(library.read_bytes()).hexdigest() != report["binary_sha256"]:
+                raise RuntimeError(f"Build report does not match {library}")
+            reports[name] = report
+    return reports
+
+
 def fingerprint(frame):
     """Hash index and individual columns without coercing mixed output dtypes."""
     digest = hashlib.sha256()
@@ -99,7 +117,7 @@ def profile_summary(profile):
         "worker_elapsed_s",
     )
     stages += tuple(
-        stage for stage in ("window_generation_s", "window_sums_s")
+        stage for stage in ("window_generation_s", "window_sums_s", "memory_gate_wait_s")
         if rows and all(stage in row for row in rows)
     )
     return {
@@ -136,7 +154,7 @@ def main(argv=None):
     parser.add_argument("--n", type=int, default=1_000_000)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument(
-        "--kernel", choices=("auto", "scalar", "simd", "projected"), default="auto"
+        "--kernel", choices=("auto", "fast", "scalar", "simd", "projected"), default="auto"
     )
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--warmups", type=int, default=1)
@@ -281,12 +299,13 @@ def main(argv=None):
             "cgroup_cpu_max": cgroup_value("cpu.max"),
             "cgroup_memory_max": cgroup_value("memory.max"),
         },
+        "build_reports": build_evidence(),
         "notes": [
             "Imports, input generation, warm-up, fingerprints and file output are outside API timers.",
             "With zero warm-ups the first timed call may include native loading or lazy-build setup.",
             "RSS is a process-lifetime high-water mark, not a per-call allocation or memory-budget guarantee.",
             "Output fingerprints are reproducibility metadata, not a numerical correctness proof.",
-            "Record compiler/build flags separately; this script does not infer them from the binary.",
+            "Build sidecars are recorded when present and checked against binary SHA256; missing reports require separate compiler evidence.",
         ],
     }
     if args.profile:
