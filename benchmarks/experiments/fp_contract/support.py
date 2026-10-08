@@ -13,7 +13,7 @@ def load_libraries():
     from lpsd_fast import api
 
     # Reuse the package's ABI declarations; this resolves but does not execute
-    # the ordinary production native library. Calls below use separate copies.
+    # the ordinary production native library. Calls below use separate builds.
     api._native()
     declarations = api._LIB
     libraries, reports = {}, {}
@@ -32,4 +32,16 @@ def load_libraries():
         libraries[name], reports[name] = library, report
     if reports["fma"]["baseline_sha256"] != reports["baseline"]["binary_sha256"]:
         raise RuntimeError("Candidate was not built against this recorded baseline.")
+    if reports["fma"]["source_sha256"] != reports["baseline"]["source_sha256"]:
+        raise RuntimeError("The private pair did not use the same captured sources.")
+    sources = reports["baseline"]["source_sha256"]
+    manifest = json.dumps(sources, sort_keys=True, separators=(",", ":")).encode()
+    snapshot_hash = hashlib.sha256(manifest).hexdigest()
+    for report in reports.values():
+        if report["source_snapshot_sha256"] != snapshot_hash:
+            raise RuntimeError("Source snapshot manifest hash mismatch.")
+        snapshot = ARTIFACTS / report["source_snapshot_directory"]
+        for relative, expected_hash in sources.items():
+            if hashlib.sha256((snapshot / relative).read_bytes()).hexdigest() != expected_hash:
+                raise RuntimeError(f"Captured source changed: {relative}")
     return libraries["baseline"], libraries["fma"], reports
