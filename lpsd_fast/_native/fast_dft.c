@@ -214,6 +214,56 @@ static LPSD_ALWAYS_INLINE void dot_psd_four_anchored_simd(const double *x0, cons
     ri[0] = i0; ri[1] = i1; ri[2] = i2; ri[3] = i3;
 }
 
+/* Eight segments use sixteen independent SIMD accumulators. AVX-512 has
+ * enough registers to retain those accumulators and the eight input anchors.
+ * Keep the four-segment path on narrower x86 targets: spilling accumulators
+ * defeats the reduction in coefficient loads. The run-time branch is needed
+ * for portable target_clones builds, whose preprocessing has baseline flags. */
+static LPSD_ALWAYS_INLINE bool use_eight_segment_batch(void)
+{
+#if defined(__AVX512F__)
+    return true;
+#elif defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES && \
+      defined(__ELF__) && (defined(__x86_64__) || defined(__i386__))
+    return __builtin_cpu_supports("avx512f") != 0;
+#else
+    return false;
+#endif
+}
+
+static LPSD_ALWAYS_INLINE void dot_psd_eight_anchored_simd(
+    const double *x0, const double *x1, const double *x2, const double *x3,
+    const double *x4, const double *x5, const double *x6, const double *x7,
+    const double *qr, const double *qi, long int length, double *rr, double *ri)
+{
+    const double a0 = x0[0], a1 = x1[0], a2 = x2[0], a3 = x3[0];
+    const double a4 = x4[0], a5 = x5[0], a6 = x6[0], a7 = x7[0];
+    double r0 = 0.0, r1 = 0.0, r2 = 0.0, r3 = 0.0;
+    double r4 = 0.0, r5 = 0.0, r6 = 0.0, r7 = 0.0;
+    double i0 = 0.0, i1 = 0.0, i2 = 0.0, i3 = 0.0;
+    double i4 = 0.0, i5 = 0.0, i6 = 0.0, i7 = 0.0;
+    #pragma omp simd reduction(+:r0,r1,r2,r3,r4,r5,r6,r7,i0,i1,i2,i3,i4,i5,i6,i7)
+    for (long int j = 0; j < length; ++j) {
+        const double real = qr[j], imag = qi[j];
+        const double v0 = x0[j] - a0, v1 = x1[j] - a1;
+        const double v2 = x2[j] - a2, v3 = x3[j] - a3;
+        const double v4 = x4[j] - a4, v5 = x5[j] - a5;
+        const double v6 = x6[j] - a6, v7 = x7[j] - a7;
+        r0 += real * v0; i0 += imag * v0;
+        r1 += real * v1; i1 += imag * v1;
+        r2 += real * v2; i2 += imag * v2;
+        r3 += real * v3; i3 += imag * v3;
+        r4 += real * v4; i4 += imag * v4;
+        r5 += real * v5; i5 += imag * v5;
+        r6 += real * v6; i6 += imag * v6;
+        r7 += real * v7; i7 += imag * v7;
+    }
+    rr[0] = r0; rr[1] = r1; rr[2] = r2; rr[3] = r3;
+    rr[4] = r4; rr[5] = r5; rr[6] = r6; rr[7] = r7;
+    ri[0] = i0; ri[1] = i1; ri[2] = i2; ri[3] = i3;
+    ri[4] = i4; ri[5] = i5; ri[6] = i6; ri[7] = i7;
+}
+
 static LPSD_ALWAYS_INLINE void dot_csd_anchored_simd(const double *x1, const double *x2,
                                  const double *qr, const double *qi,
                                  long int length, double *rr1, double *ri1,
@@ -374,9 +424,41 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
     }
     double start = 0.0;
     double Mr_r = 0.0, Mr_i = 0.0, M2_r = 0.0, M2_i = 0.0;
+    const bool batch_eight = batched && mode >= 2 && !csd &&
+        segLen >= 128 && use_eight_segment_batch();
     for (long int ii = 0; ii < navg; ++ii) {
+        if (batch_eight && navg - ii >= 8) {
+            const double *segments[8];
+            double rr[8], ri[8];
+            for (int b = 0; b < 8; ++b) {
+                const long int istart = (long int)floor(start + 0.5);
+                start += shift;
+                if (istart < 0 || istart > nData - segLen) {
+                    free(residual1);
+                    free(residual2);
+                    if (owns_projected) {
+                        free(projected_r);
+                        free(projected_i);
+                    }
+                    return 2;
+                }
+                segments[b] = x1data + istart;
+            }
+            dot_psd_eight_anchored_simd(
+                segments[0], segments[1], segments[2], segments[3],
+                segments[4], segments[5], segments[6], segments[7],
+                projected_r, projected_i, segLen, rr, ri);
+            for (int b = 0; b < 8; ++b) {
+                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
+                                             statistics && ii + b == navg - 1,
+                                             &Mr_r, &Mr_i, &M2_r, &M2_i);
+            }
+            ii += 7;
+            continue;
+        }
         /* Short coefficient vectors already fit well in L1. Their extra
-         * batch bookkeeping did not give a consistent measured benefit. */
+         * four-way batch bookkeeping did not give a consistent measured
+         * benefit on the narrower SIMD path. */
         if (batched && mode >= 2 && !csd && segLen >= 2048 && navg - ii >= 4) {
             const double *segments[4];
             double rr[4], ri[4];
