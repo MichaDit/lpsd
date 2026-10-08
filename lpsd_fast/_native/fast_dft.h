@@ -68,6 +68,9 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
  * 128..255 or >=1024; four-way batches remain available for length >=2048
  * and batch remainders. The intervening lengths retain the single-segment loop.
  * Means are still updated in the original segment order.
+ * Projected CSD may share these helpers between two/four segments, with
+ * a separate anchor per channel and segment. The first two CSD projections
+ * retain the original single-segment path to protect the legacy mean reset.
  * Existing fast_dft[_profile] retain their original read-only contract. */
 int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                       long int *Navs,

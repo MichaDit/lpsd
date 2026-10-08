@@ -430,7 +430,57 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
     const bool batch_eight = batched && mode >= 2 && !csd &&
         segLen >= 128 && (segLen < 256 || segLen >= 1024) &&
         use_eight_segment_batch();
+    /* A CSD segment has two input streams. Four CSD segments therefore use
+     * the same sixteen accumulators as eight auto-spectrum segments; two
+     * CSD segments use the existing narrower eight-accumulator kernel. */
+    const bool batch_csd_four = batched && mode >= 2 && csd &&
+        segLen >= 128 && (segLen < 256 || segLen >= 1024) &&
+        use_eight_segment_batch();
     for (long int ii = 0; ii < navg; ++ii) {
+        /* Keep the first two CSD projections on their original single-
+         * segment path: the legacy ii=1 mean reset subtracts the complete
+         * first periodogram and can amplify an otherwise tiny dot-product
+         * rounding change after a large initial transient. */
+        const int csd_batch = ii >= 2 && batch_csd_four && navg - ii >= 4 ? 4 :
+            ii >= 2 && batched && mode >= 2 && csd &&
+            segLen >= 2048 && navg - ii >= 2 ? 2 : 0;
+        if (csd_batch != 0) {
+            const double *segments[8];
+            double rr[8], ri[8];
+            for (int b = 0; b < csd_batch; ++b) {
+                const long int istart = (long int)floor(start + 0.5);
+                start += shift;
+                if (istart < 0 || istart > nData - segLen) {
+                    free(residual1);
+                    free(residual2);
+                    if (owns_projected) {
+                        free(projected_r);
+                        free(projected_i);
+                    }
+                    return 2;
+                }
+                segments[2*b] = x1data + istart;
+                segments[2*b+1] = x2data + istart;
+            }
+            if (csd_batch == 4) {
+                dot_psd_eight_anchored_simd(
+                    segments[0], segments[1], segments[2], segments[3],
+                    segments[4], segments[5], segments[6], segments[7],
+                    projected_r, projected_i, segLen, rr, ri);
+            } else {
+                dot_psd_four_anchored_simd(
+                    segments[0], segments[1], segments[2], segments[3],
+                    projected_r, projected_i, segLen, rr, ri);
+            }
+            for (int b = 0; b < csd_batch; ++b) {
+                update_original_statistics(
+                    ii + b, rr[2*b], ri[2*b], rr[2*b+1], ri[2*b+1],
+                    statistics && ii + b == navg - 1,
+                    &Mr_r, &Mr_i, &M2_r, &M2_i);
+            }
+            ii += csd_batch - 1;
+            continue;
+        }
         if (batch_eight && navg - ii >= 8) {
             const double *segments[8];
             double rr[8], ri[8];

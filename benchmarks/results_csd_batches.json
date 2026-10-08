@@ -1,0 +1,879 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "9f3071ca2b7134a585f1727506a4e1472a7da299",
+  "stage": "CSD batch candidate before FMA integration",
+  "results": [
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:28:29.815668+00:00",
+      "script_sha256": "72da45aabddd1c0b13dacb924643458d24a62f2d0b3d7741a77e787409557cd7",
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "csd",
+      "n": 1000000,
+      "input_sha256": "0188c8ef4187fda47bc24b3163bb9c1a76abf026cc0b42cc5d096cd87ddadd38",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": true,
+        "workers": 1,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-csd/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-csd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "699b8f0beea0c06b79f7751070286ee88a71bffe6c719e5ae4bfe998fee6fb6c",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "binary_sha256": "699b8f0beea0c06b79f7751070286ee88a71bffe6c719e5ae4bfe998fee6fb6c"
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "19a0d0e2b56975cb74f3bee479b44b1dd733247088200467947fc26cba72ef34",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 1.2612693359988043,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 0.9954470019947621,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 0.9422201170018525,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 1.2486596559974714,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 1.2691410900006304,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 0.9185175640013767,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 0.8884701610004413,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 1.1914806799977669,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 1.2322811859994545,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 0.967552093003178,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 1.079051108994463,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 1.5197475390014006,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 1.232733085998916,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 2377782853,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.1055955989213544,
+              "coefficients_s": 0.05751830087683629,
+              "c_kernel_s": 1.0543132561942912,
+              "c_preparation_s": 0.07286971700523281,
+              "c_segments_s": 0.9705405499989865,
+              "worker_elapsed_s": 1.2215397198451683,
+              "window_generation_s": 0.07969229500304209,
+              "window_sums_s": 0.023646291068871506,
+              "memory_gate_wait_s": 0.001698890067928005
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0009732609978527762,
+              "input_conversion_s": 0.0011266029978287406,
+              "output_assembly_s": 0.0006804989970987663
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 1.0837646080035483,
+          "fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 2377782853,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.1290340379855479,
+              "coefficients_s": 0.061032834913930856,
+              "c_kernel_s": 0.8750934291310841,
+              "c_preparation_s": 0.08107462398038479,
+              "c_segments_s": 0.7817397468970739,
+              "worker_elapsed_s": 1.0696420460008085,
+              "window_generation_s": 0.10017445100675104,
+              "window_sums_s": 0.025882167035888415,
+              "memory_gate_wait_s": 0.0023344850560533814
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0008399300058954395,
+              "input_conversion_s": 0.0012989940005354583,
+              "output_assembly_s": 0.0007875599985709414
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "reference_fingerprint": "c5342f7b9e45238cbcc09e2f801ede83568f17d6ae98f8e5c5b573ddcdeae9bd",
+      "actual_frequencies": 577,
+      "wall_repetitions_s": {
+        "baseline": [
+          1.2612693359988043,
+          1.2486596559974714,
+          1.2691410900006304,
+          1.1914806799977669,
+          1.2322811859994545,
+          1.5197475390014006
+        ],
+        "candidate": [
+          0.9954470019947621,
+          0.9422201170018525,
+          0.9185175640013767,
+          0.8884701610004413,
+          0.967552093003178,
+          1.079051108994463
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 1.2549644959981379,
+        "candidate": 0.9548861050025153
+      },
+      "baseline_over_candidate": 1.31425568915869,
+      "candidate_faster_pairs": 6,
+      "completed": true
+    },
+    {
+      "schema_version": 1,
+      "created_utc": "2026-10-08T20:29:47.207794+00:00",
+      "script_sha256": "72da45aabddd1c0b13dacb924643458d24a62f2d0b3d7741a77e787409557cd7",
+      "environment": {
+        "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "cpu_max": "800000 100000",
+        "cpuset_cpus_effective": "0-8"
+      },
+      "kind": "csd",
+      "n": 10000000,
+      "input_sha256": "0e3f738a56b57ef50f85d7c9013f3c52cae3c6a88cb52fbc98e4489a32f76612",
+      "input": "resident float64 pandas input, PCG64 seed 20261008",
+      "parameters": {
+        "sample_rate": 1.0,
+        "n_frequencies": 1000,
+        "n_averages": 100,
+        "window_function": "kaiser",
+        "psll": 200.0,
+        "overlap": null,
+        "detrending_order": 0,
+        "kernel": "fast",
+        "outputs": [
+          "psd"
+        ],
+        "csd": true,
+        "workers": 8,
+        "max_working_mb": 4096,
+        "window_cache_mb": 128
+      },
+      "implementations": {
+        "baseline": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-baseline/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "binary_sha256": "f342e5b649a5308181673b7ec0c46c1c778c5b685b4019469da01f56052fbc48"
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "c53af885aed60e812416693518e87b7cbdd975d314d67b5d69f9b20572ad27f9",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        },
+        "candidate": {
+          "package": "/workspace/scratch/5346007753d8/lpsd-csd/lpsd_fast",
+          "version": "1.0.6+fast.3",
+          "library": "/workspace/scratch/5346007753d8/lpsd-csd/lpsd_fast/_native/liblpsd_fast.so",
+          "library_sha256": "699b8f0beea0c06b79f7751070286ee88a71bffe6c719e5ae4bfe998fee6fb6c",
+          "build_report": {
+            "schema_version": 1,
+            "source": "fast_dft.c",
+            "library": "liblpsd_fast.so",
+            "compiler": [
+              "cc"
+            ],
+            "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "compiler_target": "x86_64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd",
+              "-DLPSD_HAVE_TARGET_CLONES=1"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "native": false,
+            "openmp_simd_flags": [
+              "-fopenmp-simd"
+            ],
+            "target_clones_requested": "auto",
+            "target_clones": true,
+            "macos_deployment_target": null,
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 64,
+              "long_double_bytes": 16
+            },
+            "binary_sha256": "699b8f0beea0c06b79f7751070286ee88a71bffe6c719e5ae4bfe998fee6fb6c"
+          },
+          "source_sha256": {
+            "__init__.py": "bd8b3b4bada0485315384c578a8daf6e76f6ea8fd3e6f5bb30362c0e7e993c21",
+            "_windows.py": "9e42d0b6ed131e0ad0a37b3532bbf83655c7f48bff683b3cd05b6ed2ddca4db8",
+            "api.py": "13b88fb9a8c1ef4bf0114fe759610f933a6b8e1322ab81a05000b9ea300fa18b",
+            "build.py": "85bbac31e67b6c3ae304db5f8e70576b45fa00be71c82732db33ad2b5ec016e4",
+            "planning.py": "48f95f120607ee80752b74f815cf1a42bc54b3c802740d529c73401eb66d7434",
+            "_native/cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+            "_native/fast_dft.c": "19a0d0e2b56975cb74f3bee479b44b1dd733247088200467947fc26cba72ef34",
+            "_native/numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+            "_native/projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+            "_native/rolling_boxcar.c": "d2deb486ca591716d72dc3097e6be1aec95ceb106bee8beb83b5dfeb4ad4a8cd",
+            "_native/fast_dft.h": "61720c2c7f9986d676e9102c9c3da27e8fd95d3afe5b4a6fc0ea73dd2bf76b63"
+          }
+        }
+      },
+      "methodology": {
+        "timing": "complete public API wall time; alternating A/B then B/A pairs",
+        "warmup": "one complete problem per implementation before timing",
+        "exclusions": "imports, input creation, builds, warmup, comparisons, provenance and file output",
+        "profiles": "separate instrumented calls, excluded from timing repetitions",
+        "reuse": "each API call independently prepares its plan, windows and coefficients",
+        "limits": "shared host; uncontrolled clocks; all observations retained"
+      },
+      "calls": [
+        {
+          "pair": 0,
+          "implementation": "baseline",
+          "wall_s": 3.3427534919974278,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 0,
+          "implementation": "candidate",
+          "wall_s": 3.1780555750010535,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "candidate",
+          "wall_s": 3.697605758999998,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 1,
+          "implementation": "baseline",
+          "wall_s": 4.2304832480003824,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "baseline",
+          "wall_s": 4.4804813580049085,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 2,
+          "implementation": "candidate",
+          "wall_s": 4.095995773997856,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "candidate",
+          "wall_s": 3.5111417270018137,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 3,
+          "implementation": "baseline",
+          "wall_s": 3.598230629002501,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "baseline",
+          "wall_s": 3.7406592539991834,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 4,
+          "implementation": "candidate",
+          "wall_s": 3.1599732949980535,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "candidate",
+          "wall_s": 3.8703664310014574,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        },
+        {
+          "pair": 5,
+          "implementation": "baseline",
+          "wall_s": 3.6345262579998234,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          }
+        }
+      ],
+      "profiles": {
+        "baseline": {
+          "workers": 1,
+          "full_api_wall_s": 15.867244313994888,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.8964540879314882,
+              "coefficients_s": 0.33876979702472454,
+              "c_kernel_s": 14.575013192996266,
+              "c_preparation_s": 0.6192272300468176,
+              "c_segments_s": 13.918729537959734,
+              "worker_elapsed_s": 15.826738697003748,
+              "window_generation_s": 0.6970520699469489,
+              "window_sums_s": 0.1900600979788578,
+              "memory_gate_wait_s": 0.00458847497793613
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0006810359991504811,
+              "input_conversion_s": 0.008825463999528438,
+              "output_assembly_s": 0.0008554450032534078
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        },
+        "candidate": {
+          "workers": 1,
+          "full_api_wall_s": 12.26132906699786,
+          "fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+          "comparison": {
+            "psd": {
+              "bitwise_equal": true,
+              "max_absolute_error": 0.0,
+              "max_relative_error_nonzero_reference": 0.0,
+              "points_at_or_above_one_percent": 0,
+              "changed_exact_zeros": 0
+            }
+          },
+          "summary": {
+            "sample_iterations": 27072536884,
+            "window_cache_hits": 2,
+            "sum_worker_stage_seconds": {
+              "window_and_sums_s": 0.9792075809527887,
+              "coefficients_s": 0.39047179905173834,
+              "c_kernel_s": 10.831126641984156,
+              "c_preparation_s": 0.6900848379227682,
+              "c_segments_s": 10.108758658010629,
+              "worker_elapsed_s": 12.217545938045077,
+              "window_generation_s": 0.7684850568912225,
+              "window_sums_s": 0.19952535503398394,
+              "memory_gate_wait_s": 0.004812518054677639
+            },
+            "channel_phase_seconds": {
+              "planning_s": 0.0007915969981695525,
+              "input_conversion_s": 0.009504731999186333,
+              "output_assembly_s": 0.0010583010007394478
+            },
+            "note": "Worker elapsed times overlap; these sums are not total wall time. C preparation and segments subdivide C kernel time. Window generation and sums subdivide window_and_sums time; do not add subdivisions to their parent phase."
+          }
+        }
+      },
+      "reference_fingerprint": "2d5a988bcc1cc82dbea27a7f09d53d7cc2bfead433a04da9b303a5a6cc5c239c",
+      "actual_frequencies": 651,
+      "wall_repetitions_s": {
+        "baseline": [
+          3.3427534919974278,
+          4.2304832480003824,
+          4.4804813580049085,
+          3.598230629002501,
+          3.7406592539991834,
+          3.6345262579998234
+        ],
+        "candidate": [
+          3.1780555750010535,
+          3.697605758999998,
+          4.095995773997856,
+          3.5111417270018137,
+          3.1599732949980535,
+          3.8703664310014574
+        ]
+      },
+      "median_wall_s": {
+        "baseline": 3.6875927559995034,
+        "candidate": 3.604373743000906
+      },
+      "baseline_over_candidate": 1.0230883418125534,
+      "candidate_faster_pairs": 5,
+      "completed": true
+    }
+  ],
+  "raw_report": "results_csd_batches_raw.json.gz",
+  "note": "All ordinary calls and profile summaries are retained here; complete per-frequency profiles are in the losslessly compressed raw report."
+}

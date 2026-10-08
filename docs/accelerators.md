@@ -29,6 +29,32 @@ speed and numerical comparison on an accessible device. A port that
 compiles, or a large advertised tensor throughput, would not establish the
 user's requested wall-time improvement.
 
+### Independent runtime check for the next segment revision
+
+The 2026-10-08 follow-up environment again reports AMD EPYC 9V74, nine
+visible logical CPUs and an eight-CPU cgroup quota (`800000 100000`).
+CPU feature enumeration includes AVX2, FMA and AVX-512F. No NVIDIA, DRM
+render or ROCm device nodes are exposed, and CUDA/ROCm compilers and device
+inventory commands are absent. In addition to checking files, a direct
+`ctypes` call to the installed `libOpenCL.so.1` loader returned
+`clGetPlatformIDs = -1001` with zero platforms; `/etc/OpenCL/vendors`
+contains no vendor ICDs. The loader alone is therefore not a usable
+OpenCL device in this session. This is a container-access finding, not a
+claim about the physical host.
+
+The system-wide BLAS lookup resolves to reference BLAS 3.12.0; NumPy's
+own configuration separately reports bundled OpenBLAS 0.3.30 with dynamic
+CPU dispatch and 64-bit BLAS indices. Those facts must not be collapsed
+into a claim that OpenBLAS is unavailable. The existing C segment kernel
+does not call BLAS, and this inventory establishes no BLAS speed advantage.
+
+No device kernel, FP64 device computation, host/device transfer benchmark
+or complete GPU LPSD comparison can be measured through the exposed
+runtime. A GPU implementation still needs all four, including first-call
+costs and comparison with the newly optimized CPU segment code on the
+same machine. Consequently this revision adds CPU segment work only; it
+does not enable an unmeasured GPU backend or advertise a GPU speedup.
+
 ## The kernel worth moving
 
 The existing projected order-0 kernel computes two real dot products per
