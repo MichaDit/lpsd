@@ -5,6 +5,11 @@ its frequency plan, segment lengths, overlap, windows and normalization.
 The current release is `1.0.6+fast.2`. Use `from lpsd_fast import lpsd` to select
 this implementation; the unchanged original `lpsd` API remains available.
 
+For a later measurement series against actual FFTW 3.3.11, including complete
+pipeline costs, prime lengths and remaining optimization headroom, see
+[the FFTW comparison](fftw-comparison.md). The version-to-version measurements
+below retain their original conditions and results.
+
 ## Current result: fast.2 versus fast.1
 
 The final native build reduced the measured median at **ten million samples
