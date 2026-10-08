@@ -2,6 +2,7 @@
 import importlib.util
 import os
 from pathlib import Path
+import sys
 
 from setuptools import Distribution, setup
 from setuptools.command.build_py import build_py
@@ -27,9 +28,15 @@ class BuildNative(build_py):
         root = Path(__file__).resolve().parent
         destination = root if self.editable_mode else Path(self.build_lib)
         legacy = load_build_module(root / "build_native.py", "lpsd_legacy_build")
-        legacy.build_legacy(destination / "lpsd")
+        legacy_library = legacy.build_legacy(destination / "lpsd")
         fast = load_build_module(root / "lpsd_fast" / "build.py", "lpsd_fast_build")
-        fast.build(native=native, output_directory=destination / "lpsd_fast" / "_native")
+        fast_library = fast.build(
+            native=native, output_directory=destination / "lpsd_fast" / "_native"
+        )
+        if sys.platform == "darwin":
+            self.distribution.lpsd_macos_architecture = fast.macos_native_architecture(
+                (legacy_library, fast_library)
+            )
 
 
 class NativeDistribution(Distribution):
@@ -40,13 +47,21 @@ class NativeDistribution(Distribution):
 class PlatformWheel(bdist_wheel):
     def get_tag(self):
         # Neither library imports the CPython or NumPy C API.
-        _, _, platform = super().get_tag()
-        return "py3", "none", platform
+        _, _, platform_tag = super().get_tag()
+        if platform_tag.startswith("macosx_"):
+            architecture = getattr(self.distribution, "lpsd_macos_architecture", None)
+            if architecture is None:
+                # Editable wheels request their tag before BuildNative.run.
+                architecture = platform_build.macos_native_architecture()
+            platform_tag = "_".join(platform_tag.split("_")[:3] + [architecture])
+        return "py3", "none", platform_tag
 
 
 # This precedes wheel tag calculation as well as the actual compiler call.
-load_build_module(Path(__file__).resolve().parent / "lpsd_fast" / "build.py",
-                  "lpsd_platform_config").configure_macos_target()
+platform_build = load_build_module(
+    Path(__file__).resolve().parent / "lpsd_fast" / "build.py", "lpsd_platform_config"
+)
+platform_build.configure_macos_target()
 
 setup(
     distclass=NativeDistribution,

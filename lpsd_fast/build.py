@@ -37,6 +37,30 @@ def _compiler_output(compiler, arguments, input_text=None):
     ).stdout.strip()
 
 
+def macos_native_architecture(libraries=()):
+    """Resolve our single native target, then verify any finished Mach-O files.
+
+    A universal2 Python can run on either architecture, but our compiler invocation
+    emits one architecture. Editable wheel tags are requested before compilation;
+    the compiler target is available then, and lipo checks the finished libraries.
+    """
+    compiler = shlex.split(os.environ.get("CC", "cc"))
+    if not compiler:
+        raise ValueError("CC must name a compiler")
+    target = _compiler_output(compiler, ["-dumpmachine"])
+    architecture = target.split("-", 1)[0]
+    architecture = {"aarch64": "arm64"}.get(architecture, architecture)
+    if architecture not in ("arm64", "x86_64") or "apple" not in target:
+        raise RuntimeError("Unsupported native macOS compiler target: " + target)
+    for library in libraries:
+        architectures = _compiler_output(["lipo"], ["-archs", str(library)]).split()
+        if architectures != [architecture]:
+            raise RuntimeError(
+                f"Expected a native {architecture} library, got {architectures}: {library}"
+            )
+    return architecture
+
+
 def _supports(compiler, flags, source, link_flag):
     """Compile and link, without running target code (also safe for cross CC)."""
     with tempfile.TemporaryDirectory(prefix="lpsd-probe-") as temporary:
