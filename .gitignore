@@ -10,6 +10,7 @@ coverage.xml
 .ipynb_checkpoints/
 *.dll
 *.dylib
+*.build.json
 build/
 *.egg-info/
 .pytest_cache/
