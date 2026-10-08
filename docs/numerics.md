@@ -79,7 +79,7 @@ unit-amplitude tone, had maximum relative PSD/NSD differences of 0.22483% /
 Neither a finite test set nor a series-tail bound proves a general spectral
 error bound after cancellation, normalization and output quantization.
 
- The cosine-series path computes one fundamental
+The cosine-series path computes one fundamental
 cosine and obtains the harmonics through a short Chebyshev recurrence,
 then mirrors the periodic window. The recurrence advances across harmonic
 order, not across an unbounded sequence of samples. This preserves the
@@ -144,13 +144,23 @@ Two compensated FP64 parts are not a guarantee of binary128's 113-bit
 significand, nor of bitwise equality to the original long-double projector.
 The arithmetic assumes the usual IEEE rounding environment. The precision
 query reports the C type's actual precision; by itself it does not establish
-whether a machine implements that type in hardware. The `auto` mode uses mode 2 only when long double has more than 53
-significand bits. On targets such as Apple Silicon, where it has 53 bits,
-`auto` retains the original residual arithmetic (mode 1) to reproduce
-DC-dominated reference results more closely. The opt-in `fast` path still
-uses projection there. Mode 3 does not extend the experimental order-1
-projector. See [platforms and floating-point ABI](platforms.md) for build
-metadata, architecture-specific formats and the status of native validation.
+whether a machine implements that type in hardware. Order-0 selection is:
+
+| C `long double` significand | `auto` | `fast` |
+|---|---|---|
+| At most 53 bits | Original residual arithmetic and SIMD, mode 1 | Anchored projection, mode 2 |
+| More than 53, at most 64 bits | Anchored projection, mode 2 | Anchored projection, mode 2 |
+| More than 64 bits | Anchored projection, mode 2 | Compensated anchored projection, mode 3 |
+
+Thus `auto` retains the original residual arithmetic on 53-bit targets such
+as Apple Silicon to reproduce DC-dominated reference results more closely.
+The opt-in `fast` path still uses projection there. This selection depends
+on the reported type precision, not a hard-coded processor name or a runtime
+comparison of spectral errors. Other supported detrending choices use mode 1
+in `auto` and `fast`; disabling detrending skips residual calculation.
+Mode 3 does not extend the experimental order-1 projector. See
+[platforms and floating-point ABI](platforms.md) for build metadata,
+architecture-specific formats and the status of native validation.
 
 ### Cancellation and linear detrending
 
@@ -258,22 +268,67 @@ an absolute allowance is selected; with both absolute limits zero it retains
 the strict comparison. No DC-scaled or peak-scaled floor replaces the
 reference values.
 
-### Why a relative-only limit can reject negligible absolute differences
+## Final local fast.2 accuracy audit
 
-A development audit of the unit-amplitude off-bin tone with HFT248D,
-`N=131073`, sample rate 50 Hz, 96 requested frequencies, 16 requested averages,
-overlap 0.841 and no detrending found a maximum relative PSD difference of
-approximately **1.49%**. At that point the scalar PSD was `3.11844e-29`, the
-candidate was `3.07196e-29`, and the absolute difference was `4.64754e-31`.
-The maximum absolute difference in that entire case was `3.89500e-29` at a
-different frequency. Separate on-bin HFT248D checks at `N=32769` produced
-relative errors close to 100% in PSD values around `1e-30`.
+The [final machine-readable results](../benchmarks/results_fast2_final.json)
+record the native Linux x86-64 audit after integrating the positive-series
+Kaiser generator. Both runs compared real auto spectra from `fast`, one
+worker, selected PSD/NSD outputs against `scalar`, one worker, with its
+original seven outputs.
+The scalar anchor matched the original C implementation bitwise in all seven
+columns and the frequency index before each audit. The reports record the
+source and binary fingerprints; these are results for that measured build.
 
-Those observations concern cancellation in very small sidelobes. They explain
-why the report preserves both kinds of error, and why an absolute allowance
-must be explicit. They are development examples, not a final all-cases pass
-summary or a worst-case bound. Large relative errors must still be assessed
-if those very small components are the quantities being measured.
+The two runs used sample rate 50 Hz, 96 requested frequencies, 16 requested
+averages and the same 19 deterministic signal/window cases. The relative
+limit was strictly less than 1%; the explicit absolute allowances were
+`1e-24` for PSD and `1e-12` for NSD. The actual output-frequency count varies
+with the frequency plan and window/overlap configuration.
+
+| Input length | Signal/window configurations | Frequency points per metric | Configurations passing both strict relative checks | Configurations passing both combined checks |
+|---:|---:|---:|---:|---:|
+| 32,769 | 19 | 1,414 | 18 | 19 |
+| 131,073 | 19 | 1,487 | 17 | 19 |
+| **Total** | **38** | **2,901 PSD and 2,901 NSD** | **35** | **38** |
+
+Every frequency index matched exactly, and there were no nonfinite reference
+or candidate values. No exact-zero changes occurred; these particular audit
+files contained no exactly zero reference values, so that counter does not
+establish coverage of exact-zero inputs.
+
+The strict relative test passed at 2,894 PSD points and 2,895 NSD points.
+The remaining points passed through their explicitly chosen absolute limit:
+
+| Metric | Points accepted only through the absolute limit | Largest absolute error within that subset | Largest absolute error over all points |
+|---|---:|---:|---:|
+| PSD | **7** | **`1.9147527714363856e-26`** | `5.293955920339377e-23` |
+| NSD | **6** | **`1.1424780392566003e-14`** | `1.3766765505351941e-14` |
+
+The subset maxima must not be presented as global error maxima. Conversely,
+a global absolute error above the absolute allowance does not necessarily
+fail the combined criterion: the largest PSD absolute difference occurred
+at a scalar value of `8.270919917309212e-16`, with relative error
+`6.400685743867854e-8`, well below the 1% limit.
+
+The three configurations failing a relative-only check were the HFT248D
+on-bin tone at both input lengths and the HFT248D off-bin tone at `N=131073`.
+All seven PSD and six NSD exceptions belonged to these cases. The largest
+relative differences remained visible in the report: approximately **99.83%**
+for PSD and **95.92%** for NSD. For example, the `N=32769` on-bin case compared
+scalar PSD `6.1221777045062954e-30` with candidate
+`1.0210268258793555e-32`, an absolute difference of
+`6.111967436247502e-30`. These small absolute differences are accepted by the
+stated audit policy; they are still relevant when those particular components
+are the measurement target.
+
+This finite synthetic audit establishes the reported comparison outcomes,
+not a runtime guarantee for arbitrary inputs, lengths, compilers or platforms.
+The API does not check these limits or perform a scalar retry. Application
+limits remain a separate decision in the input's physical units. The
+[first fast.2 integration record](../benchmarks/results_fast2.json) is retained
+as an earlier measurement stage and should not be combined with the final
+audit's counts or extrema. Platform validation is recorded separately in
+[the platform notes](platforms.md).
 
 ## Earlier recorded validation results
 
@@ -341,11 +396,11 @@ remaining segments. Floating-point cancellation can leave additional effects.
 The [original core](../lpsd/ltpda_dft.c) also assigns the new second-moment term
 to `M2` rather than accumulating it with `+=`. The returned variance
 consequently does not implement the usual running sample variance. All
-optimized modes retain the mean
-recurrence and the final M2 result; intermediate M2 assignments can be omitted
+optimized modes retain the mean recurrence and the final M2 result;
+intermediate M2 assignments can be omitted
 because they are overwritten. `ps_std` and `psd_std` must therefore not be
-treated as independently validated statistical
-uncertainties. Correcting these recurrences would change the estimator and
+treated as independently validated statistical uncertainties. Correcting
+these recurrences would change the estimator and
 requires a separately selected, validated behavior change.
 
 The output precision is also inherited: most real PSD columns are exposed
