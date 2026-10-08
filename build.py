@@ -26,6 +26,7 @@ def build_legacy(output_directory=None):
                                 "-o", temporary, "-lm"],
             check=True,
         )
+        os.chmod(temporary, 0o755)
         os.replace(temporary, target)
     finally:
         if os.path.exists(temporary):

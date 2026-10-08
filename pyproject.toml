@@ -9,7 +9,7 @@ description = "LPSD spectral estimation with an optional parallel native impleme
 readme = "README.md"
 requires-python = ">=3.10,<3.16"
 license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "lpsd_fast/_native/LICENSE.numpy.txt"]
 authors = [
     {name = "Christoph Bode", email = "christoph.bode@aei.mpg.de"},
     {name = "Gerhard Heinzel"},
@@ -27,10 +27,11 @@ Repository = "https://github.com/MichaDit/lpsd"
 Upstream = "https://gitlab.com/uhh-gwd/lpsd"
 
 [tool.setuptools.packages.find]
-include = ["lpsd", "lpsd.*"]
+include = ["lpsd", "lpsd.*", "lpsd_fast", "lpsd_fast.*"]
 
 [tool.setuptools.package-data]
 lpsd = ["*.c", "*.h", "c_sources/*.c", "c_sources/*.h"]
+lpsd_fast = ["_native/*.c", "_native/*.h", "_native/LICENSE*", "_native/*.md"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
