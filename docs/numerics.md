@@ -14,8 +14,8 @@ available unchanged. Faster arithmetic is selected through the separate
 | `scalar` | Original long-double detrending and serial Fourier accumulation order; original window and coefficient path | Closest compatibility with the original implementation |
 | `simd` | Original long-double residual detrending, followed by a SIMD Fourier reduction | Faster reductions with changed rounding order |
 | `projected` | Preprojected Fourier coefficients and locally anchored input; orders 0 and 1 only | Explicit numerical tradeoff; order 1 remains experimental |
-| `auto` | `projected` for mean removal (order 0), otherwise `simd`; independent Fourier phases | Default optimized choice, retaining residual detrending for order 1 |
-| `fast` | Same detrending selection as `auto`, with bounded block rotations for Fourier coefficients; compensated order-0 preparation when C `long double` has more than 64 significand bits | Opt-in lower wall time with additional rounding differences |
+| `auto` | `projected` for order 0 when C long double has more than 53 significand bits, otherwise original residual detrending with `simd`; independent Fourier phases | Default optimized choice, retaining residual detrending for order 1 |
+| `fast` | Projected order 0, residual SIMD for other orders, bounded block rotations; compensated order-0 preparation when C `long double` has more than 64 significand bits | Opt-in lower wall time with additional rounding differences |
 
 `fast` is an explicit arithmetic choice, not an accuracy target. It does not
 compare results against a tolerance or rerun suspect frequencies with
@@ -118,8 +118,11 @@ Two compensated FP64 parts are not a guarantee of binary128's 113-bit
 significand, nor of bitwise equality to the original long-double projector.
 The arithmetic assumes the usual IEEE rounding environment. The precision
 query reports the C type's actual precision; by itself it does not establish
-whether a machine implements that type in hardware. The existing `auto`
-mode keeps mode 2, and mode 3 does not extend the experimental order-1
+whether a machine implements that type in hardware. The `auto` mode uses mode 2 only when long double has more than 53
+significand bits. On targets such as Apple Silicon, where it has 53 bits,
+`auto` retains the original residual arithmetic (mode 1) to reproduce
+DC-dominated reference results more closely. The opt-in `fast` path still
+uses projection there. Mode 3 does not extend the experimental order-1
 projector. See [platforms and floating-point ABI](platforms.md) for build
 metadata, architecture-specific formats and the status of native validation.
 
