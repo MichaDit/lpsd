@@ -140,6 +140,11 @@ def _native():
             selected.restype = ct.c_int
             _LIB.fast_dft_selected_profile.argtypes = selected.argtypes + [dp, dp]
             _LIB.fast_dft_selected_profile.restype = ct.c_int
+            _LIB.fast_dft_selected_bounded.argtypes = selected.argtypes + [
+                ct.c_double, dp, dp, ct.POINTER(ct.c_long)]
+            _LIB.fast_dft_selected_bounded.restype = ct.c_int
+            _LIB.native_segment_fma_supported.argtypes = []
+            _LIB.native_segment_fma_supported.restype = ct.c_int
             _LIB.fast_dft_boxcar.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
                                             dp, ct.c_long, ct.c_long, dp, dp,
                                             ct.c_double, ct.c_double, ct.c_int, ct.c_bool,
@@ -315,6 +320,16 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     if cosine_coefficients is not None:
         cosine_coefficients = np.asarray(cosine_coefficients, dtype=np.float64)
     known_window = window_kind is not None or cosine_coefficients is not None
+    # Complete-call comparisons show a repeatable FMA gain with one worker,
+    # but no consistent benefit with concurrent frequency workers.
+    use_bounded = (workers == 1 and kernel == 'fast' and mode >= 2 and not csd and spectrum
+                   and bool(_LIB.native_segment_fma_supported()))
+    input_bound_started = time.perf_counter() if profile else 0.0
+    # One bound per complete channel, rather than per frequency or segment.
+    # min/max avoid an input-sized abs() allocation; _array already rejects
+    # nonfinite input. The native coefficient guard also covers custom windows.
+    input_peak = max(abs(float(np.min(x1))), abs(float(np.max(x1)))) if use_bounded else math.inf
+    input_bound_s = time.perf_counter() - input_bound_started if profile else 0.0
     beta = _kaiser_alpha(psll) * np.pi
     capacity = int(max_working_mb * 1024**2) if max_working_mb is not None else int(_available_memory() * 0.65)
     capacity = max(64 * 1024**2, capacity)
@@ -326,6 +341,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     custom_window_lock = threading.Lock()
     rows = [None] * nf
     rolling_boxcar = [False] * nf
+    fused_counts = [0] * nf
     x1p, x2p = _pointer(x1), _pointer(x2)
 
     def window_for(length):
@@ -412,6 +428,15 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                         ct.byref(prep_s) if profile else None,
                         ct.byref(segments_s) if profile else None, ct.byref(rebase_count))
                     rolling_boxcar[j] = rebase_count.value >= 0
+                elif use_bounded:
+                    fused_batches = ct.c_long()
+                    status = _LIB.fast_dft_selected_bounded(
+                        ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
+                        x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
+                        order, csd, mode, statistics, True, input_peak,
+                        ct.byref(prep_s) if profile else None,
+                        ct.byref(segments_s) if profile else None, ct.byref(fused_batches))
+                    fused_counts[j] = fused_batches.value
                 else:
                     status = fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
                                 x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
@@ -446,7 +471,9 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                            'coefficients_s': t2 - t1,
                            'c_kernel_s': t3 - t2, 'c_preparation_s': prep_s.value,
                            'c_segments_s': segments_s.value,
-                           'segment_method': 'rolling_boxcar' if rolling_boxcar[j] else 'direct',
+                           'segment_method': ('rolling_boxcar' if rolling_boxcar[j] else
+                                              'direct_fma' if fused_counts[j] else 'direct'),
+                           'fused_segment_batches': fused_counts[j],
                            'rolling_rebases': rebase_count.value if spectrum else 0,
                            'memory_gate_wait_s': t0 - wait_started,
                            'worker_elapsed_s': time.perf_counter() - t0}
@@ -481,6 +508,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                 'legacy_statistics': True, 'outputs': list(outputs),
                                 'variance_computed': statistics,
                                 'rolling_boxcar_frequencies': sum(rolling_boxcar),
+                                'fused_segment_batches': sum(fused_counts),
                                 'native_window': kernel != 'scalar' and known_window,
                                 'kaiser_method': ('series_with_fallback' if kernel == 'fast'
                                                   else 'direct') if window_kind == 0 else None,
@@ -492,6 +520,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                        'concurrency_budget_bytes': capacity,
                                        'peak_reserved_bytes': gate.peak,
                                        'output_assembly_s': time.perf_counter() - assembly_started,
+                                       'input_bound_s': input_bound_s,
                                        'sample_iterations_note': 'L*K is logical segment coverage/direct reference work, not executed rolling sample visits or measured memory traffic.',
                                        'note': 'Per-worker elapsed times overlap and must not be summed as wall clock.'}
     return result
@@ -543,6 +572,11 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     path requires length >= 256 and at least 32 segments; it rebuilds all
     anchored sums every 32 segments and retains the original segment starts.
     Other windows, detrending orders and CSD retain direct segment projections.
+    On supported AVX-512 CPUs, single-worker order-zero fast auto spectra use
+    fused FP64 segment projections after an unchanged initial batch. An
+    input range check occurs once per channel and projected coefficients are
+    checked per frequency; extreme ranges and parallel frequency workers
+    retain the ordinary arithmetic.
     Small additional rounding differences are accepted to reduce wall time;
     there is no universal relative-error bound at spectral nulls. Compare
     with ``scalar`` using relative and application-specific absolute limits.

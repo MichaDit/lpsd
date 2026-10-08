@@ -144,7 +144,7 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
         return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
                              nData, segLen, Cr, Ci, olap, 0, false, mode,
                              statistics, true, Cr, Ci,
-                             preparation_seconds, segments_seconds);
+                             preparation_seconds, segments_seconds, NAN, NULL);
     }
 
     *Pr_r = *Pr_i = NAN;
@@ -228,7 +228,7 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
             const int status = fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
                                             nData, segLen, Cr, Ci, olap, 0, false, mode,
                                             statistics, true, Cr, Ci,
-                                            preparation_seconds, segments_seconds);
+                                            preparation_seconds, segments_seconds, NAN, NULL);
             if (profile) {
                 *preparation_seconds += wasted_preparation;
                 *segments_seconds += wasted_segments;

@@ -113,6 +113,10 @@ def main(argv=None):
     report = {
         "schema_version": 1, "created_utc": datetime.now(timezone.utc).isoformat(),
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "harness_sha256": {
+            name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+            for name in ("bench_segment_core.py", "bench_lpsd.py", "bench_rolling_boxcar.py")
+        },
         "environment": {
             "platform": platform.platform(), "python": platform.python_version(),
             "numpy": np.__version__, "pandas": pd.__version__,

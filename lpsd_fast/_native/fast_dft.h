@@ -89,6 +89,32 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
                               bool statistics, bool inplace,
                               double *preparation_seconds, double *segments_seconds);
 
+/* Additive FP64 fused PSD path. input_peak must be an independently checked
+ * upper bound on fabs(x1data[j]) for every supplied sample, and inputs must
+ * remain unchanged during the call. An infinite bound requests the ordinary
+ * selected kernel. The implementation also checks the projected coefficient
+ * range. Eligible normal-range projected PSD batches use explicit FMA on
+ * supported AVX-512 targets, with two four-stream AVX/FMA passes for medium
+ * lengths. Unsupported targets, modes, ranges and short batches use the original
+ * selected implementation. Its initial batch and all statistics remain
+ * unchanged. The optional timer pointers must both be NULL or non-NULL.
+ * fused_batches, when non-NULL, counts logical eight-segment fused groups,
+ * including groups processed as two four-stream passes. Existing native
+ * entry points never enable fused arithmetic. */
+int fast_dft_selected_bounded(double *Pr_r, double *Pr_i,
+                              double *Vr_r, double *Vr_i, long int *Navs,
+                              const double *x1data, const double *x2data,
+                              long int nData, long int segLen,
+                              double *Cr, double *Ci,
+                              double olap, int order, bool csd, int mode,
+                              bool statistics, bool inplace, double input_peak,
+                              double *preparation_seconds, double *segments_seconds,
+                              long int *fused_batches);
+
+/* Whether the current build and CPU support the optional fused PSD kernel.
+ * This is a dispatch capability, not a performance measurement. */
+int native_segment_fma_supported(void);
+
 /* High-overlap order-0 auto spectrum for a known all-ones window. Cr/Ci must
  * be the unprojected exp(i*w*j) coefficients for frequency_bin and length.
  * It may replace them in place only when falling back to the ordinary

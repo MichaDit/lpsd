@@ -264,6 +264,233 @@ static LPSD_ALWAYS_INLINE void dot_psd_eight_anchored_simd(
     ri[4] = i4; ri[5] = i5; ri[6] = i6; ri[7] = i7;
 }
 
+/* Fused arithmetic is confined to an additive, range-checked fast path.
+ * AVX-512F includes packed-double FMA. Explicit intrinsics avoid the large
+ * compiler-generated OpenMP reduction workspace for sixteen accumulators.
+ * Every accumulator still belongs to one original segment. */
+#if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__) && \
+    (defined(__AVX512F__) || (defined(LPSD_HAVE_TARGET_CLONES) && LPSD_HAVE_TARGET_CLONES))
+#define LPSD_HAVE_FUSED_PSD 1
+#include <immintrin.h>
+
+static __attribute__((target("avx,fma"))) void dot_psd_four_fused(
+    const double *x0, const double *x1, const double *x2, const double *x3,
+    const double *qr, const double *qi, long int length, double *rr, double *ri)
+{
+    const __m256d a0 = _mm256_set1_pd(x0[0]);
+    __m256d r0 = _mm256_setzero_pd(), i0 = _mm256_setzero_pd();
+    const __m256d a1 = _mm256_set1_pd(x1[0]);
+    __m256d r1 = _mm256_setzero_pd(), i1 = _mm256_setzero_pd();
+    const __m256d a2 = _mm256_set1_pd(x2[0]);
+    __m256d r2 = _mm256_setzero_pd(), i2 = _mm256_setzero_pd();
+    const __m256d a3 = _mm256_set1_pd(x3[0]);
+    __m256d r3 = _mm256_setzero_pd(), i3 = _mm256_setzero_pd();
+    long int j = 0;
+    for (; j <= length - 4; j += 4) {
+        __m256d real = _mm256_loadu_pd(qr + j);
+        __m256d imag = _mm256_loadu_pd(qi + j);
+        {
+            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x0 + j), a0);
+            r0 = _mm256_fmadd_pd(real, value, r0);
+            i0 = _mm256_fmadd_pd(imag, value, i0);
+        }
+        {
+            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x1 + j), a1);
+            r1 = _mm256_fmadd_pd(real, value, r1);
+            i1 = _mm256_fmadd_pd(imag, value, i1);
+        }
+        {
+            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x2 + j), a2);
+            r2 = _mm256_fmadd_pd(real, value, r2);
+            i2 = _mm256_fmadd_pd(imag, value, i2);
+        }
+        {
+            const __m256d value = _mm256_sub_pd(_mm256_loadu_pd(x3 + j), a3);
+            r3 = _mm256_fmadd_pd(real, value, r3);
+            i3 = _mm256_fmadd_pd(imag, value, i3);
+        }
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r0),
+                                       _mm256_extractf128_pd(r0, 1));
+        rr[0] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i0),
+                                       _mm256_extractf128_pd(i0, 1));
+        ri[0] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r1),
+                                       _mm256_extractf128_pd(r1, 1));
+        rr[1] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i1),
+                                       _mm256_extractf128_pd(i1, 1));
+        ri[1] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r2),
+                                       _mm256_extractf128_pd(r2, 1));
+        rr[2] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i2),
+                                       _mm256_extractf128_pd(i2, 1));
+        ri[2] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(r3),
+                                       _mm256_extractf128_pd(r3, 1));
+        rr[3] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    {
+        const __m128d half = _mm_add_pd(_mm256_castpd256_pd128(i3),
+                                       _mm256_extractf128_pd(i3, 1));
+        ri[3] = _mm_cvtsd_f64(_mm_add_sd(half, _mm_unpackhi_pd(half, half)));
+    }
+    for (; j < length; ++j) {
+        const double value0 = x0[j] - x0[0];
+        rr[0] += qr[j] * value0; ri[0] += qi[j] * value0;
+        const double value1 = x1[j] - x1[0];
+        rr[1] += qr[j] * value1; ri[1] += qi[j] * value1;
+        const double value2 = x2[j] - x2[0];
+        rr[2] += qr[j] * value2; ri[2] += qi[j] * value2;
+        const double value3 = x3[j] - x3[0];
+        rr[3] += qr[j] * value3; ri[3] += qi[j] * value3;
+    }
+}
+
+static __attribute__((target("avx512f"))) void dot_psd_eight_fused(
+    const double *x0, const double *x1, const double *x2, const double *x3,
+    const double *x4, const double *x5, const double *x6, const double *x7,
+    const double *qr, const double *qi, long int length, double *rr, double *ri)
+{
+    const __m512d a0 = _mm512_set1_pd(x0[0]);
+    __m512d r0 = _mm512_setzero_pd(), i0 = _mm512_setzero_pd();
+    const __m512d a1 = _mm512_set1_pd(x1[0]);
+    __m512d r1 = _mm512_setzero_pd(), i1 = _mm512_setzero_pd();
+    const __m512d a2 = _mm512_set1_pd(x2[0]);
+    __m512d r2 = _mm512_setzero_pd(), i2 = _mm512_setzero_pd();
+    const __m512d a3 = _mm512_set1_pd(x3[0]);
+    __m512d r3 = _mm512_setzero_pd(), i3 = _mm512_setzero_pd();
+    const __m512d a4 = _mm512_set1_pd(x4[0]);
+    __m512d r4 = _mm512_setzero_pd(), i4 = _mm512_setzero_pd();
+    const __m512d a5 = _mm512_set1_pd(x5[0]);
+    __m512d r5 = _mm512_setzero_pd(), i5 = _mm512_setzero_pd();
+    const __m512d a6 = _mm512_set1_pd(x6[0]);
+    __m512d r6 = _mm512_setzero_pd(), i6 = _mm512_setzero_pd();
+    const __m512d a7 = _mm512_set1_pd(x7[0]);
+    __m512d r7 = _mm512_setzero_pd(), i7 = _mm512_setzero_pd();
+    long int j = 0;
+    for (; j <= length - 8; j += 8) {
+        const __m512d real = _mm512_loadu_pd(qr + j);
+        const __m512d imag = _mm512_loadu_pd(qi + j);
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x0 + j), a0);
+            r0 = _mm512_fmadd_pd(real, value, r0);
+            i0 = _mm512_fmadd_pd(imag, value, i0);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x1 + j), a1);
+            r1 = _mm512_fmadd_pd(real, value, r1);
+            i1 = _mm512_fmadd_pd(imag, value, i1);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x2 + j), a2);
+            r2 = _mm512_fmadd_pd(real, value, r2);
+            i2 = _mm512_fmadd_pd(imag, value, i2);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x3 + j), a3);
+            r3 = _mm512_fmadd_pd(real, value, r3);
+            i3 = _mm512_fmadd_pd(imag, value, i3);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x4 + j), a4);
+            r4 = _mm512_fmadd_pd(real, value, r4);
+            i4 = _mm512_fmadd_pd(imag, value, i4);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x5 + j), a5);
+            r5 = _mm512_fmadd_pd(real, value, r5);
+            i5 = _mm512_fmadd_pd(imag, value, i5);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x6 + j), a6);
+            r6 = _mm512_fmadd_pd(real, value, r6);
+            i6 = _mm512_fmadd_pd(imag, value, i6);
+        }
+        {
+            const __m512d value = _mm512_sub_pd(_mm512_loadu_pd(x7 + j), a7);
+            r7 = _mm512_fmadd_pd(real, value, r7);
+            i7 = _mm512_fmadd_pd(imag, value, i7);
+        }
+    }
+    rr[0] = _mm512_reduce_add_pd(r0); ri[0] = _mm512_reduce_add_pd(i0);
+    rr[1] = _mm512_reduce_add_pd(r1); ri[1] = _mm512_reduce_add_pd(i1);
+    rr[2] = _mm512_reduce_add_pd(r2); ri[2] = _mm512_reduce_add_pd(i2);
+    rr[3] = _mm512_reduce_add_pd(r3); ri[3] = _mm512_reduce_add_pd(i3);
+    rr[4] = _mm512_reduce_add_pd(r4); ri[4] = _mm512_reduce_add_pd(i4);
+    rr[5] = _mm512_reduce_add_pd(r5); ri[5] = _mm512_reduce_add_pd(i5);
+    rr[6] = _mm512_reduce_add_pd(r6); ri[6] = _mm512_reduce_add_pd(i6);
+    rr[7] = _mm512_reduce_add_pd(r7); ri[7] = _mm512_reduce_add_pd(i7);
+    /* Fewer than eight remaining samples do not justify a masked load.
+     * Ordinary multiply/add here also avoids requiring the separate AVX/FMA
+     * scalar feature bit when compiling an AVX-512F-only function clone. */
+    for (; j < length; ++j) {
+        const double v0 = x0[j] - x0[0];
+        rr[0] += qr[j] * v0; ri[0] += qi[j] * v0;
+        const double v1 = x1[j] - x1[0];
+        rr[1] += qr[j] * v1; ri[1] += qi[j] * v1;
+        const double v2 = x2[j] - x2[0];
+        rr[2] += qr[j] * v2; ri[2] += qi[j] * v2;
+        const double v3 = x3[j] - x3[0];
+        rr[3] += qr[j] * v3; ri[3] += qi[j] * v3;
+        const double v4 = x4[j] - x4[0];
+        rr[4] += qr[j] * v4; ri[4] += qi[j] * v4;
+        const double v5 = x5[j] - x5[0];
+        rr[5] += qr[j] * v5; ri[5] += qi[j] * v5;
+        const double v6 = x6[j] - x6[0];
+        rr[6] += qr[j] * v6; ri[6] += qi[j] * v6;
+        const double v7 = x7[j] - x7[0];
+        rr[7] += qr[j] * v7; ri[7] += qi[j] * v7;
+    }
+}
+#else
+#define LPSD_HAVE_FUSED_PSD 0
+#endif
+
+/* This bound covers arbitrary finite custom coefficients as well as known
+ * windows. With |x|, |q| <= 2^100 and L <= INT_MAX, anchored dots are below
+ * 2^233 including a generous rounding reserve; even the inherited fourth-order variance intermediates are below
+ * 2^940. Thus FMA cannot hide an overflow that the strict path would expose.
+ * Input bounds are established once per complete Python call, not once per
+ * frequency. The additive native entry point documents that responsibility. */
+static LPSD_ALWAYS_INLINE bool bounded_fused_coefficients(
+    const double *qr, const double *qi, long int length)
+{
+    unsigned int unsafe = 0;
+    #pragma omp simd reduction(|:unsafe)
+    for (long int j = 0; j < length; ++j) {
+        /* Bitwise OR deliberately evaluates both comparisons, allowing
+         * packed comparisons under strict floating-point compilation.
+         * Negated <= also marks NaNs unsafe. */
+        unsafe |= !(fabs(qr[j]) <= 0x1p100) | !(fabs(qi[j]) <= 0x1p100);
+    }
+    return unsafe == 0;
+}
+
+int native_segment_fma_supported(void)
+{
+#if LPSD_HAVE_FUSED_PSD
+    return use_eight_segment_batch() ? 1 : 0;
+#else
+    return 0;
+#endif
+}
+
 static LPSD_ALWAYS_INLINE void dot_csd_anchored_simd(const double *x1, const double *x2,
                                  const double *qr, const double *qi,
                                  long int length, double *rr1, double *ri1,
@@ -332,8 +559,12 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
                          double olap, int order, bool csd, int mode,
                          bool statistics, bool batched,
                          double *inplace_r, double *inplace_i,
-                         double *preparation_seconds, double *segments_seconds)
+                         double *preparation_seconds, double *segments_seconds,
+                         double input_peak, long int *fused_batches)
 {
+    if (fused_batches != NULL) {
+        *fused_batches = 0;
+    }
     if (Pr_r == NULL || Pr_i == NULL ||
         (statistics && (Vr_r == NULL || Vr_i == NULL)) ||
         Navs == NULL || x1data == NULL || Cr == NULL || Ci == NULL ||
@@ -418,15 +649,29 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
         }
     }
 
+    const bool fused_psd = batched && mode >= 2 && !csd && segLen >= 128 &&
+        navg >= ((segLen >= 256 && segLen < 1024) ? 10 : 16) &&
+        input_peak >= 0.0 && input_peak <= 0x1p100 &&
+        native_segment_fma_supported() &&
+        bounded_fused_coefficients(projected_r, projected_i, segLen);
+#if LPSD_HAVE_FUSED_PSD
+    /* Medium vectors benefit from two four-stream AVX/FMA passes. The
+     * first projections and the outer eight-segment statistics stay fixed.
+     * Check this extra instruction-set requirement once per frequency. */
+    const bool fused_four = fused_psd && segLen >= 256 && segLen < 1024 &&
+        __builtin_cpu_supports("fma");
+#endif
+
     const double segments_started = profile ? monotonic_seconds() : 0.0;
     if (profile) {
         *preparation_seconds = segments_started - preparation_started;
     }
     double start = 0.0;
     double Mr_r = 0.0, Mr_i = 0.0, M2_r = 0.0, M2_i = 0.0;
-    /* Matched per-length probes favor eight-way reuse for the smallest
-     * vectors and for L>=1024. For 256<=L<1024 the single-segment loop
-     * was consistently faster; retain it instead of over-batching. */
+    /* Matched per-length probes of the nonfused selected kernel favor
+     * eight-way reuse for the smallest vectors and for L>=1024. Its
+     * 256<=L<1024 interval retains the faster single-segment loop. The
+     * separately bounded fused route uses its own four-stream kernel. */
     const bool batch_eight = batched && mode >= 2 && !csd &&
         segLen >= 128 && (segLen < 256 || segLen >= 1024) &&
         use_eight_segment_batch();
@@ -481,6 +726,53 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             ii += csd_batch - 1;
             continue;
         }
+#if LPSD_HAVE_FUSED_PSD
+        /* Preserve the old initial batch exactly. Its ii=1 mean update is
+         * P0 + (P1-P0), which can amplify even one-ulp projection changes
+         * after a large departed transient. At formerly single-segment
+         * lengths preserve the first two projections instead. */
+        if (fused_psd && ii >= (batch_eight ? 8 : 2) && navg - ii >= 8) {
+            const double *segments[8];
+            double rr[8], ri[8];
+            for (int b = 0; b < 8; ++b) {
+                const long int istart = (long int)floor(start + 0.5);
+                start += shift;
+                if (istart < 0 || istart > nData - segLen) {
+                    if (owns_projected) {
+                        free(projected_r);
+                        free(projected_i);
+                    }
+                    return 2;
+                }
+                segments[b] = x1data + istart;
+            }
+            if (fused_four) {
+                dot_psd_four_fused(
+                    segments[0], segments[1], segments[2], segments[3],
+                    projected_r, projected_i, segLen, rr, ri);
+                dot_psd_four_fused(
+                    segments[4], segments[5], segments[6], segments[7],
+                    projected_r, projected_i, segLen, rr + 4, ri + 4);
+            } else {
+                dot_psd_eight_fused(
+                    segments[0], segments[1], segments[2], segments[3],
+                    segments[4], segments[5], segments[6], segments[7],
+                    projected_r, projected_i, segLen, rr, ri);
+            }
+            for (int b = 0; b < 8; ++b) {
+                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
+                                             statistics && ii + b == navg - 1,
+                                             &Mr_r, &Mr_i, &M2_r, &M2_i);
+            }
+            if (fused_batches != NULL) {
+                ++*fused_batches;
+            }
+            ii += 7;
+            continue;
+        }
+#else
+        (void)fused_psd;
+#endif
         if (batch_eight && navg - ii >= 8) {
             const double *segments[8];
             double rr[8], ri[8];
@@ -634,7 +926,7 @@ int fast_dft(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
                           olap, order, csd, mode, true, false,
-                          NULL, NULL, NULL, NULL);
+                          NULL, NULL, NULL, NULL, NAN, NULL);
 }
 
 int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -652,7 +944,7 @@ int fast_dft_profile(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
     return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
                           x1data, x2data, nData, segLen, Cr, Ci,
                           olap, order, csd, mode, true, false, NULL, NULL,
-                          preparation_seconds, segments_seconds);
+                          preparation_seconds, segments_seconds, NAN, NULL);
 }
 
 int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -667,7 +959,7 @@ int fast_dft_selected(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                           x1data, x2data, nData, segLen, Cr, Ci,
                           olap, order, csd, mode, statistics, true,
                           inplace ? Cr : NULL, inplace ? Ci : NULL,
-                          NULL, NULL);
+                          NULL, NULL, NAN, NULL);
 }
 
 int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
@@ -687,7 +979,32 @@ int fast_dft_selected_profile(double *Pr_r, double *Pr_i,
                           x1data, x2data, nData, segLen, Cr, Ci,
                           olap, order, csd, mode, statistics, true,
                           inplace ? Cr : NULL, inplace ? Ci : NULL,
-                          preparation_seconds, segments_seconds);
+                          preparation_seconds, segments_seconds, NAN, NULL);
+}
+
+int fast_dft_selected_bounded(double *Pr_r, double *Pr_i,
+                              double *Vr_r, double *Vr_i, long int *Navs,
+                              const double *x1data, const double *x2data,
+                              long int nData, long int segLen,
+                              double *Cr, double *Ci,
+                              double olap, int order, bool csd, int mode,
+                              bool statistics, bool inplace, double input_peak,
+                              double *preparation_seconds, double *segments_seconds,
+                              long int *fused_batches)
+{
+    if (!(input_peak >= 0.0) ||
+        ((preparation_seconds == NULL) != (segments_seconds == NULL))) {
+        return 1;
+    }
+    if (preparation_seconds != NULL) {
+        *preparation_seconds = *segments_seconds = NAN;
+    }
+    return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+                          x1data, x2data, nData, segLen, Cr, Ci,
+                          olap, order, csd, mode, statistics, true,
+                          inplace ? Cr : NULL, inplace ? Ci : NULL,
+                          preparation_seconds, segments_seconds,
+                          input_peak, fused_batches);
 }
 
 #include "rolling_boxcar.c"

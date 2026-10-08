@@ -128,7 +128,7 @@ def profile_summary(profile):
         },
         "channel_phase_seconds": {
             stage: float(profile[stage])
-            for stage in ("planning_s", "input_conversion_s", "output_assembly_s")
+            for stage in ("planning_s", "input_conversion_s", "input_bound_s", "output_assembly_s")
             if profile.get(stage) is not None
         },
         "note": (
