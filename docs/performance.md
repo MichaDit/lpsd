@@ -2,15 +2,17 @@
 
 `lpsd_fast` accelerates the package's direct-DFT LPSD calculation while retaining
 its frequency plan, segment lengths, overlap, windows and normalization.
-The current release is `1.0.6+fast.2`. Use `from lpsd_fast import lpsd` to select
-this implementation; the unchanged original `lpsd` API remains available.
+This report records release `1.0.6+fast.2`. The subsequent
+[fast.3 segment optimizations and matched measurements](performance-fast3.md)
+are a separate series. Use `from lpsd_fast import lpsd` to select the optimized
+implementation; the unchanged original `lpsd` API remains available.
 
 For a later measurement series against actual FFTW 3.3.11, including complete
 pipeline costs, prime lengths and remaining optimization headroom, see
 [the FFTW comparison](fftw-comparison.md). The version-to-version measurements
 below retain their original conditions and results.
 
-## Current result: fast.2 versus fast.1
+## Recorded result: fast.2 versus fast.1
 
 The final native build reduced the measured median at **ten million samples
 from 3.976 to 1.888 seconds**, about **2.11 times faster** than the previously

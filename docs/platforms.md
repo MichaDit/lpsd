@@ -50,7 +50,7 @@ links a `target_clones("default", "avx2", "avx512f")` probe. Success defines
 annotations. The probe includes separate declarations, definitions and a call
 between clones; declarations and definitions carry identical attributes,
 as required by the validated Clang build. The native implementation applies
-them to `fast_dft_impl` and
+them to `fast_dft_impl`, the high-overlap `fast_dft_boxcar` implementation, and
 the Kaiser, general-window and Fourier-coefficient generators. Their hot
 private helpers are inlined into the clones, so the selected instruction set
 applies to the actual computation loops. See the

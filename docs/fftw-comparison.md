@@ -1,7 +1,10 @@
 # LPSD headroom and an actual FFTW comparison
 
-Measurements: **2026-10-08**, one Linux/x86-64 host. Production LPSD remains
-`1.0.6+fast.2`; the native kernel is unchanged by this comparison.
+Measurements: **2026-10-08**, one Linux/x86-64 host, LPSD `1.0.6+fast.2`.
+The native kernel was unchanged by this comparison. Subsequent
+[fast.3 segment optimizations](performance-fast3.md) have their own matched
+CPU measurements; the historical FFTW results below have not been relabeled
+as a comparison with that later version.
 
 **There is no demonstrated hardware or mathematical limit here.** The main
 remaining LPSD cost is segment projection and accumulation. The additional

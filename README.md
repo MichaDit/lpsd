@@ -7,24 +7,28 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.2`; this is not an official upstream release.
+Its package version is `1.0.6+fast.3`; this is not an official upstream release.
 
-Version `fast.2` adds selected PSD/NSD outputs, direct `lnsd`, native built-in
-and flat-top windows, a SIMD Kaiser series, bounded phase blocks, shared
-segment projections and portable SIMD dispatch. In the final local native
-measurements, ten million samples took **1.888 s versus 3.976 s** for the
-previous `fast.1` version; thirty million took **7.913 s versus 14.449 s**.
-These are medians on the same eight-CPU Linux environment, comparing
-`fast.1` auto/all with `fast.2` fast/PSD. Selecting PSD alone did not establish
-an additional wall-time gain.
+Version `fast.3` accelerates the segment calculation itself. Supported
+64-bit AVX-512 CPUs share projected coefficients across eight auto-spectrum
+segments. High-overlap Boxcar spectra can reuse outgoing and incoming
+segment boundaries, with periodic direct rebuilds and numerical fallbacks.
+The frequency plan, requested samples, window and inherited statistics are
+retained. See the [new segment performance report](docs/performance-fast3.md)
+for matched complete-call timings, profiles and reproducible experiments.
+For the final ten-million-sample Kaiser comparison, all twelve retained
+eight-worker pairs give medians of **1.684 s for fast.2 and 1.457 s for
+fast.3**, about **13.5% less wall time**. The two component series differ
+substantially and are shown separately in the report. At 95% Boxcar overlap,
+reuse adds **2.01×** over the already adaptive CPU kernel on this host.
 
-See [the performance report](docs/performance.md),
-[final measurements](benchmarks/results_fast2_final.json) and
-[numerical notes](docs/numerics.md) for conditions, individual timings,
-profiles and limitations. Historical original-versus-fast timings are
-retained separately from this new incremental comparison. The final code
-passed [all eight native CI jobs](https://github.com/MichaDit/lpsd/actions/runs/37803974329),
-including real ARM64 Linux and Apple Silicon runners.
+Selected PSD/NSD outputs, direct `lnsd`, native built-in and flat-top windows,
+the SIMD Kaiser series and portable SIMD dispatch from `fast.2` remain
+available. The [fast.2 performance report](docs/performance.md) and
+[measurements](benchmarks/results_fast2_final.json) retain that release's
+separate comparison with `fast.1`. Read the [numerical notes](docs/numerics.md)
+and [platform validation](docs/platforms.md) for the tested conditions and
+limits.
 
 The additional [FFTW comparison and headroom report](docs/fftw-comparison.md)
 measures the official FFTW 3.3.11 testbench and complete spectral pipelines on
@@ -32,6 +36,10 @@ the same host. It separates plan reuse, fresh setup and awkward transform
 lengths, and documents why FFT-based logarithmic power averaging estimates a
 different spectrum from segmented LPSD. Reproducible scripts and all timing
 repetitions are included; FFTW remains an optional benchmark dependency.
+
+The [GPU and accelerator assessment](docs/accelerators.md) records available
+hardware, exact proposed offload payloads and a reproducible comparison
+procedure. No unmeasured GPU backend is enabled.
 
 ## Install from source
 
@@ -137,11 +145,33 @@ behavior instead.
 
 `outputs=None` or `outputs="all"` keeps the original seven-column result.
 Any ordered selection of `ps`, `psd`, `ps_std`, `psd_std`, `enbw`, `asd`,
-`asdrms` and `nsd` is accepted. Names must be unique. Each selected column
-matches that column in the same kernel's full result; `nsd` matches `asd`.
+`asdrms` and `nsd` is accepted. Names must be unique. When both calls use
+direct segment projections, each selected column matches the same column
+in that kernel's full-output result. For Boxcar overlap reuse, requesting
+deviation columns can trigger a stricter overflow fallback; at extreme input
+scales, changing the output selection can therefore change final rounding.
+Within a call, `nsd` and `asd` use the same square root of the same
+already-rounded PSD.
 Omitting both deviation columns skips native variance updates. Requesting
 only `enbw` needs no DFT at all. The frequency plan, input samples and
 number of segments used for an actual spectrum are unchanged.
+
+For a Boxcar spectrum that already requires high overlap, `kernel="fast"`
+automatically selects overlap reuse when its length and segment-count checks
+permit it. For example:
+
+```python
+boxcar_psd = lpsd(
+    samples, sample_rate=1_000.0, window_function="boxcar", overlap=0.9,
+    detrending_order=0, kernel="fast", outputs="psd", workers=8,
+)
+```
+
+This also works with NSD and the other auto-spectrum outputs. Select the
+window and overlap for the required estimator; replacing Kaiser with Boxcar
+changes the spectral result. See [overlap reuse](docs/rolling-boxcar.md) for
+eligibility and the direct fallbacks. In profiles, `sample_iterations` is
+logical `L*K` coverage, not the executed sample visits of the rolling method.
 
 ### Standard and custom windows
 
@@ -230,7 +260,10 @@ inputs for both backends. Input generation, warm-up and file output are
 separate. Profiling uses an additional instrumented call; per-worker elapsed
 times overlap and must not be summed as wall time.
 
-- [Performance, bottlenecks and complexity](docs/performance.md)
+- [Current segment performance and bottlenecks](docs/performance-fast3.md)
+- [High-overlap Boxcar reuse](docs/rolling-boxcar.md)
+- [GPU and other accelerator assessment](docs/accelerators.md)
+- [Earlier performance and direct-kernel complexity](docs/performance.md)
 - [Final fast.2 timings and accuracy](benchmarks/results_fast2_final.json)
 - [First fast.2 integration measurements](benchmarks/results_fast2.json)
 - [Historical original-versus-fast measurements](benchmarks/results.json)
