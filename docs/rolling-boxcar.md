@@ -106,6 +106,62 @@ This implementation therefore uses measured eligibility for the narrow
 Boxcar case. It does not substitute a different window or spectral estimator
 to force a speedup.
 
+## Final comparison with the adaptive CPU kernel
+
+The final CPU baseline selects eight-segment AVX-512 sharing for lengths
+128–255 and at least 1024; lengths 256–1023 retain their direct projection.
+This separate series measures the **additional** benefit of Boxcar overlap
+reuse over that adaptive baseline. Both implementations were built afresh
+from private, fixed source snapshots before measuring the same 10-million-
+sample float64 input, seed 20261008, sample rate 1, 1,000 target frequencies,
+100 target averages, order-zero detrending, PSD-only output, and 4,096 MiB
+working-concurrency budget.
+
+| Samples | Workers | Overlap | Adaptive CPU baseline | With Boxcar reuse | Speedup |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 10,000,000 | 1 | 0.9 | 13.817 s | 8.853 s | 1.56× |
+| 10,000,000 | 8 | 0.8 | 1.689 s | 1.528 s | 1.11× |
+| 10,000,000 | 8 | 0.9 | 2.877 s | 1.817 s | 1.58× |
+| 10,000,000 | 8 | 0.95 | 5.361 s | 2.673 s | 2.01× |
+
+Each value is the median of four complete API calls after a full-problem
+warm-up. Pair order alternates baseline/candidate and candidate/baseline.
+The candidate was faster in 15 of the 16 individual pairs. At overlap 0.8
+the gain is modest and one pair was slower; shared-host variability remains.
+These are measured native x86-64 wall times, not an architecture-independent
+speed guarantee. Timings from different measurement series should not be
+combined to estimate another speedup.
+
+The separate one-worker, 0.9-overlap profiles recorded 13.845 s total for the
+baseline and 8.292 s for the candidate. Segment computation fell from
+11.382 s to 6.302 s. Preparation fell from 1.203 s to 0.846 s; window
+generation, sums, and coefficient generation together were 1.154 s and
+1.055 s. These instrumented calls are separate from the table's ordinary-call
+medians. They confirm that most of the saving comes from segment evaluation.
+Logical `L*K` coverage remains 66,299,007,864 for both implementations in this
+case; it does not describe actual rolling sample visits.
+
+All four comparisons retained identical rounded float32 PSD values and
+matching frequency indices/dtypes. The 46 focused Boxcar regressions
+described below were also retained for validation of the merged repository;
+the final build/test matrix is recorded with the repository's CI results.
+
+The [final readable summary](../benchmarks/results_rolling_boxcar_adaptive.json)
+contains every wall-time repetition, pair ratio, numerical comparison, phase
+summary, and source/build identity. The [full compressed data](../benchmarks/results_rolling_boxcar_adaptive_raw.json.gz)
+retain every per-frequency profile row. The baseline native SHA-256 is
+`3454347b824ea51a55996db74f9e7cd09cf22068e00b8005c00fae35e1f413c9`;
+the combined candidate native SHA-256 is
+`50951a1df37a27d1fe5045b93dbc655e62e2ab1336efd2d6d3f574bb8a9453c8`.
+
+The measured local source commits are `496b9ce` for the adaptive baseline
+and `b16e056` for the combined candidate. Published GitHub commit metadata
+can produce different IDs. The [source snapshot archive](../benchmarks/rolling_boxcar_sources.tar.gz)
+therefore includes the exact Python/C/header files, LICENSE, measurement
+harness, and a per-file SHA-256 manifest. It contains no compiled binaries.
+The two measured libraries were built from this archive, and all fingerprints
+in the timing records match its contents.
+
 ## Initial comparison against the first eight-segment kernel
 
 This series used the first eight-segment AVX-512 kernel, whose gate included
@@ -187,6 +243,30 @@ note labels logical sample counts and does not change the measured native
 kernel or ordinary-call calculation.
 
 ## Reproduce the comparison
+
+To replay the **final** comparison without depending on unpublished local
+Git IDs, extract the exact source snapshots and build both packages. Run
+these commands from the repository root with its Python dependencies
+installed. Use a fresh output directory and do not run another compiler or
+CPU benchmark concurrently.
+
+```bash
+mkdir -p benchmark-results/rolling-replay
+tar -xzf benchmarks/rolling_boxcar_sources.tar.gz -C benchmark-results/rolling-replay
+(cd benchmark-results/rolling-replay/baseline && python -m lpsd_fast.build --native)
+(cd benchmark-results/rolling-replay/candidate && python -m lpsd_fast.build --native)
+PYTHONPATH=benchmark-results/rolling-replay/candidate \
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+python benchmark-results/rolling-replay/candidate/benchmarks/bench_rolling_boxcar.py \
+  --baseline-root benchmark-results/rolling-replay/baseline \
+  --n 10000000 --workers 8 --overlap .8 .9 .95 --repeat 4 \
+  --output benchmark-results/rolling-replay/repeated.json
+```
+
+Repeat with `--workers 1 --overlap .9` for the serial case. The source archive
+is deterministic and its SHA-256 is recorded in the final result summary.
+Compiler/library identity and wall times will depend on the replay machine;
+the complete per-case parameters and numerical checks are retained.
 
 Use separate checkouts and native builds of the baseline and candidate.
 Do not run another CPU benchmark or compiler workload concurrently.
