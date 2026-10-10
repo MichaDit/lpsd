@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lpsd"
-version = "1.0.6+fast.4"
+version = "1.0.6+fast.5"
 description = "LPSD spectral estimation with an optional parallel native implementation"
 readme = "README.md"
 requires-python = ">=3.10,<3.16"
