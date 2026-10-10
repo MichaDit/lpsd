@@ -289,6 +289,97 @@ def test_power_destination_and_state_guards(fftw, tmp_path):
         np.testing.assert_array_equal(transform.power_into(np.empty(41), 50, 80), np.zeros(41))
 
 
+@pytest.mark.parametrize("factors,memory_mb", [
+    ((125, 80), .03), ((19, 2), .001), ((1, 18), .1), ((17, 6), .1), ((1, 2), .1),
+])
+def test_workspace_powers_match_external_bitwise_and_allow_refill(fftw, tmp_path,
+                                                                 factors, memory_mb):
+    n = factors[0] * factors[1]
+    path = tmp_path / "packed.c128"
+    rng = np.random.default_rng(92817 + n)
+    signals = [rng.normal(size=n), np.ones(n), (-1.0) ** np.arange(n)]
+    events = []
+    with DiskFFT(fftw, n, path, memory_mb=memory_mb, factors=factors,
+                 progress=events.append) as transform:
+        for values in signals:
+            transform.x[:] = values
+            transform.execute()
+            expected = transform.power_into(np.empty(n // 2 + 1), 50.0, float(n))
+            powers = transform.power_in_workspace(50.0, float(n))
+            try:
+                assert powers.tobytes() == expected.tobytes()
+                assert powers.offset == 8 * n
+                assert powers.filename == path
+                assert powers.dtype == np.float64 and powers.flags.c_contiguous
+                assert powers._mmap is not transform._mapping._mmap
+                assert path.stat().st_size == 16 * n
+                assert sorted(p.name for p in tmp_path.iterdir()) == [path.name]
+                assert transform.metadata["power_storage"] == "workspace"
+                np.testing.assert_allclose(np.sum(powers) * 50.0 / n,
+                                           np.dot(values, values) / n, rtol=3e-12, atol=0)
+                with pytest.raises(RuntimeError, match="before"):
+                    transform.power_into(np.empty(n // 2 + 1), 50.0, n)
+                with pytest.raises(RuntimeError, match="before"):
+                    transform.power_in_workspace(50.0, n)
+            finally:
+                powers._mmap.close()
+        for phase in ("power_workspace_pack", "power_workspace_transpose"):
+            records = [event for event in events if event["phase"] == phase]
+            assert records[0]["completed"] == 0
+            assert records[-1]["completed"] == records[-1]["total"]
+
+
+def test_workspace_power_overwrite_order_on_asymmetric_complex_rows(fftw, tmp_path):
+    # Synthetic nonsymmetric Y exposes accidental reads from consumed rows or
+    # the negative half; the saved Nyquist has nonzero real and imaginary parts.
+    with DiskFFT(fftw, 10000, tmp_path / "overlap.c128", memory_mb=.03,
+                 factors=(125, 80), io_advice=False) as transform:
+        base = np.arange(10000, dtype=np.float64).reshape(125, 80) + .125
+        transform.matrix[:] = base + 1j * (3 * base + .5)
+        transform._has_transform = True
+        expected = transform.power_into(np.empty(5001), 17.0, 31.0)
+        assert transform.a % transform.row_batch
+        assert (transform.b // 2) % transform.column_batch
+        actual = transform.power_in_workspace(17.0, 31.0)
+        try:
+            assert actual.tobytes() == expected.tobytes()
+        finally:
+            actual._mmap.close()
+
+
+def test_workspace_power_guards_and_independent_mapping_lifetime(fftw, tmp_path):
+    path = tmp_path / "lifetime.c128"
+    transform = DiskFFT(fftw, 80, path, memory_mb=.1, factors=(8, 10))
+    with pytest.raises(RuntimeError, match="before"):
+        transform.power_in_workspace(50, 80)
+    transform.x[:] = np.arange(80)
+    transform.execute()
+    with pytest.raises(ValueError, match="Positive finite"):
+        transform.power_in_workspace(0, 80)
+    assert transform._has_transform
+    expected = transform.power_into(np.empty(41), 50, 80)
+    powers = transform.power_in_workspace(50, 80)
+    try:
+        transform.close()
+        assert not powers._mmap.closed
+        np.testing.assert_array_equal(powers, expected)
+        assert path.exists()
+        with pytest.raises(RuntimeError, match="closed"):
+            transform.power_in_workspace(50, 80)
+    finally:
+        powers._mmap.close()
+        transform.close()
+    with DiskFFT(fftw, 63, tmp_path / "odd.c128", memory_mb=.1,
+                 factors=(7, 9)) as odd:
+        odd.x[:] = np.arange(63)
+        odd.execute()
+        expected = odd.power_into(np.empty(32), 50, 63)
+        with pytest.raises(ValueError, match="even B"):
+            odd.power_in_workspace(50, 63)
+        assert odd._has_transform
+        np.testing.assert_array_equal(odd.power_into(np.empty(32), 50, 63), expected)
+
+
 def test_billion_sample_memory_estimate_has_no_large_allocations(monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Scalar memory estimation must not allocate arrays or map files")
@@ -308,3 +399,8 @@ def test_billion_sample_memory_estimate_has_no_large_allocations(monkeypatch):
     assert memory128["io_row_block"] == 256 and memory128["io_column_block"] == 134
     assert 16 * memory128["io_row_block"] * memory128["io_column_block"] <= memory128["twiddle_scratch_bytes"]
     assert DiskFFT.memory_estimate(100_000_000)["factors"] == [10000, 10000]
+    assert memory128["workspace_power_supported"]
+    assert memory128["workspace_power_offset_bytes"] == 8_000_000_000
+    assert memory128["workspace_power_bytes"] == 4_000_000_008
+    assert memory128["workspace_power_extra_file_bytes"] == 0
+    assert memory128["workspace_power_extra_virtual_mapping_bytes"] == 4_000_000_008

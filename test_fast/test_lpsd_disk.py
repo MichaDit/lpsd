@@ -6,6 +6,7 @@ references. They do not benchmark, relax memory limits, or allocate large maps.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
 import ctypes as ct
 import json
 import threading
@@ -304,3 +305,131 @@ def test_finite_validation_is_chunked_and_checks_final_block(tmp_path, monkeypat
                 method.compute(data, workspace)
             assert checked and max(checked) <= 31
             assert sum(checked) == len(data)
+
+
+
+def test_progress_throttles_and_flushes_every_finished_point():
+    clock, events = [0.0], []
+    progress = disk_module._PointProgress(events.append, 3, 10.0, 0.0,
+                                         clock=lambda: clock[0])
+    progress.begin()
+    progress.record({"j": 2, "point_wall_s": 0.25})
+    clock[0] = 1.0
+    progress.record({"j": 0, "point_wall_s": 0.50})
+    clock[0] = 2.0
+    progress.record({"j": 1, "point_wall_s": 0.75})
+    assert len(events) == 2  # Start and first completed point; two are pending.
+    progress.finish("completed")
+    assert [event["completed"] for event in events] == [0, 1, 3]
+    assert [row["j"] for event in events for row in event["points"]] == [2, 0, 1]
+    assert events[-1]["phase"] == "lpsd_points_completed"
+    assert progress.summary()["completed_points"] == 3
+    json.dumps(events, allow_nan=False)
+
+
+def test_progress_callback_is_serialized_across_worker_threads():
+    events, inside = [], threading.Lock()
+    barrier = threading.Barrier(8)
+
+    def callback(event):
+        assert inside.acquire(blocking=False), "Callbacks must never overlap."
+        try:
+            threading.Event().wait(.001)  # Release the GIL while the lock is held.
+            events.append(event)
+        finally:
+            inside.release()
+
+    progress = disk_module._PointProgress(callback, 8, 0.0, 0.0)
+    progress.begin()
+
+    def finish_point(j):
+        barrier.wait(timeout=5)
+        progress.record({"j": j})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(finish_point, range(8)))
+    progress.finish("completed")
+    assert [event["completed"] for event in events] == [0, *range(1, 9), 8]
+    assert sorted(row["j"] for event in events for row in event["points"]) == list(range(8))
+
+
+def _track_progress_reservations(monkeypatch):
+    pools, gates = [], []
+    original_pool, original_gate = disk_module._ScratchPool, api._MemoryGate
+
+    class TrackingPool(original_pool):
+        def __init__(self, *args):
+            super().__init__(*args)
+            pools.append(self)
+
+    class TrackingGate(original_gate):
+        def __init__(self, *args):
+            super().__init__(*args)
+            gates.append(self)
+
+    monkeypatch.setattr(disk_module, "_ScratchPool", TrackingPool)
+    monkeypatch.setattr(api, "_MemoryGate", TrackingGate)
+    return pools, gates
+
+
+@pytest.mark.parametrize("profile", (False, True))
+def test_progress_preserves_spectrum_and_releases_before_callback(tmp_path, monkeypatch, profile):
+    values = _signal(257, "dc_nanovolt")
+    events = []
+    with _mapped_arrays(tmp_path, values) as (data, workspace):
+        with DiskLPSDSubset(len(data), FS, _plan(len(data)), workers=1) as method:
+            expected = method.compute(data, workspace, outputs=("psd", "nsd"), profile=profile)
+        pools, gates = _track_progress_reservations(monkeypatch)
+
+        def callback(event):
+            assert all(pool.used_slots == 0 for pool in pools)
+            assert all(gate.used == 0 for gate in gates)
+            events.append(json.loads(json.dumps(event, allow_nan=False)))
+            # A callback owns its copies; it cannot corrupt final profile rows.
+            for row in event["points"]:
+                row["j"] = -123
+
+        with DiskLPSDSubset(len(data), FS, _plan(len(data)), workers=1,
+                            progress=callback, progress_interval_s=0) as method:
+            actual = method.compute(data, workspace, outputs=("psd", "nsd"), profile=profile)
+            assert actual.to_numpy().tobytes() == expected.to_numpy().tobytes()
+            rows = [row for event in events for row in event["points"]]
+            assert sorted(row["j"] for row in rows) == list(range(len(actual)))
+            assert all(row["L"] * row["K"] == row["sample_iterations"] for row in rows)
+            assert method.last_profile["progress"]["completed_points"] == len(actual)
+            if profile:
+                assert [row["j"] for row in method.last_profile["frequencies"]] == list(range(len(actual)))
+                assert all(row["c_preparation_s"] >= 0 and row["c_segments_s"] >= 0 for row in rows)
+            assert data.tobytes() == values.tobytes()
+
+
+def test_progress_callback_failure_preserves_resource_cleanup_and_retry(tmp_path, monkeypatch):
+    values = _signal(257, "white")
+    pools, gates = _track_progress_reservations(monkeypatch)
+    fail_once = [True]
+
+    def callback(event):
+        if event["points"] and fail_once[0]:
+            fail_once[0] = False
+            assert all(pool.used_slots == 0 for pool in pools)
+            assert all(gate.used == 0 for gate in gates)
+            raise RuntimeError("progress callback failed")
+
+    with _mapped_arrays(tmp_path, values) as (data, workspace):
+        with DiskLPSDSubset(len(data), FS, _plan(len(data)), workers=1,
+                            progress=callback, progress_interval_s=0) as method:
+            with pytest.raises(RuntimeError, match="progress callback failed"):
+                method.compute(data, workspace)
+            assert all(pool.used_slots == 0 for pool in pools)
+            assert all(gate.used == 0 for gate in gates)
+            actual = method.compute(data, workspace)
+            _assert_same_spectrum(actual.psd, _reference(values).psd)
+
+
+@pytest.mark.parametrize("option,value,error", (
+    ("progress", 7, TypeError), ("progress_interval_s", -1, ValueError),
+    ("progress_interval_s", float("nan"), ValueError),
+))
+def test_progress_options_are_validated(option, value, error):
+    with pytest.raises(error):
+        DiskLPSDSubset(257, FS, **{option: value})

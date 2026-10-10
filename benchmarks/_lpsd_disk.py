@@ -40,6 +40,73 @@ _STAGES = ("window_generation_s", "window_sums_s", "coefficients_s",
            "c_kernel_s", "c_preparation_s", "c_segments_s", "normalization_s")
 
 
+class _PointProgress:
+    """Serialize callbacks and retain every finished point until a report.
+
+    Callback exceptions propagate after resources have been released. After
+    the first callback failure, remaining workers do not call it again. Point
+    records contain scalars and are copied before the callback owns them.
+    """
+
+    def __init__(self, callback, total, interval_s, started, *, clock=None):
+        self._callback = callback
+        self._total = int(total)
+        self._interval_s = float(interval_s)
+        self._started = started
+        self._clock = time.perf_counter if clock is None else clock
+        self._lock = threading.Lock()
+        self._pending = []
+        self._completed = 0
+        self._last_report = started
+        self._failed = False
+        self._callback_count = 0
+        self._callback_wall_s = 0.0
+
+    def _emit_locked(self, phase):
+        if self._failed:
+            return
+        before = self._clock()
+        event = {"phase": phase, "completed": self._completed, "total": self._total,
+                 "elapsed_wall_s": before - self._started, "points": self._pending}
+        self._pending = []
+        self._callback_count += 1
+        try:
+            self._callback(event)
+        except BaseException:
+            self._failed = True
+            raise
+        finally:
+            after = self._clock()
+            self._callback_wall_s += after - before
+            self._last_report = after
+
+    def begin(self):
+        with self._lock:
+            self._emit_locked("lpsd_points_started")
+
+    def record(self, point):
+        with self._lock:
+            self._completed += 1
+            self._pending.append(dict(point))
+            if (self._completed == 1 or
+                    self._clock() - self._last_report >= self._interval_s):
+                self._emit_locked("lpsd_points")
+
+    def finish(self, status):
+        with self._lock:
+            self._emit_locked("lpsd_points_" + status)
+
+    def summary(self):
+        with self._lock:
+            return {"completed_points": self._completed, "total_points": self._total,
+                    "interval_s": self._interval_s, "callback_count": self._callback_count,
+                    "callback_wall_s": self._callback_wall_s,
+                    "callback_failed": self._failed,
+                    "scope": "Callbacks run after point scratch/gate release. Their elapsed "
+                             "time is included in the complete call, can overlap other "
+                             "workers, and is not a correction to subtract from call time."}
+
+
 class _ScratchPool:
     """Allocate disjoint contiguous complex slots; coalesce returned ranges."""
 
@@ -155,16 +222,31 @@ class DiskLPSDSubset:
     flush when desired, and remove its own files. Keep the input and mappings
     fixed during a call. Reusing the workspace with another adapter requires
     caller synchronization; calls on this one instance are serialized.
+
+    Optional ``progress(event)`` callbacks are serialized across workers and
+    run only after a completed point has released both resource reservations.
+    The first point, start and end are reported immediately; other finished
+    point profiles are batched at ``progress_interval_s`` (zero reports every
+    point). Events contain only scalar metadata, never arrays. Callback time
+    belongs to the complete call. A callback must not re-enter compute/close
+    or access the shared mappings; its first exception aborts the call after
+    worker resources are returned. Progress is disabled when omitted.
     """
 
     def __init__(self, n, sample_rate, plan=None, *, psll=200.0, overlap=None,
                  plan_mask=None, n_frequencies=1000, n_averages=100,
                  n_min_bins=1, min_segment_length=0, workers=8, max_working_mb=2048,
-                 validation_chunk_size=262144):
+                 validation_chunk_size=262144, progress=None, progress_interval_s=15.0):
         started = time.perf_counter()
         self._lock = threading.RLock()
         self._closed = False
         self.last_profile = None
+        if progress is not None and not callable(progress):
+            raise TypeError("progress must be callable or None.")
+        self._progress = progress
+        self._progress_interval_s = _finite_number(progress_interval_s, "progress_interval_s")
+        if self._progress_interval_s < 0:
+            raise ValueError("progress_interval_s must be nonnegative.")
         self.n = _positive_integer(n, "n", minimum=5)
         self.sample_rate = _finite_number(sample_rate, "sample_rate")
         if self.sample_rate <= 0:
@@ -234,6 +316,8 @@ class DiskLPSDSubset:
                                    "one oversized point runs alone. Not an RSS limit. Actual q "
                                    "storage is 16*L mapped bytes per point, from a shared pool.",
             "cached_coefficient_bytes": 0, "cached_window_bytes": 0,
+            "progress_enabled": progress is not None,
+            "progress_interval_s": self._progress_interval_s,
             "validation_chunk_samples": self.validation_chunk_size,
             "maximum_validation_boolean_bytes": min(self.n, self.validation_chunk_size),
             "scratch_layout": "A point reserves L complex slots at pool offset s: q_r = "
@@ -305,6 +389,11 @@ class DiskLPSDSubset:
             totals = {name: 0.0 for name in _STAGES}
             gate = api._MemoryGate(self._working_capacity)
             scratch_pool = _ScratchPool(self.n)
+            point_progress = (_PointProgress(self._progress, len(self.frequencies),
+                                             self._progress_interval_s, started)
+                              if self._progress is not None else None)
+            if point_progress is not None:
+                point_progress.begin()
 
             def one(j):
                 length = int(self.plan[3][j])
@@ -374,18 +463,39 @@ class DiskLPSDSubset:
                                    "memory_gate_wait_s": gate_acquired - waiting_started,
                                    "scratch_pool_wait_s": point_started - gate_acquired,
                                    **stages}
-                    return work, point_wall
                 finally:
                     if scratch_start is not None:
                         scratch_pool.release(scratch_start, length)
                     gate.release(reserved)
+                # Logging must not retain either reservation or expose a view
+                # into scratch that another worker can now overwrite.
+                if point_progress is not None:
+                    point = rows[j] if profile else {
+                        "j": j, "source_j": self._source_indices[j],
+                        "frequency": float(self.frequencies[j]), "L": length,
+                        "K": int(navg.value), "planned_K": int(self.plan[4][j]),
+                        "sample_iterations": work, "point_wall_s": point_wall,
+                        "memory_gate_wait_s": gate_acquired - waiting_started,
+                        "scratch_pool_wait_s": point_started - gate_acquired}
+                    point_progress.record(point)
+                return work, point_wall
 
-            if self.effective_workers <= 1:
-                completed = list(map(one, range(len(self.frequencies))))
-            else:
-                with ThreadPoolExecutor(max_workers=self.effective_workers,
-                                        thread_name_prefix="lpsd-disk") as pool:
-                    completed = list(pool.map(one, range(len(self.frequencies))))
+            try:
+                if self.effective_workers <= 1:
+                    completed = list(map(one, range(len(self.frequencies))))
+                else:
+                    with ThreadPoolExecutor(max_workers=self.effective_workers,
+                                            thread_name_prefix="lpsd-disk") as pool:
+                        completed = list(pool.map(one, range(len(self.frequencies))))
+            except BaseException:
+                if point_progress is not None:
+                    try:
+                        point_progress.finish("failed")
+                    except BaseException:
+                        pass  # Preserve the original compute/callback error.
+                raise
+            if point_progress is not None:
+                point_progress.finish("completed")
             logical_work = sum(item[0] for item in completed)
             point_wall_sum = sum(item[1] for item in completed)
             if profile:
@@ -415,6 +525,7 @@ class DiskLPSDSubset:
                        "peak_reserved_bytes": gate.peak,
                        "peak_active_scratch_bytes": 16 * scratch_pool.peak_slots,
                        "stage_profiling_enabled": bool(profile),
+                       "progress": point_progress.summary() if point_progress is not None else None,
                        "frequencies": rows, "stage_totals_s": totals if profile else None,
                        "sample_iterations_note": "L*K is logical segment coverage/direct reference "
                                                  "work, not bytes read from RAM or disk.",

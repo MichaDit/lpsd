@@ -21,10 +21,13 @@ def fftw():
         pytest.skip(f"Optional FFTW shared library unavailable: {exc}")
 
 
-@pytest.mark.parametrize("n", [4095, 10000])
+@pytest.mark.parametrize("n,power_storage", [
+    (4095, "external"), (10000, "external"), (4096, "workspace"), (10000, "workspace"),
+])
 @pytest.mark.parametrize("case", ["white", "offbin_tone", "dc_nanovolt"])
 @pytest.mark.parametrize("method", ["fftw", "matched", "lpsd"])
-def test_complete_disk_estimator_matches_existing_pipeline(fftw, tmp_path, n, case, method):
+def test_complete_disk_estimator_matches_existing_pipeline(fftw, tmp_path, n, power_storage,
+                                                          case, method):
     samples, _ = signal(case, n, 50.0, 20261010)
     path = tmp_path / "input.f64"
     mapped = np.memmap(path, mode="w+", dtype=np.float64, shape=(n,))
@@ -42,7 +45,7 @@ def test_complete_disk_estimator_matches_existing_pipeline(fftw, tmp_path, n, ca
     else:
         expected = api.lpsd(mapped, **common, workers=8, kernel="fast", outputs=("psd", "nsd"))
     args = SimpleNamespace(sample_rate=50.0, workers=8, smoothing_workers=4,
-                           low_working_mb=64, fft_memory_mb=.1)
+                           low_working_mb=64, fft_memory_mb=.1, power_storage=power_storage)
     try:
         actual, details = disk_pipeline(method, mapped, fftw, tmp_path, args)
         np.testing.assert_array_equal(actual.index.to_numpy(), expected.index.to_numpy())
@@ -54,6 +57,12 @@ def test_complete_disk_estimator_matches_existing_pipeline(fftw, tmp_path, n, ca
         assert not (tmp_path / "workspace.c128").exists()
         assert not (tmp_path / "powers.f64").exists()
         assert details["phases"]["workspace_cleanup_s"] >= 0
+        if power_storage == "workspace" or method == "lpsd":
+            assert details["power_storage"]["maximum_large_file_bytes"] == 24 * n
+            assert details["power_storage"]["extra_power_file_bytes"] == 0
+        if power_storage == "workspace" and method != "lpsd":
+            assert details["fft"]["power_storage"] == "workspace"
+            assert details["power_storage"]["workspace_power_offset_bytes"] == 8 * n
     finally:
         mapped._mmap.close()
 

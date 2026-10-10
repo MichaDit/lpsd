@@ -118,6 +118,11 @@ def _layout(n, memory_mb, factors):
     return {
         "n": n, "factors": [a, b], "memory_budget_bytes": budget,
         "workspace_bytes": 16 * n,
+        "workspace_power_supported": b % 2 == 0,
+        "workspace_power_offset_bytes": 8 * n if b % 2 == 0 else None,
+        "workspace_power_bytes": 4 * n + 8 if b % 2 == 0 else None,
+        "workspace_power_extra_file_bytes": 0 if b % 2 == 0 else None,
+        "workspace_power_extra_virtual_mapping_bytes": 4 * n + 8 if b % 2 == 0 else None,
         "ram_tile_bytes": 16 * work_elements,
         "twiddle_scratch_bytes": 16 * twiddle_rows * a,
         "real_scratch_bytes": 8 * real_scratch_elements,
@@ -143,6 +148,12 @@ class DiskFFT:
     in the explicitly documented [k2,k1] order. ``power_into`` writes the
     original positive-bin order into a separate writable float64 array or
     memmap, applying the standard one-sided density normalization.
+
+    For even B, ``power_in_workspace`` instead consumes the transform and
+    stores those powers inside the same 16N-byte file. It returns a separate,
+    caller-owned memmap at byte offset 8N; close that mapping independently.
+    No additional power file is created. Refill x and execute again before
+    either power-extraction method can consume another transform.
     """
 
     @staticmethod
@@ -177,6 +188,7 @@ class DiskFFT:
         self.plan = None
         self._closed = False
         self._has_transform = False
+        self._power_storage = None
         self.execution_count = 0
         self.allocation_s = self.planning_s = 0.0
         self.last_phases = {}
@@ -330,6 +342,7 @@ class DiskFFT:
         """
         self._require_open()
         self._has_transform = False
+        self._power_storage = None
         started = time.perf_counter()
         phases = {name: 0.0 for name in (
             "real_expansion_s", "column_gather_s", "column_fftw_s", "twiddle_s",
@@ -449,6 +462,106 @@ class DiskFFT:
         self._advise("normal")
         self.last_phases.update(power_gather_s=gather_s, power_arithmetic_s=arithmetic_s,
                                 power_total_s=time.perf_counter() - started)
+        self._power_storage = "external"
+        return powers
+
+    def power_in_workspace(self, sample_rate, window_square_sum):
+        """Consume an even-B transform into an independent map of this file.
+
+        The first phase copies every positive-bin source of a row batch into
+        the existing RAM tile *before* writing any compact powers. After r
+        rows, packed output ends at byte 4*B*r, whereas the next unread FFT
+        row starts at byte 16*B*r. These writes cannot overtake unread rows.
+        A bounded transpose then reads [0,4N) and writes [8N,12N+8), disjoint
+        file regions. Nyquist is saved before the first destructive write.
+
+        The returned float64 memmap has its own mapping of the existing file;
+        the caller must close it, even after closing this adapter. Its 4N+8
+        virtual bytes alias existing file storage, not an additional file.
+        """
+        self._require_open()
+        if not self._has_transform:
+            raise RuntimeError("Execute the transform before extracting power")
+        if self.b % 2:
+            raise ValueError("Workspace power storage requires an even B factor; use external power storage")
+        sample_rate, window_square_sum = float(sample_rate), float(window_square_sum)
+        if (not math.isfinite(sample_rate) or sample_rate <= 0
+                or not math.isfinite(window_square_sum) or window_square_sum <= 0):
+            raise ValueError("Positive finite sample_rate and window_square_sum are required")
+        scale = 2.0 / (sample_rate * window_square_sum)
+        started = time.perf_counter()
+        half = self.b // 2
+        bins = self.n // 2 + 1
+        nyquist = self.matrix[0, half]  # Scalar copy, before its source is overwritten.
+        nyquist_power = np.multiply(np.add(np.square(nyquist.real), np.square(nyquist.imag)), scale)
+        doubles = self._mapping.view(np.float64)
+        packed = doubles[:self.n // 2].reshape(self.a, half)
+        ordered = doubles[self.n:self.n + bins]
+        # A failure after the first write must never expose the partly consumed
+        # matrix as a valid FFT to a later extraction call.
+        self._has_transform = False
+        gather_s = arithmetic_s = store_s = 0.0
+        self._advise("sequential")
+        batches = (self.a + self.row_batch - 1) // self.row_batch
+        self._notify_progress("power_workspace_pack", 0, batches)
+        pack_started = time.perf_counter()
+        for first in range(0, self.a, self.row_batch):
+            count = min(self.row_batch, self.a - first)
+            tile = self._work[:count * half].reshape(count, half)
+            tick = time.perf_counter()
+            np.copyto(tile, self.matrix[first:first + count, :half])
+            gather_s += time.perf_counter() - tick
+            flat = tile.reshape(-1)
+            destination = packed[first:first + count].reshape(-1)
+            tick = time.perf_counter()
+            for offset in range(0, len(flat), len(self._real_scratch)):
+                size = min(len(self._real_scratch), len(flat) - offset)
+                values = flat[offset:offset + size]
+                target = destination[offset:offset + size]
+                scratch = self._real_scratch[:size]
+                np.square(values.real, out=target)
+                np.square(values.imag, out=scratch)
+                np.add(target, scratch, out=target)
+                np.multiply(target, scale, out=target)
+            arithmetic_s += time.perf_counter() - tick
+            self._notify_progress("power_workspace_pack", first // self.row_batch + 1, batches)
+        pack_s = time.perf_counter() - pack_started
+
+        self._advise("random")
+        batches = (half + self.column_batch - 1) // self.column_batch
+        self._notify_progress("power_workspace_transpose", 0, batches)
+        transpose_started = time.perf_counter()
+        staging_flat = self._twiddle.view(np.float64).reshape(-1)
+        work_real = self._work.view(np.float64)
+        for first in range(0, half, self.column_batch):
+            count = min(self.column_batch, half - first)
+            tile = work_real[:count * self.a].reshape(count, self.a)
+            tick = time.perf_counter()
+            for first_row in range(0, self.a, self.io_row_block):
+                row_count = min(self.io_row_block, self.a - first_row)
+                for column in range(0, count, self.io_column_block):
+                    column_count = min(self.io_column_block, count - column)
+                    staging = staging_flat[:row_count * column_count].reshape(row_count, column_count)
+                    np.copyto(staging, packed[first_row:first_row + row_count,
+                                              first + column:first + column + column_count])
+                    np.copyto(tile[column:column + column_count, first_row:first_row + row_count],
+                              staging.T)
+            gather_s += time.perf_counter() - tick
+            tick = time.perf_counter()
+            np.copyto(ordered[first * self.a:(first + count) * self.a], tile.reshape(-1))
+            store_s += time.perf_counter() - tick
+            self._notify_progress("power_workspace_transpose", first // self.column_batch + 1, batches)
+        ordered[0] *= 0.5
+        ordered[-1] = nyquist_power * 0.5
+        transpose_s = time.perf_counter() - transpose_started
+        self._advise("normal")
+        powers = np.memmap(self.workspace_path, mode="r+", dtype=np.float64,
+                           offset=8 * self.n, shape=(bins,))
+        self._power_storage = "workspace"
+        self.last_phases.update(power_gather_s=gather_s, power_arithmetic_s=arithmetic_s,
+                                power_store_s=store_s, power_workspace_pack_s=pack_s,
+                                power_workspace_transpose_s=transpose_s,
+                                power_total_s=time.perf_counter() - started)
         return powers
 
     def power_in_frequency_order_into(self, powers, sample_rate, window_square_sum):
@@ -477,9 +590,15 @@ class DiskFFT:
             "input_refill_required_before_each_execute": True,
             "window_staging_overwritten_by_execute": True,
             "close_unlinks_workspace": False,
+            "power_storage": self._power_storage,
+            "workspace_power_layout": "For even B: packed [k2,k1] powers in [0,4N), then "
+                                      "original-bin powers in [8N,12N+8). Consumes the FFT; "
+                                      "returned map is caller-owned and aliases this file.",
             "io_layout": "bounded contiguous file-row blocks; transpose in reused RAM twiddle scratch",
             "io_advice": {"enabled": self.io_advice, "outcomes": dict(self._advice_outcomes),
-                          "policy": "normal for reverse expansion; random for columns/power; sequential for rows; normal on completion"},
+                          "policy": "normal for reverse expansion; random for FFT columns/external "
+                                    "power gather/workspace power transpose; sequential for FFT "
+                                    "rows/workspace power packing; normal on completion"},
             "progress_callback": self._progress is not None,
             "progress_interval_s": 15.0,
             "flush_policy": "No forced fsync/flush; temporary workspace durability and file-cache eviction are caller-controlled",

@@ -52,6 +52,33 @@ from lpsd_fast import api
 CHUNK = 262144
 GIB = 1024**3
 METHODS = ("fftw", "matched", "lpsd")
+TIMEOUT_SCOPE = ("Parent-enforced whole-child-process budget, including process/import/library "
+                 "startup, input hashes before and after the measured call, the complete "
+                 "call and report finalization. A timeout is not a completed-call timing "
+                 "or an exact lower bound of that many seconds on the measured call.")
+
+
+def large_file_bytes(n, methods, power_storage):
+    """Peak file lengths for serial methods; aliased mappings add no file bytes."""
+    if power_storage not in ("external", "workspace"):
+        raise ValueError("power_storage must be external or workspace")
+    external = power_storage == "external" and any(method != "lpsd" for method in methods)
+    return (28 * n + 8) if external else 24 * n
+
+
+def archive_checkpoint(path, reason):
+    """Keep exact previous bytes under a unique name before overwriting them."""
+    if not path.exists():
+        return None
+    directory = path.parent / "history"
+    directory.mkdir(exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix=f"{path.stem}.{reason}.", suffix=path.suffix,
+                                     dir=directory, delete=False) as target:
+        with path.open("rb") as source:
+            shutil.copyfileobj(source, target)
+        archived = Path(target.name)
+    return {"path": str(archived), "sha256": sha256(archived), "reason": reason,
+            "archived_utc": datetime.now(timezone.utc).isoformat()}
 
 
 def close_map(array):
@@ -121,9 +148,27 @@ def frame_from_psd(frequencies, density):
                         index=pd.Index(frequencies, name="frequency"), copy=False)
 
 
-def disk_pipeline(method, values, backend, directory, args, *, progress=None, fft_progress=None):
+def disk_pipeline(method, values, backend, directory, args, *, progress=None,
+                  fft_progress=None, lpsd_progress=None):
     n = len(values)
+    power_storage = getattr(args, "power_storage", "external")
+    file_bytes = large_file_bytes(n, (method,), power_storage)
+    if (method != "lpsd" and power_storage == "workspace"
+            and not DiskFFT.memory_estimate(n, args.fft_memory_mb)["workspace_power_supported"]):
+        raise ValueError("Workspace power storage requires an even B factor; choose --power-storage external")
     phases, metadata = {}, {}
+    metadata["power_storage"] = {
+        "mode": "none" if method == "lpsd" else power_storage,
+        "maximum_large_file_bytes": file_bytes,
+        "extra_power_file_bytes": (4 * n + 8) if method != "lpsd" and power_storage == "external" else 0,
+        "workspace_power_offset_bytes": 8 * n if method != "lpsd" and power_storage == "workspace" else None,
+        "note": ("Workspace mode: the returned power mapping aliases the existing file. "
+                 "Physical files total 24N bytes; input+FFT+power mapping sizes still total "
+                 "28N+8 virtual bytes. Both mappings close before low LPSD remaps scratch."
+                 if method != "lpsd" and power_storage == "workspace" else
+                 "External mode uses a separate 4N+8-byte power file; native-only LPSD uses "
+                 "no power file. Files are temporary and removed after their last consumer."),
+    }
     tick = time.perf_counter()
     def mark(name):
         nonlocal tick
@@ -143,7 +188,9 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None, ff
         try:
             estimator = DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=200.0,
                                        overlap=overlap, workers=args.workers,
-                                       max_working_mb=args.low_working_mb)
+                                       max_working_mb=args.low_working_mb,
+                                       progress=lpsd_progress,
+                                       progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0))
             mark("workspace_and_plan_s")
             result = estimator.compute(values, workspace, outputs=("psd", "nsd"), profile=True)
             mark("lpsd_complete_s")
@@ -163,7 +210,8 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None, ff
         # The window occupies the second half of the file before complex
         # expansion. Preprocessing consumes it before execute overwrites it.
         window = fft.matrix.reshape(-1).view(np.float64)[n:2 * n]
-        powers = np.memmap(powers_path, dtype=np.float64, mode="w+", shape=(n // 2 + 1,))
+        if power_storage == "external":
+            powers = np.memmap(powers_path, dtype=np.float64, mode="w+", shape=(n // 2 + 1,))
         mark("workspace_and_fftw_planning_s")
         if method == "fftw":
             status = api._LIB.generate_kaiser_series(api._pointer(window), n, beta)
@@ -190,9 +238,12 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None, ff
         del window
         fft.execute()
         mark("blocked_fftw_s")
-        metadata["fft"] = fft.metadata
         metadata["fft_profile"] = getattr(fft, "last_profile", None)
-        fft.power_into(powers, args.sample_rate, s2)
+        if power_storage == "workspace":
+            powers = fft.power_in_workspace(args.sample_rate, s2)
+        else:
+            fft.power_into(powers, args.sample_rate, s2)
+        metadata["fft"] = fft.metadata
         mark("ordered_one_sided_power_s")
         obtained = mapped_sum(powers) * args.sample_rate / n
         np.testing.assert_allclose(obtained, expected, rtol=1e-10, atol=0.0)
@@ -251,7 +302,9 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None, ff
             try:
                 estimator = DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=200.0,
                                            overlap=overlap, plan_mask=low_mask,
-                                           workers=args.workers, max_working_mb=args.low_working_mb)
+                                           workers=args.workers, max_working_mb=args.low_working_mb,
+                                           progress=lpsd_progress,
+                                           progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0))
                 low = estimator.compute(values, workspace, outputs="psd", profile=True)
                 density[low_mask] = low.psd.to_numpy()
                 metadata["low_lpsd"] = estimator.metadata
@@ -287,11 +340,13 @@ def child(args):
               "status": "running", "pid": os.getpid(), "started_utc": datetime.now(timezone.utc).isoformat(),
               "settings": vars(args), "memory_cgroup_limit": read_file("/sys/fs/cgroup/memory.max"),
               "address_space_guard_bytes": guard, "maximum_large_mapping_bytes": mapped_bytes,
+              "maximum_large_file_bytes": large_file_bytes(n, (method,), args.power_storage),
               "input_sha256_before": bf.digest_array(values),
               "native_binary_sha256": sha256(api._LIB._name),
               "fftw": {"version": backend.version, "binary": backend.evidence,
                        "threads_binary": backend.threads_evidence}, "progress": [],
-              "fft_progress_events": []}
+              "fft_progress_events": [], "lpsd_progress_events": [],
+              "lpsd_completed_frequencies": [], "timeout_scope": TIMEOUT_SCOPE}
     def progress(name, seconds):
         print(f"PHASE {method} N={n} {name}: {seconds:.3f} s", flush=True)
         report["progress"].append({"phase": name, "wall_s": seconds})
@@ -305,6 +360,25 @@ def child(args):
         print(f"FFT {method} N={n} {entry['phase']}: "
               f"{entry['completed']}/{entry['total']} at {entry['call_elapsed_wall_s']:.3f} s", flush=True)
         write_json(args.output, report)
+    def lpsd_progress(event):
+        # DiskLPSDSubset serializes this callback, and its workers have joined
+        # before the main thread writes the next whole-pipeline phase/report.
+        entry = {key: value for key, value in event.items() if key != "points"}
+        entry["call_elapsed_wall_s"] = time.perf_counter() - call_started
+        points = event["points"]
+        entry["points_in_event"] = len(points)
+        report["lpsd_progress_events"].append(entry)
+        report["lpsd_completed_frequencies"].extend(points)
+        report["current_process_memory"] = process_memory()
+        report["current_io_counters"] = io_counters()
+        last = (f"; last source_j={points[-1]['source_j']} "
+                f"f={points[-1]['frequency']:.9g} Hz L={points[-1]['L']} "
+                f"K={points[-1]['K']} point={points[-1]['point_wall_s']:.3f} s"
+                if points else "")
+        print(f"LPSD {method} N={n} {entry['phase']}: "
+              f"{entry['completed']}/{entry['total']} at "
+              f"{entry['call_elapsed_wall_s']:.3f} s{last}", flush=True)
+        write_json(args.output, report)
     write_json(args.output, report)
     try:
         with tempfile.TemporaryDirectory(prefix=f"disk_{method}_{n}_", dir=args.work_dir) as directory:
@@ -312,7 +386,7 @@ def child(args):
             call_started = time.perf_counter()
             (frame, details), timing = measured(lambda: disk_pipeline(
                 method, values, backend, Path(directory), args,
-                progress=progress, fft_progress=fft_progress))
+                progress=progress, fft_progress=fft_progress, lpsd_progress=lpsd_progress))
             io_after = io_counters()
         finite = np.isfinite(frame.to_numpy()).all() and (frame.to_numpy() >= 0).all()
         assert finite
@@ -346,6 +420,9 @@ def main():
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--smoothing-workers", type=int, default=4)
     parser.add_argument("--fft-memory-mb", type=float, default=128)
+    parser.add_argument("--power-storage", choices=("external", "workspace"), default="external",
+                        help="Store FFT powers in a separate 4N+8-byte file (external), or "
+                             "consume an even-B FFT and reuse its 16N-byte file (workspace).")
     parser.add_argument("--low-working-mb", type=float, default=2048)
     parser.add_argument("--sample-rate", type=float, default=50.0)
     parser.add_argument("--seed", type=int, default=20261010)
@@ -354,8 +431,13 @@ def main():
     parser.add_argument("--child", choices=METHODS)
     parser.add_argument("--n", type=int)
     parser.add_argument("--input", type=Path)
-    parser.add_argument("--timeout-seconds", type=float, default=2400)
+    parser.add_argument("--timeout-seconds", type=float, default=2400, help=TIMEOUT_SCOPE)
+    parser.add_argument("--lpsd-progress-interval-s", type=float, default=15.0,
+                        help="Seconds between batched completed-point LPSD checkpoints; "
+                             "zero reports every point. Start, first point and end always report.")
     args = parser.parse_args()
+    if not math.isfinite(args.lpsd_progress_interval_s) or args.lpsd_progress_interval_s < 0:
+        parser.error("--lpsd-progress-interval-s must be finite and nonnegative")
     for name in ("fftw_library", "threads_library", "work_dir", "output", "input"):
         value = getattr(args, name)
         if value is not None:
@@ -376,14 +458,16 @@ def main():
                                  ROOT / "lpsd_fast/planning.py", ROOT / "lpsd_fast/prepared.py",
                                  ROOT / "lpsd/_helpers.py"]},
               "scope": "One observed complete PSD+NSD call per N/method. Includes bounded energy diagnostics, workspace creation, progress checkpoints, actual paging and deletion of disposable work files. Excludes signal creation, input hashes, process/import/library loading. Work files are not durable outputs; no final fsync is forced. Original cgroup RAM limit unchanged; shared file mappings are normal pageable filesystem I/O. Different FFT factorization and workspace strategy from the optimized RAM implementations; no RAM reuse timing or in-RAM speedup claim.",
-              "memory_events_before": read_file("/sys/fs/cgroup/memory.events"), "inputs": [], "jobs": []}
+              "memory_events_before": read_file("/sys/fs/cgroup/memory.events"), "inputs": [], "jobs": [],
+              "timeout_scope": TIMEOUT_SCOPE,
+              "previous_report": archive_checkpoint(args.output, "previous")}
     jobs_dir = args.output.parent / (args.output.stem + "_jobs")
     jobs_dir.mkdir(exist_ok=True)
     write_json(args.output, report)
     failure = False
     try:
         for n in args.sizes:
-            need = 28 * n + 512 * 1024**2
+            need = large_file_bytes(n, args.methods, args.power_storage) + 512 * 1024**2
             free = shutil.disk_usage(args.work_dir).free
             if free < need:
                 report["jobs"].append({"n": n, "status": "not_executed_disk_capacity", "required_bytes_with_reserve": need,
@@ -399,6 +483,9 @@ def main():
                 write_json(args.output, report)
                 for method in args.methods:
                     job_path = jobs_dir / f"{method}_{n}.json"
+                    previous_artifacts = [item for item in (
+                        archive_checkpoint(job_path, "previous"),
+                        archive_checkpoint(job_path.with_suffix(".log"), "previous")) if item is not None]
                     job_path.unlink(missing_ok=True)
                     command = [sys.executable, str(Path(__file__).resolve()), "--child", method, "--n", str(n),
                                "--input", str(path), "--output", str(job_path), "--work-dir", str(args.work_dir),
@@ -406,19 +493,42 @@ def main():
                                "--fftw-threads", str(args.fftw_threads), "--workers", str(args.workers),
                                "--smoothing-workers", str(args.smoothing_workers), "--fft-memory-mb", str(args.fft_memory_mb),
                                "--low-working-mb", str(args.low_working_mb), "--sample-rate", str(args.sample_rate),
-                               "--seed", str(args.seed)]
+                               "--seed", str(args.seed), "--timeout-seconds", str(args.timeout_seconds),
+                               "--power-storage", args.power_storage,
+                               "--lpsd-progress-interval-s", str(args.lpsd_progress_interval_s)]
                     timed_out = False
                     with job_path.with_suffix(".log").open("w") as log:
+                        process_started = time.perf_counter()
                         try:
                             completed = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
                                                        env=dict(os.environ, MALLOC_ARENA_MAX="2"), timeout=args.timeout_seconds)
                             code = completed.returncode
                         except subprocess.TimeoutExpired:
                             code, timed_out = -1, True
-                    job = json.loads(job_path.read_text()) if job_path.exists() else {"n": n, "method": method}
+                        process_elapsed = time.perf_counter() - process_started
+                    try:
+                        job = json.loads(job_path.read_text()) if job_path.exists() else {"n": n, "method": method}
+                    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                        if not timed_out:
+                            raise
+                        job = {"n": n, "method": method, "checkpoint_read_error": str(exc)}
                     job["child_exit_code"] = code
+                    job["controller_process_elapsed_wall_s"] = process_elapsed
+                    job["controller_timeout_seconds"] = args.timeout_seconds
+                    job["previous_artifacts"] = previous_artifacts
                     if timed_out:
-                        job.update(status="timeout", timeout_seconds=args.timeout_seconds)
+                        # subprocess.run has killed and waited for the child.
+                        # Save the exact raw checkpoint before adding a terminal
+                        # status; retain every phase/profile already reported.
+                        previous_status = job.get("status")
+                        archive = archive_checkpoint(job_path, "before_timeout")
+                        job.update(status="timeout", timeout_seconds=args.timeout_seconds,
+                                   timeout_scope=TIMEOUT_SCOPE,
+                                   checkpoint_status_before_timeout=previous_status,
+                                   interrupted_checkpoint_archive=archive,
+                                   child_exit_code_is_timeout_sentinel=True,
+                                   controller_finished_utc=datetime.now(timezone.utc).isoformat())
+                        write_json(job_path, job)
                     elif code != 0:
                         job["status"] = "failed"
                     if job.get("status") == "completed":
