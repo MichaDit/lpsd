@@ -1,10 +1,10 @@
 include LICENSE README.md build_native.py Makefile
 recursive-include lpsd *.py *.c *.h
 exclude lpsd/ltpda_dft.dll
-global-exclude *.so *.o *.a *.pyc *.build.json
 recursive-include lpsd_fast *.py *.c *.h *.md LICENSE*
 recursive-include test *.py *.csv
 recursive-include test_fast *.py *.md *.json
 recursive-include benchmarks *.py *.json *.json.gz *.tar.gz
 recursive-include benchmarks *.c *.h *.cu *.cl
 recursive-include docs *.md
+global-exclude *.so *.dll *.dylib *.o *.a *.pyc *.build.json

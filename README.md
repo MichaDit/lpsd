@@ -52,13 +52,21 @@ The [GPU and accelerator assessment](docs/accelerators.md) records available
 hardware, exact proposed offload payloads and a reproducible comparison
 procedure. No unmeasured GPU backend is enabled.
 
+The [local Windows acceleration measurements](docs/windows-accelerators.md)
+test a Ryzen 9 7945HX, RTX 4070 Laptop CUDA FP64 and Radeon 610M OpenCL FP64.
+The measured GPU prototypes are slower than the optimized CPU. CPU worker
+counts plateau around 16–24; native compilation and reusable CPU plans show
+measured benefits. Windows `auto` retains residual detrending after the
+projected DC-plus-nanovolt path failed the existing numerical gate.
+
 ## Install from source
 
 Python 3.10 or newer, NumPy, pandas and SciPy are required; pip installs
 the Python dependencies. The native build needs a C11 compiler and `libm`;
 it does not require FFTW, Python development headers or NumPy C headers.
-The build supports GCC/Clang on Linux x86-64 and AArch64, and Apple Clang on
-Apple Silicon. See [platform validation and build options](docs/platforms.md)
+The build supports GCC/Clang on Linux x86-64 and AArch64, Apple Clang on
+Apple Silicon, and locally tested MinGW GCC on Windows x64.
+See [platform validation and build options](docs/platforms.md)
 for the actual CI evidence and remaining limits.
 
 ```bash

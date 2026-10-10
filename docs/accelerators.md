@@ -1,5 +1,13 @@
 # GPU and other accelerator assessment
 
+**Measured local follow-up, 2026-10-10:** the
+[Windows/Ryzen/RTX report](windows-accelerators.md) now includes actual CUDA
+and AMD OpenCL FP64 execution, complete-call timings, plan reuse, transfer
+measurements and a 1–32-worker CPU sweep. The tested GPU prototypes were
+slower than the CPU and failed a DC-plus-nanovolt accuracy case. The report
+below retains the earlier EPYC container's inventory and proposed design;
+its statements about unavailable devices apply to that environment.
+
 Assessment date: 2026-10-08. The workload counts below use the unchanged
 LPSD frequency planner and Kaiser PSLL 200 defaults. The hardware inventory
 was collected in the same CPU-only execution environment used for this
@@ -273,9 +281,11 @@ above was run in this CPU-only environment.
 
 ## Required timing scopes for an actual GPU candidate
 
-No GPU LPSD CLI currently exists in this repository. Once a candidate is
-available, record these scopes separately, using the CPU run above as the
-matched comparator:
+No production GPU LPSD backend is enabled. The local follow-up adds the
+experimental `python -m benchmarks.bench_cuda` CLI, with its limitations and
+reproduction commands in the [local report](windows-accelerators.md).
+For a candidate, record these scopes separately, using the CPU run above
+as the matched comparator:
 
 | Scope | Inside the timer |
 | --- | --- |

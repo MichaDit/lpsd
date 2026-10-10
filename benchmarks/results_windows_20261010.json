@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-10",
+  "base_commit": "7092ef6ef5e1ab86fe41bb12b8444bb76bf9c0fa",
+  "raw_artifact": {
+    "file": "results_windows_20261010_raw.json.gz",
+    "sha256": "087990804c0967a7504cd047154898d09d09340f7b99e0c625df51039f5571df",
+    "compressed_bytes": 1272290
+  },
+  "hardware": {
+    "cpu": "AMD Ryzen 9 7945HX",
+    "physical_cores": 16,
+    "logical_cpus": 32,
+    "ram_bytes": 67871698944,
+    "power_plan": "Silent",
+    "cuda_gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_total_bytes": 8585216000,
+    "driver": "581.80",
+    "toolkit": "12.9",
+    "compute_capability": "8.9",
+    "reported_fp32_fp64_ratio": 64,
+    "opencl_gpu": "AMD Radeon 610M (gfx1036)",
+    "initial_gpu_free_mib_approx": [
+      899,
+      1067
+    ]
+  },
+  "tests": {
+    "tests-portable-final.xml": {
+      "tests": 1181,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 2,
+      "elapsed_s": 22.983
+    },
+    "tests-native-lf-final.xml": {
+      "tests": 1181,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 2,
+      "elapsed_s": 22.147
+    }
+  },
+  "installed_wheel": {
+    "passed": true,
+    "isolated": true,
+    "outside_checkout": true
+  },
+  "historical_epyc": [
+    {
+      "n": 1000000,
+      "workers": 1,
+      "epyc_s": 0.5074960514975828,
+      "local_s": 0.43273859983310103,
+      "epyc_over_local": 1.1727542948406136,
+      "raw_input_sha256": "f3a997c521a4af7a017c5b9f020f9ce45abba2f812712a156d6856deee03877e",
+      "historical_input_sha256": "f3a997c521a4af7a017c5b9f020f9ce45abba2f812712a156d6856deee03877e",
+      "input_bytes_match": true,
+      "historical_source": "benchmarks/results_fast4.json"
+    },
+    {
+      "n": 10000000,
+      "workers": 1,
+      "epyc_s": 7.888222145997133,
+      "local_s": 5.475908000022173,
+      "epyc_over_local": 1.4405322635013578,
+      "raw_input_sha256": "a09ad609445408fa2fcefceb84f416345c0f92f575ae9f3fbeb3d5620f705993",
+      "historical_input_sha256": "245d6df91986ca742a563d641269b16ed0c3f2eabeaba31a63d806a086540e79",
+      "input_bytes_match": false,
+      "historical_source": "benchmarks/results_fast4.json"
+    },
+    {
+      "n": 10000000,
+      "workers": 8,
+      "epyc_s": 1.6502488455007551,
+      "local_s": 1.908387699862942,
+      "epyc_over_local": 0.8647345849165103,
+      "raw_input_sha256": "a09ad609445408fa2fcefceb84f416345c0f92f575ae9f3fbeb3d5620f705993",
+      "historical_input_sha256": "245d6df91986ca742a563d641269b16ed0c3f2eabeaba31a63d806a086540e79",
+      "input_bytes_match": false,
+      "historical_source": "benchmarks/results_fast4.json"
+    }
+  ],
+  "cuda": [
+    {
+      "n": 1000000,
+      "workers": 16,
+      "cpu_s": 0.1585293000098318,
+      "cuda_s": 0.5117219998501241,
+      "cuda_over_cpu": 3.2279332578796964,
+      "paired_repeats": 7,
+      "first_complete_call_s": 0.7521802999544889,
+      "separate_profile": {
+        "preparation_s": 0.20721660112030804,
+        "gpu_and_transfers_s": 0.2603955001104623,
+        "initial_and_aggregation_s": 0.03538330248557031,
+        "wall_s": 0.5053528000134975
+      }
+    },
+    {
+      "n": 10000000,
+      "workers": 16,
+      "cpu_s": 1.7864093000534922,
+      "cuda_s": 4.405978600028902,
+      "cuda_over_cpu": 2.466388077971252,
+      "paired_repeats": 7,
+      "first_complete_call_s": 4.299259599996731,
+      "separate_profile": {
+        "preparation_s": 1.859815305331722,
+        "gpu_and_transfers_s": 1.9319815984927118,
+        "initial_and_aggregation_s": 0.4286417975090444,
+        "wall_s": 4.230012600077316
+      }
+    },
+    {
+      "n": 30000000,
+      "workers": 24,
+      "cpu_s": 7.113323000026867,
+      "cuda_s": 12.983554699923843,
+      "cuda_over_cpu": 1.8252446430275702,
+      "paired_repeats": 7,
+      "first_complete_call_s": 12.697994800051674,
+      "separate_profile": {
+        "preparation_s": 5.512994299875572,
+        "gpu_and_transfers_s": 5.906116502825171,
+        "initial_and_aggregation_s": 1.3337874999269843,
+        "wall_s": 12.777810200117528
+      }
+    }
+  ],
+  "worker_screen": [
+    {
+      "n": 1000000,
+      "medians_s": {
+        "1": 0.43273859983310103,
+        "2": 0.35714620002545416,
+        "4": 0.2122541000135243,
+        "6": 0.17996930005028844,
+        "8": 0.1596576999872923,
+        "12": 0.15972330002114177,
+        "16": 0.1528431000187993,
+        "24": 0.16193270008079708,
+        "32": 0.15783489984460175
+      },
+      "repeats": 3
+    },
+    {
+      "n": 10000000,
+      "medians_s": {
+        "1": 5.475908000022173,
+        "2": 4.095605399925262,
+        "4": 2.479148800019175,
+        "6": 2.043999999994412,
+        "8": 1.908387699862942,
+        "12": 1.8200393000151962,
+        "16": 1.8235267999116331,
+        "24": 1.8387665001209825,
+        "32": 1.81017450010404
+      },
+      "repeats": 3
+    },
+    {
+      "n": 30000000,
+      "medians_s": {
+        "1": 17.5278753999155,
+        "2": 13.687951399944723,
+        "4": 9.039297299925238,
+        "6": 8.124969399999827,
+        "8": 7.471758200088516,
+        "12": 7.378754600184038,
+        "16": 7.202809800161049,
+        "24": 7.138307200046256,
+        "32": 7.608688900014386
+      },
+      "repeats": 3
+    }
+  ],
+  "worker_confirmation": [
+    {
+      "n": 1000000,
+      "medians_s": {
+        "8": 0.16158500011079013,
+        "12": 0.1595457000657916,
+        "16": 0.15941890003159642,
+        "24": 0.16213379986584187,
+        "32": 0.16287959995679557
+      },
+      "repeats": 7
+    },
+    {
+      "n": 10000000,
+      "medians_s": {
+        "8": 1.9387072999961674,
+        "12": 1.8303673998452723,
+        "16": 1.7916413999628276,
+        "24": 1.7801429000683129,
+        "32": 1.8300318999681622
+      },
+      "repeats": 7
+    },
+    {
+      "n": 30000000,
+      "medians_s": {
+        "8": 7.57033049990423,
+        "12": 7.449610900133848,
+        "16": 7.3930238001048565,
+        "24": 7.3096159000415355,
+        "32": 7.833424900192767
+      },
+      "repeats": 7
+    }
+  ],
+  "csd_worker_screen": [
+    {
+      "n": 1000000,
+      "medians_s": {
+        "1": 0.807861499954015,
+        "2": 0.556570100132376,
+        "4": 0.3132201998960227,
+        "6": 0.24291980010457337,
+        "8": 0.21201949985697865,
+        "12": 0.1855385999660939,
+        "16": 0.1876345998607576,
+        "24": 0.18761650007218122,
+        "32": 0.1992850999813527
+      },
+      "repeats": 3
+    },
+    {
+      "n": 10000000,
+      "medians_s": {
+        "1": 10.095521500101313,
+        "2": 6.520211800001562,
+        "4": 4.237547399941832,
+        "6": 3.6524644000455737,
+        "8": 3.2861180000472814,
+        "12": 3.3437049000058323,
+        "16": 3.373663199832663,
+        "24": 3.1524221999570727,
+        "32": 3.6412583999335766
+      },
+      "repeats": 3
+    }
+  ],
+  "csd_worker_confirmation": [
+    {
+      "n": 10000000,
+      "medians_s": {
+        "8": 3.3588210998568684,
+        "12": 3.2954897999297827,
+        "16": 3.230928299948573,
+        "24": 3.215030299965292,
+        "32": 3.5478642999660224
+      },
+      "repeats": 7
+    }
+  ],
+  "build_comparison": [
+    {
+      "n": 1000000,
+      "workers": 1,
+      "medians_s": {
+        "portable": 1.0603997998405248,
+        "native": 0.43726509995758533
+      },
+      "portable_over_native": 2.425073027651609
+    },
+    {
+      "n": 1000000,
+      "workers": 16,
+      "medians_s": {
+        "portable": 0.17017979989759624,
+        "native": 0.16085570002906024
+      },
+      "portable_over_native": 1.0579656168034548
+    },
+    {
+      "n": 10000000,
+      "workers": 1,
+      "medians_s": {
+        "portable": 12.186279200017452,
+        "native": 5.514361799927428
+      },
+      "portable_over_native": 2.2099165129458553
+    },
+    {
+      "n": 10000000,
+      "workers": 16,
+      "medians_s": {
+        "portable": 2.2871848000213504,
+        "native": 1.799374399939552
+      },
+      "portable_over_native": 1.2711000001434865
+    }
+  ],
+  "accuracy": {
+    "accuracy-auto-131073.json": {
+      "cases": 19,
+      "frequency_mismatch_cases": [],
+      "cases_not_meeting_strict_limit": [
+        "onbin_tone_hft248d"
+      ],
+      "all_cases_meet_strict_limit": false,
+      "cases_not_meeting_combined_limit": [],
+      "all_cases_meet_combined_limit": true
+    },
+    "accuracy-auto-32769.json": {
+      "cases": 19,
+      "frequency_mismatch_cases": [],
+      "cases_not_meeting_strict_limit": [
+        "onbin_tone_hft248d"
+      ],
+      "all_cases_meet_strict_limit": false,
+      "cases_not_meeting_combined_limit": [],
+      "all_cases_meet_combined_limit": true
+    },
+    "accuracy-fast-131073.json": {
+      "cases": 19,
+      "frequency_mismatch_cases": [],
+      "cases_not_meeting_strict_limit": [
+        "dc_nanovolt_kaiser200",
+        "offbin_tone_hft248d",
+        "onbin_tone_hft248d"
+      ],
+      "all_cases_meet_strict_limit": false,
+      "cases_not_meeting_combined_limit": [
+        "dc_nanovolt_kaiser200"
+      ],
+      "all_cases_meet_combined_limit": false
+    },
+    "accuracy-fast-32769.json": {
+      "cases": 19,
+      "frequency_mismatch_cases": [],
+      "cases_not_meeting_strict_limit": [
+        "dc_nanovolt_kaiser200",
+        "onbin_tone_hft248d"
+      ],
+      "all_cases_meet_strict_limit": false,
+      "cases_not_meeting_combined_limit": [
+        "dc_nanovolt_kaiser200"
+      ],
+      "all_cases_meet_combined_limit": false
+    },
+    "accuracy-simd-32769.json": {
+      "cases": 19,
+      "frequency_mismatch_cases": [],
+      "cases_not_meeting_strict_limit": [
+        "onbin_tone_hft248d"
+      ],
+      "all_cases_meet_strict_limit": false,
+      "cases_not_meeting_combined_limit": [],
+      "all_cases_meet_combined_limit": true
+    },
+    "cuda-audit-131073.json": {
+      "cases": 21,
+      "failed_cases": [
+        "dc_nanovolt_kaiser200"
+      ],
+      "all_cases_pass": false
+    },
+    "cuda-audit-32769.json": {
+      "failed_cases": [
+        "dc_nanovolt_kaiser200"
+      ]
+    },
+    "opencl-audit-32769.json": {
+      "cases": 21,
+      "failed_cases": [
+        "dc_nanovolt_kaiser200"
+      ],
+      "all_cases_pass": false
+    }
+  },
+  "caveats": [
+    "EPYC historical container had an eight-CPU cgroup quota; no fresh EPYC run or processor ranking.",
+    "Same PCG64 seed and white-noise distribution; raw input hashes match at 1m, but differ at 10m. The cause is not established; no exact 10m sample equality is claimed.",
+    "Separate local timing series are not pooled. Workstation background load and Silent policy are retained.",
+    "CPU fast and GPU projection fail DC-plus-nanovolt combined audit; Windows auto uses residual detrending.",
+    "Two strict expected failures remain. PSD/NSD synthetic absolute limits do not imply uniform relative accuracy.",
+    "GPU kernels support PSD/NSD only, detrending 0 or none; order 1+ is explicit CPU fallback. No production GPU backend.",
+    "GPU memory already occupied; no applications closed. Large resident GPU plans not tested.",
+    "FFTW is a different estimator; local FFTW 3.3.5 is not the historical 3.3.11 build."
+  ]
+}

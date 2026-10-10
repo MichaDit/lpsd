@@ -93,6 +93,7 @@ actual loaded-library file.
 | Native Linux x86-64/GCC CI | 64 significand bits, stored in 16 bytes |
 | Native Linux AArch64/GCC CI | IEEE binary128, 113 significand bits, 16 bytes |
 | Native Apple arm64 CI | Same representation and precision as `double`, 53 significand bits, 8 bytes |
+| Local Windows x64/MinGW GCC 15.2 | C: 64 significand bits, 16 bytes; installed NumPy wheel: 53 bits, 8 bytes |
 
 The [Arm AAPCS64 specification](https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst)
 defines the standard mapping; [Apple's arm64 documentation](https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms)
@@ -127,7 +128,8 @@ This is a separate numerical path, with no guarantee of binary128's 113-bit
 significand or bitwise equality to the long-double projector. Compensated
 arithmetic assumes the usual IEEE rounding environment. The existing `auto`
 mode uses mode 2 for order 0 when long double has more than 53 significand
-bits; with at most 53 bits it uses the original residual arithmetic (mode 1).
+bits, except on Windows; with at most 53 bits or on Windows it uses the
+original residual arithmetic (mode 1).
 The Apple runner exercises this fallback, including the DC-plus-nanovolt
 regression case. Explicit `fast` still uses projected mode 2 on Apple, with
 the separately documented numerical tolerances. For higher orders, `auto`
@@ -140,6 +142,19 @@ speedup. The native Linux AArch64 and Apple measurements below come from
 their own runners, with numerical gates executed on those same architectures.
 
 ## Native CI matrix and small measurements
+
+### Local Windows validation, 2026-10-10
+
+The [local report](windows-accelerators.md) documents the actual Windows x64
+MinGW build, complete test runs and an isolated installed wheel. Profiling
+uses `QueryPerformanceCounter` on Windows, avoiding the POSIX clock's
+additional `libwinpthread` dependency in the fast DLL. Compiler ABI tests
+use an independently built C probe rather than assuming NumPy's long-double
+format matches the C compiler. Windows `auto` selects residual detrending
+after the projected order-0 DC regression failed; its numerical assertion
+was not relaxed. These are local checks, not a new Windows CI job.
+
+### Earlier native CI evidence
 
 All eight jobs completed successfully in
 [CI run 37803974329](https://github.com/MichaDit/lpsd/actions/runs/37803974329)

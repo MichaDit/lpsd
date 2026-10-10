@@ -14,7 +14,7 @@ available unchanged. Faster arithmetic is selected through the separate
 | `scalar` | Original long-double detrending and serial Fourier accumulation order; original window and coefficient path | Closest compatibility with the original implementation |
 | `simd` | Original long-double residual detrending, followed by a SIMD Fourier reduction | Faster reductions with changed rounding order |
 | `projected` | Preprojected Fourier coefficients and locally anchored input; orders 0 and 1 only | Explicit numerical tradeoff; order 1 remains experimental |
-| `auto` | `projected` for order 0 when C long double has more than 53 significand bits, otherwise original residual detrending with `simd`; independent Fourier phases | Default optimized choice, retaining residual detrending for order 1 |
+| `auto` | `projected` for order 0 when C long double has more than 53 significand bits and the platform is not Windows; otherwise original residual detrending with `simd`; independent Fourier phases | Default optimized choice, retaining residual detrending for order 1 |
 | `fast` | Projected order 0, residual SIMD for other orders, bounded block rotations; compensated order-0 preparation when C `long double` has more than 64 significand bits | Opt-in lower wall time with additional rounding differences |
 
 `fast` is an explicit arithmetic choice, not an accuracy target. It does not
@@ -23,6 +23,15 @@ compare results against a tolerance or rerun suspect frequencies with
 or compare the chosen faster mode with that reference using both relative
 and application-specific absolute limits. None of the faster modes has a
 universal 1% relative-error guarantee for arbitrary signals and spectral nulls.
+
+On the [tested Windows/MinGW system](windows-accelerators.md), projected
+`fast` and the GPU prototypes exceeded the combined 1%/absolute criterion
+for DC plus nanovolt noise: maximum PSD error was 2.31% at 32,769 samples
+and 1.83% at 131,073 samples. Windows `auto` now uses residual mode 1 even
+though its C `long double` reports 64 significand bits. The original strict
+DC regression assertion is unchanged. The absolute allowances used in the
+separate synthetic audits are stated explicitly; they do not establish a
+uniform relative bound at spectral nulls.
 
 Frequency-level workers do not combine partial results across frequencies.
 They therefore do not inherently change each frequency's reduction order.
