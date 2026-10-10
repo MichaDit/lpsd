@@ -66,7 +66,7 @@ class CUDAEstimator:
     def ip(array):
         return array.ctypes.data_as(ct.POINTER(ct.c_int32))
 
-    def prepare_frequency(self, n, length, m, count, overlap, window, beta, order):
+    def prepare_frequency(self, n, length, m, count, overlap, window, beta, order,coefficient_buffers=None):
         w=np.empty(length)
         if window is np.kaiser:
             status=api._LIB.generate_kaiser_series(api._pointer(w),length,beta)
@@ -76,7 +76,12 @@ class CUDAEstimator:
         s1,s2=ct.c_double(),ct.c_double()
         status=api._LIB.window_sums(api._pointer(w),length,ct.byref(s1),ct.byref(s2))
         if status or not np.isfinite(s2.value) or not s2.value: raise ValueError('Invalid window normalization')
-        cr,ci=api._coefficients(w,m,length,strict=False,blocked=True)
+        if coefficient_buffers is None:
+            cr,ci=api._coefficients(w,m,length,strict=False,blocked=True)
+        else:
+            cr,ci=coefficient_buffers
+            status=api._LIB.generate_coefficients_blocked(api._pointer(cr),api._pointer(ci),api._pointer(w),length,m)
+            if status: raise RuntimeError('Coefficient generation failed')
         status=self.bridge.bench_prepare(api._pointer(cr),api._pointer(ci),length,order)
         if status: raise ValueError('Unsupported projection')
         starts=np.empty(count,dtype=np.int32)
