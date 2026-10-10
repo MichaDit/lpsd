@@ -7,6 +7,12 @@ compilation helps, and a prepared CPU plan reduces repeated preparation work.
 The GPU implementations remain isolated benchmark experiments; neither is a
 production backend.
 
+This is the **initial direct-kernel experiment**. The subsequent
+[optimization and GPU FFT study](windows-optimization.md) measures faster
+packed CUDA calls, a GPU advantage for a reused 10-million-sample plan, and
+cuFFT/VkFFT periodograms. Its series have their own CPU controls and are not
+pooled with the measurements below.
+
 The [summary](../benchmarks/results_windows_20261010.json) and
 [sanitized detailed evidence](../benchmarks/results_windows_20261010_raw.json.gz)
 retain every timing observation, separate profiles, numerical metrics, build

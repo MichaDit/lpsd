@@ -1,10 +1,14 @@
 # GPU and other accelerator assessment
 
 **Measured local follow-up, 2026-10-10:** the
-[Windows/Ryzen/RTX report](windows-accelerators.md) now includes actual CUDA
-and AMD OpenCL FP64 execution, complete-call timings, plan reuse, transfer
-measurements and a 1–32-worker CPU sweep. The tested GPU prototypes were
-slower than the CPU and failed a DC-plus-nanovolt accuracy case. The report
+[Windows/Ryzen/RTX report](windows-accelerators.md) includes actual CUDA
+and AMD OpenCL FP64 execution and a 1–32-worker CPU sweep. The later
+[packed CUDA and cuFFT/VkFFT study](windows-optimization.md) further optimizes
+complete calls and reusable plans, measures a GPU benefit for the reused
+10-million-sample LPSD plan, and compares separate FFT periodograms. Raw
+projected GPU arithmetic still fails a DC-plus-nanovolt case; the packed
+adapter explicitly falls back to CPU residual detrending for DC-dominated
+inputs. These remain benchmark experiments. The report
 below retains the earlier EPYC container's inventory and proposed design;
 its statements about unavailable devices apply to that environment.
 

@@ -154,6 +154,11 @@ format matches the C compiler. Windows `auto` selects residual detrending
 after the projected order-0 DC regression failed; its numerical assertion
 was not relaxed. These are local checks, not a new Windows CI job.
 
+The [follow-up CUDA and FFT study](windows-optimization.md) adds 52 actual-device
+regressions; portable/native local suites each pass 1,231 tests with two known
+Xfails and no optional skips. The GPU code remains an optional benchmark
+experiment, with explicit CPU fallbacks and separately measured estimators.
+
 ### Earlier native CI evidence
 
 All eight jobs completed successfully in

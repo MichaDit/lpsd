@@ -54,9 +54,13 @@ procedure. No unmeasured GPU backend is enabled.
 
 The [local Windows acceleration measurements](docs/windows-accelerators.md)
 test a Ryzen 9 7945HX, RTX 4070 Laptop CUDA FP64 and Radeon 610M OpenCL FP64.
-The measured GPU prototypes are slower than the optimized CPU. CPU worker
-counts plateau around 16–24; native compilation and reusable CPU plans show
-measured benefits. Windows `auto` retains residual detrending after the
+The initial GPU prototypes were slower than the optimized CPU. The
+[follow-up optimization study](docs/windows-optimization.md) reduces CUDA
+host-call overhead, measures a GPU advantage for a reused 10-million-sample
+LPSD plan, and benchmarks cuFFT/VkFFT periodograms as a separate estimator.
+These remain optional experiments. CPU worker counts plateau around 16–24;
+native compilation and reusable CPU plans show measured benefits.
+Windows `auto` retains residual detrending after the
 projected DC-plus-nanovolt path failed the existing numerical gate.
 
 ## Install from source
@@ -282,6 +286,7 @@ times overlap and must not be summed as wall time.
 - [Current segment performance and bottlenecks](docs/performance-fast3.md)
 - [High-overlap Boxcar reuse](docs/rolling-boxcar.md)
 - [GPU and other accelerator assessment](docs/accelerators.md)
+- [Packed CUDA, cuFFT and VkFFT optimization measurements](docs/windows-optimization.md)
 - [Earlier performance and direct-kernel complexity](docs/performance.md)
 - [Final fast.2 timings and accuracy](benchmarks/results_fast2_final.json)
 - [First fast.2 integration measurements](benchmarks/results_fast2.json)

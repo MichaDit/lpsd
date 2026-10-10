@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-10",
+  "base_commit": "61654bef655cf7435a13676acf35d16fdc9b8652",
+  "hardware": {
+    "cpu": "Ryzen 9 7945HX, 16 cores / 32 logical CPUs",
+    "gpu": "RTX 4070 Laptop, approximately 8 GiB",
+    "power_plan": "Silent; unchanged"
+  },
+  "completed": true,
+  "tests": {
+    "portable": {
+      "passed": 1231,
+      "failures": 0,
+      "errors": 0,
+      "xfailed": [
+        "test_known_offbin_tone_uniform_relative_accuracy",
+        "test_known_legacy_standard_error_is_not_statistically_correct"
+      ],
+      "skipped": [],
+      "junit_xml_sha256": "06bffe4596e22a7a1c9fffa2ab082f35d6e71eae4c942c65aba72495f3561e1f",
+      "summary": "1231 passed, 2 xfailed, 4 warnings in 20.71s"
+    },
+    "native": {
+      "passed": 1231,
+      "failures": 0,
+      "errors": 0,
+      "xfailed": [
+        "test_known_offbin_tone_uniform_relative_accuracy",
+        "test_known_legacy_standard_error_is_not_statistically_correct"
+      ],
+      "skipped": [],
+      "junit_xml_sha256": "773ae61f7ffa7af47cc4bdef4ffcb0f9343bab753209cfecf826b59f29a3c312",
+      "summary": "1231 passed, 2 xfailed, 4 warnings in 19.10s"
+    }
+  },
+  "full_lpsd": {
+    "1000000": {
+      "public_cpu": 0.130159999942407,
+      "packed_gpu": 0.24446650012396276,
+      "legacy_gpu": 0.4786405998747796
+    },
+    "10000000": {
+      "public_cpu": 1.7984859000425786,
+      "packed_gpu": 2.011704199947417,
+      "legacy_gpu": 4.0685397000052035
+    },
+    "30000000": {
+      "public_cpu": 7.539128599921241,
+      "packed_gpu": 6.3417471998836845
+    }
+  },
+  "reused_lpsd": {
+    "1000000": {
+      "public_cpu": 0.13295799982734025,
+      "prepared_cpu": 0.04570360016077757,
+      "resident_gpu": 0.08609280013479292
+    },
+    "10000000": {
+      "public_cpu": 1.885337600018829,
+      "prepared_cpu": 1.238856199895963,
+      "resident_gpu": 1.07194870011881
+    }
+  },
+  "burst_reused_lpsd": {
+    "public_cpu": 1.7925521000288427,
+    "prepared_cpu": 1.1048141999635845,
+    "resident_gpu": 0.8022576998919249
+  },
+  "fft": {
+    "1000000": {
+      "prepared_complete": {
+        "fftw_1": 0.004933200078085065,
+        "fftw_4": 0.004269300028681755,
+        "fftw_8": 0.004101499915122986,
+        "fftw_16": 0.004030599957332015,
+        "cufft": 0.002011299831792712,
+        "vkfft": 0.001656699925661087,
+        "cufft_fused": 0.0015368000604212284,
+        "cufft_graph": 0.0015418000984936953,
+        "vkfft_graph": 0.00156589993275702
+      },
+      "raw_resident_fft": {
+        "fftw_1": 0.0025284700095653534,
+        "fftw_4": 0.0016946100164204835,
+        "fftw_8": 0.0014952900120988489,
+        "fftw_16": 0.001395990001037717,
+        "cufft": 0.0005435000173747539,
+        "vkfft": 0.00042691000271588564,
+        "cufft_fused": 0.0005425699986517429,
+        "cufft_graph": 0.0005426499992609024,
+        "vkfft_graph": 0.0004275699844583869
+      },
+      "fresh_complete": {
+        "fftw_1": 0.017993699992075562,
+        "fftw_4": 0.019264900125563145,
+        "fftw_8": 0.02139859995804727,
+        "fftw_16": 0.026872099842876196,
+        "cufft": 0.009610699955374002,
+        "vkfft": 0.1036580998916179,
+        "cufft_fused": 0.008906299946829677,
+        "cufft_graph": 0.010613299906253815,
+        "vkfft_graph": 0.10571060003712773
+      }
+    },
+    "1000003": {
+      "prepared_complete": {
+        "fftw_1": 0.07385559985414147,
+        "fftw_4": 0.049084699945524335,
+        "fftw_8": 0.0440960000269115,
+        "fftw_16": 0.042370300041511655,
+        "cufft": 0.006284599890932441,
+        "vkfft": 0.005232400028035045,
+        "cufft_fused": 0.006263500079512596,
+        "cufft_graph": 0.00631370022892952,
+        "vkfft_graph": 0.0051541998982429504
+      },
+      "raw_resident_fft": {
+        "fftw_1": 0.07469162999186665,
+        "fftw_4": 0.04858416998758912,
+        "fftw_8": 0.044254050008021295,
+        "fftw_16": 0.04336043000221253,
+        "cufft": 0.01653864001855254,
+        "vkfft": 0.003333200002089143,
+        "cufft_fused": 0.0043696200009435415,
+        "cufft_graph": 0.004361829999834299,
+        "vkfft_graph": 0.0031169099966064095
+      },
+      "fresh_complete": {
+        "fftw_1": 0.10109650017693639,
+        "fftw_4": 0.08346510003320873,
+        "fftw_8": 0.0917885999660939,
+        "fftw_16": 0.1125426001381129,
+        "cufft": 0.033245000056922436,
+        "vkfft": 0.5162844001315534,
+        "cufft_fused": 0.041827799985185266,
+        "cufft_graph": 0.05920000001788139,
+        "vkfft_graph": 0.5359367001801729
+      }
+    },
+    "10000000": {
+      "prepared_complete": {
+        "fftw_1": 0.12959509994834661,
+        "fftw_4": 0.061053100042045116,
+        "fftw_8": 0.05937819997780025,
+        "fftw_16": 0.05897669983096421,
+        "cufft": 0.017962199868634343,
+        "vkfft": 0.01773199997842312,
+        "cufft_fused": 0.01330769993364811,
+        "cufft_graph": 0.013416900066658854,
+        "vkfft_graph": 0.012986100045964122
+      },
+      "raw_resident_fft": {
+        "fftw_1": 0.09527943329885602,
+        "fftw_4": 0.02788849997644623,
+        "fftw_8": 0.02588370000012219,
+        "fftw_16": 0.025579633346448343,
+        "cufft": 0.005048866616562009,
+        "vkfft": 0.004744533294190963,
+        "cufft_fused": 0.005118333346520861,
+        "cufft_graph": 0.005048899988954266,
+        "vkfft_graph": 0.004740266672646006
+      },
+      "fresh_complete": {
+        "fftw_1": 0.18116700020618737,
+        "fftw_4": 0.11365070007741451,
+        "fftw_8": 0.1142452999483794,
+        "fftw_16": 0.12043210002593696,
+        "cufft": 0.07478859997354448,
+        "vkfft": 0.3633147000800818,
+        "cufft_fused": 0.0614053001627326,
+        "cufft_graph": 0.08015260007232428,
+        "vkfft_graph": 0.38112900010310113
+      }
+    }
+  },
+  "fft_isolated_30m": {
+    "cufft_graph": {
+      "prepared_complete": {
+        "fftw_1": 0.5218888998497277,
+        "fftw_4": 0.26833130000159144,
+        "fftw_8": 0.21710089989937842,
+        "fftw_16": 0.20198339992202818,
+        "fftw_24": 0.20604719989933074,
+        "fftw_32": 0.2026599000673741,
+        "cufft_graph": 0.10527910012751818
+      },
+      "raw_resident_fft": {
+        "fftw_1": 0.4109686666633934,
+        "fftw_4": 0.1568763666631033,
+        "fftw_8": 0.10427530001228054,
+        "fftw_16": 0.09805766663824518,
+        "fftw_24": 0.09367966667438547,
+        "fftw_32": 0.09312689995082717,
+        "cufft_graph": 0.020308666707326967
+      },
+      "fresh_complete": {
+        "fftw_1": 0.6733856000937521,
+        "fftw_4": 0.40246040001511574,
+        "fftw_8": 0.3720112999435514,
+        "fftw_16": 0.36003739992156625,
+        "fftw_24": 0.3628624000120908,
+        "fftw_32": 0.38064560014754534,
+        "cufft_graph": 0.5270632999017835
+      }
+    },
+    "vkfft_graph": {
+      "prepared_complete": {
+        "fftw_1": 0.5247367999982089,
+        "fftw_4": 0.26688789995387197,
+        "fftw_8": 0.21830449998378754,
+        "fftw_16": 0.20929679996334016,
+        "fftw_24": 0.20822990010492504,
+        "fftw_32": 0.20314850006252527,
+        "vkfft_graph": 0.08901440002955496
+      },
+      "raw_resident_fft": {
+        "fftw_1": 0.41489593335427344,
+        "fftw_4": 0.15798953330765167,
+        "fftw_8": 0.10674516662644844,
+        "fftw_16": 0.0997440000064671,
+        "fftw_24": 0.09016446660583217,
+        "fftw_32": 0.0917089666860799,
+        "vkfft_graph": 0.020153333277752
+      },
+      "fresh_complete": {
+        "fftw_1": 0.689655200112611,
+        "fftw_4": 0.41327080014161766,
+        "fftw_8": 0.36278850003145635,
+        "fftw_16": 0.3592463000677526,
+        "fftw_24": 0.35938880010508,
+        "fftw_32": 0.37466980004683137,
+        "vkfft_graph": 1.224443000042811
+      }
+    },
+    "vkfft_tuned_graph": {
+      "prepared_complete": {
+        "fftw_1": 0.5201469999738038,
+        "fftw_4": 0.27079090010374784,
+        "fftw_8": 0.21153609990142286,
+        "fftw_16": 0.20956170000135899,
+        "fftw_24": 0.20137850008904934,
+        "fftw_32": 0.20530849997885525,
+        "vkfft_tuned_graph": 0.0890140999108553
+      },
+      "raw_resident_fft": {
+        "fftw_1": 0.40895919998486835,
+        "fftw_4": 0.1569577333672593,
+        "fftw_8": 0.10831266672660907,
+        "fftw_16": 0.09728270000778139,
+        "fftw_24": 0.09112986666150391,
+        "fftw_32": 0.0934160000178963,
+        "vkfft_tuned_graph": 0.02716649998910725
+      },
+      "fresh_complete": {
+        "fftw_1": 0.6746442001312971,
+        "fftw_4": 0.404194800183177,
+        "fftw_8": 0.3568086000159383,
+        "fftw_16": 0.35545579995959997,
+        "fftw_24": 0.36199040012434125,
+        "fftw_32": 0.3739559999667108,
+        "vkfft_tuned_graph": 3.6743921998422593
+      }
+    }
+  },
+  "fft_burst_30m": {
+    "cufft_graph": {
+      "prepared_complete": {
+        "fftw_16": 0.21622780011966825,
+        "cufft_graph": 0.04254229995422065
+      },
+      "raw_resident_fft": {
+        "fftw_16": 0.09782793334064384,
+        "cufft_graph": 0.01810389997748037
+      },
+      "fresh_complete": {
+        "fftw_16": 0.350301600061357,
+        "cufft_graph": 0.22180419997312129
+      }
+    },
+    "vkfft_graph": {
+      "prepared_complete": {
+        "fftw_16": 0.21426589996553957,
+        "vkfft_graph": 0.039429099997505546
+      },
+      "raw_resident_fft": {
+        "fftw_16": 0.09833903331309557,
+        "vkfft_graph": 0.014891800004988909
+      },
+      "fresh_complete": {
+        "fftw_16": 0.35995569988153875,
+        "vkfft_graph": 0.9681474000681192
+      }
+    }
+  },
+  "known_failures": [
+    "Raw projected FP64, twofold FP32 and cuFFT convolution fail the DC-plus-nanovolt reference case.",
+    "64 MiB batch targets cannot hold the longest 10m-frequency coefficient row.",
+    "The three-plan 30m FFT tuning comparison oversubscribed VRAM; excluded from accepted timings and repeated per backend."
+  ],
+  "limits": [
+    "Experimental PSD/NSD adapter only; production lpsd_fast dispatch unchanged.",
+    "DC guard is a heuristic plus an explicit CPU auto fallback, not a universal precision bound.",
+    "FFT periodograms change the estimator; not pointwise LPSD replacements.",
+    "GPU clocks/background workload not controlled. Alternating and burst series remain separate.",
+    "No new EPYC execution; only previously published archived evidence."
+  ]
+}
