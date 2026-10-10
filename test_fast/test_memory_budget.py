@@ -23,7 +23,7 @@ def test_cgroup_budget_counts_only_clean_inactive_file_cache(monkeypatch, stat, 
     }
 
     def read_text(path, *args, **kwargs):
-        value = files.get(str(path))
+        value = files.get(path.as_posix())
         if value is None:
             raise FileNotFoundError(str(path))
         return value
@@ -39,5 +39,5 @@ def test_host_available_memory_still_caps_cgroup_estimate(monkeypatch):
         '/sys/fs/cgroup/memory.stat': 'inactive_file 7000\n',
         '/proc/meminfo': 'MemAvailable: 2 kB\n',
     }
-    monkeypatch.setattr(Path, 'read_text', lambda path: files[str(path)])
+    monkeypatch.setattr(Path, 'read_text', lambda path: files[path.as_posix()])
     assert api._available_memory() == 2048

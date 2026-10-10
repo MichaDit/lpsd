@@ -25,6 +25,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /* Unmodified upstream implementation. */
 #include "../../lpsd/c_sources/polyreg.c"
@@ -515,11 +518,20 @@ static LPSD_ALWAYS_INLINE void dot_csd_anchored_simd(const double *x1, const dou
 
 static double monotonic_seconds(void)
 {
+#ifdef _WIN32
+    LARGE_INTEGER counter, frequency;
+    if (!QueryPerformanceFrequency(&frequency) ||
+        !QueryPerformanceCounter(&counter)) {
+        return NAN;
+    }
+    return (double)counter.QuadPart / (double)frequency.QuadPart;
+#else
     struct timespec t;
     if (clock_gettime(CLOCK_MONOTONIC, &t) != 0) {
         return NAN;
     }
     return (double)t.tv_sec + (double)t.tv_nsec * 1e-9;
+#endif
 }
 
 static LPSD_ALWAYS_INLINE void update_original_statistics(long int ii,

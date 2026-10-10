@@ -25,14 +25,20 @@ def main():
         Path(lpsd.__file__).parent / "ltpda_dft.build.json",
         Path(lpsd_fast.__file__).parent / "_native" / "liblpsd_fast.build.json",
     )
+    compiler_mantissas = []
     for path in reports:
         report = json.loads(path.read_text())
         assert report["native"] is False, "A redistributable wheel used native-only ISA flags"
         assert "-ffp-contract=off" in report["flags"]
-        assert report["floating_point"]["long_double_mant_dig"] == np.finfo(np.longdouble).nmant + 1
+        compiler_mantissas.append(report["floating_point"]["long_double_mant_dig"])
         library = path.parent / report["library"]
         assert hashlib.sha256(library.read_bytes()).hexdigest() == report["binary_sha256"]
         print(json.dumps(report, sort_keys=True))
+    # A Windows NumPy wheel can use MSVC FP64 long double while the plain C
+    # libraries use MinGW x87. Check the actually loaded compiler ABI.
+    from lpsd_fast import api
+    api._native()
+    assert compiler_mantissas == [api._LIB.native_long_double_mantissa_bits()] * 2
     machine = platform.machine().lower()
     wheel_metadata = distribution("lpsd").read_text("WHEEL")
     assert "Tag: py3-none-" in wheel_metadata

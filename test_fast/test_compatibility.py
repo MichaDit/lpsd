@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -49,7 +50,7 @@ def test_auto_uses_stable_linear_detrending_for_large_ramp():
     assert actual.attrs["lpsd_fast"]["native_mode"] == 1
     compare(actual, run("ramp_nanovolt_order1", "simd"), exact=True)
     metadata = run("dc_nanovolt_order0", "auto").attrs["lpsd_fast"]
-    expected = 2 if metadata["native_long_double_mantissa_bits"] > 53 else 1
+    expected = 2 if metadata["native_long_double_mantissa_bits"] > 53 and os.name != 'nt' else 1
     assert metadata["native_mode"] == expected
 
 

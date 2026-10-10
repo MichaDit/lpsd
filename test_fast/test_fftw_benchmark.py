@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from types import SimpleNamespace
 
 
 @pytest.fixture(scope="module")
@@ -153,6 +154,23 @@ def test_cli_rejects_invalid_counts_before_loading_fftw(adapter, tmp_path):
         adapter.main(["--n", "0", "--output", str(output)])
     assert error.value.code == 2
     assert not output.exists()
+
+
+def test_windows_plan_description_avoids_incompatible_free(adapter, monkeypatch):
+    def forbidden(*args):
+        pytest.fail('Windows must not allocate a malloc string for fftw_free')
+    transform=object.__new__(adapter.RealFFT)
+    transform.backend=SimpleNamespace(lib=SimpleNamespace(fftw_flops=lambda *args:None,
+                                                         fftw_sprint_plan=forbidden,
+                                                         fftw_free=forbidden))
+    transform.plan=1
+    transform.planner='estimate'
+    transform.time_limit=None
+    transform.planning_s=transform.allocation_s=0.
+    monkeypatch.setattr(adapter,'os',SimpleNamespace(name='nt'))
+    description=transform.describe()
+    assert description['plan_text_available'] is False
+    assert description['plan_text']==''
 
 
 def test_tiny_cli_report_contains_separate_totals_and_provenance(adapter, fftw, tmp_path):

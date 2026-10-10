@@ -299,9 +299,11 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     n = len(x1)
     mode = (2 if order == 0 else 1) if kernel in ('auto', 'fast') else _KERNELS[kernel]
     mantissa_bits = _LIB.native_long_double_mantissa_bits()
-    if kernel == 'auto' and order == 0 and mantissa_bits <= 53:
-        # On targets where long double is just double (notably Apple ARM),
-        # retain the reference residual arithmetic for DC-dominated inputs.
+    if kernel == 'auto' and order == 0 and (mantissa_bits <= 53 or os.name == 'nt'):
+        # Retain reference residual arithmetic on 53-bit long-double targets
+        # and Windows. MinGW x87 reports 64 bits, yet the Windows projected
+        # path fails the unchanged DC-plus-nanovolt reference gate. A separate
+        # 32769-sample audit observed 2.31% PSD error even with FP64 GPU dots.
         mode = 1
     elif kernel == 'fast' and order == 0 and mantissa_bits > 64:
         # Compensated FP64 preparation avoids expensive wider long-double

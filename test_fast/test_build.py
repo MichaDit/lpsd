@@ -1,5 +1,6 @@
 """Build policy checks against the actual compiled reference and fast libraries."""
 import hashlib
+import ctypes as ct
 import json
 import os
 from pathlib import Path
@@ -7,7 +8,6 @@ import runpy
 import subprocess
 import sys
 
-import numpy as np
 import pytest
 
 
@@ -17,15 +17,25 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.parametrize("relative", (
     "lpsd/ltpda_dft.build.json", "lpsd_fast/_native/liblpsd_fast.build.json",
 ))
-def test_compiled_library_has_matching_fp_and_build_report(relative):
+def test_compiled_library_has_matching_fp_and_build_report(relative, tmp_path):
     path = ROOT / relative
     report = json.loads(path.read_text())
     library = path.parent / report["library"]
     assert hashlib.sha256(library.read_bytes()).hexdigest() == report["binary_sha256"]
     assert "-ffp-contract=off" in report["flags"]
     assert "-ffast-math" not in report["flags"]
-    assert report["floating_point"]["long_double_mant_dig"] == np.finfo(np.longdouble).nmant + 1
-    assert report["floating_point"]["long_double_bytes"] == np.dtype(np.longdouble).itemsize
+    # NumPy wheels and our C compiler can use different ABIs on Windows:
+    # MSVC's long double is FP64; MinGW's is x87 extended precision.
+    from lpsd_fast.build import build_shared
+    source = tmp_path / "fp_probe.c"
+    source.write_text('#include <float.h>\n'
+                      'int mantissa(void) { return LDBL_MANT_DIG; }\n'
+                      'int bytes(void) { return sizeof(long double); }\n')
+    target = tmp_path / ("probe.dll" if os.name == "nt" else "probe.so")
+    build_shared(source, target)
+    probe = ct.CDLL(str(target))
+    assert report["floating_point"]["long_double_mant_dig"] == probe.mantissa()
+    assert report["floating_point"]["long_double_bytes"] == probe.bytes()
 
 
 def test_native_only_wheel_build_is_rejected_before_compilation(tmp_path):

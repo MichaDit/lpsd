@@ -166,12 +166,19 @@ class RealFFT:
     def describe(self):
         add, mul, fma = ct.c_double(), ct.c_double(), ct.c_double()
         self.backend.lib.fftw_flops(self.plan, ct.byref(add), ct.byref(mul), ct.byref(fma))
-        pointer = self.backend.lib.fftw_sprint_plan(self.plan)
-        try:
-            text = ct.string_at(pointer) if pointer else b""
-        finally:
-            if pointer:
-                self.backend.lib.fftw_free(pointer)
+        # sprint_plan uses ordinary malloc, whereas Windows FFTW builds can
+        # implement fftw_free with _aligned_free. That pairing corrupts the
+        # heap. An arbitrary DLL's CRT cannot be assumed to match Python's.
+        # Omit this optional diagnostic on Windows; numerical/timing work and
+        # flop counts still run. Never call sprint_plan and leak its buffer.
+        text = b""
+        if os.name != "nt":
+            pointer = self.backend.lib.fftw_sprint_plan(self.plan)
+            try:
+                text = ct.string_at(pointer) if pointer else b""
+            finally:
+                if pointer:
+                    self.backend.lib.fftw_free(pointer)
         return {
             "planner": self.planner, "flags": PLANNERS[self.planner],
             "time_limit_s": self.time_limit, "planning_s": self.planning_s,
@@ -179,6 +186,7 @@ class RealFFT:
             "flops": {"add": add.value, "mul": mul.value, "fma": fma.value,
                       "total_fma_as_two": add.value + mul.value + 2 * fma.value},
             "plan_text": text[:8192].decode(errors="replace"),
+            "plan_text_available": os.name != "nt",
             "plan_text_truncated": len(text) > 8192,
             "plan_text_sha256": hashlib.sha256(text).hexdigest(),
         }
