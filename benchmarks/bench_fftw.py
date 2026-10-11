@@ -130,9 +130,13 @@ class FFTWLibrary:
 
 
 class RealFFT:
-    """An aligned, out-of-place r2c plan; caller initializes input after planning."""
+    """Aligned r2c plan; optional owned in-place storage saves one real buffer.
 
-    def __init__(self, backend, n, planner="estimate", time_limit=None):
+    The caller initializes input after planning and before every execution.
+    An in-place transform overwrites ``x``; it never borrows caller storage.
+    """
+
+    def __init__(self, backend, n, planner="estimate", time_limit=None, *, in_place=False):
         if n < 2 or n > np.iinfo(np.int32).max:
             raise ValueError("Require 2 <= n <= INT_MAX for FFTW's 1D interface")
         if planner not in PLANNERS:
@@ -140,14 +144,17 @@ class RealFFT:
         if time_limit is not None and (not math.isfinite(time_limit) or time_limit < 0):
             raise ValueError("Planner time limit must be finite and nonnegative")
         self.backend, self.n = backend, n
+        self.in_place = bool(in_place)
+        self.allocated_bytes = (16 * (n // 2 + 1) if self.in_place else
+                                8 * n + 16 * (n // 2 + 1))
         self.ip = self.op = self.plan = None
         self.x = self.y = None
         self.planner, self.time_limit = planner, time_limit
         lib = backend.lib
         started = time.perf_counter()
         try:
-            self.ip = lib.fftw_malloc(n * 8)
-            self.op = lib.fftw_malloc((n // 2 + 1) * 16)
+            self.ip = lib.fftw_malloc((n // 2 + 1) * 16 if self.in_place else n * 8)
+            self.op = self.ip if self.in_place else lib.fftw_malloc((n // 2 + 1) * 16)
             if not self.ip or not self.op:
                 raise MemoryError("FFTW aligned allocation failed")
             self.x = np.ctypeslib.as_array(ct.cast(self.ip, DOUBLE_PTR), shape=(n,))
@@ -191,6 +198,8 @@ class RealFFT:
         return {
             "planner": self.planner, "flags": PLANNERS[self.planner],
             "time_limit_s": self.time_limit, "planning_s": self.planning_s,
+            "in_place": self.in_place, "allocated_buffer_bytes": self.allocated_bytes,
+            "input_preserved_after_execute": not self.in_place,
             "aligned_allocation_s": self.allocation_s,
             "flops": {"add": add.value, "mul": mul.value, "fma": fma.value,
                       "total_fma_as_two": add.value + mul.value + 2 * fma.value},
@@ -206,12 +215,13 @@ class RealFFT:
         if self.plan:
             self.backend.lib.fftw_destroy_plan(self.plan)
             self.plan = None
+        # Both views point into one allocation in the in-place layout.
+        if self.op and self.op != self.ip:
+            self.backend.lib.fftw_free(self.op)
+        self.op = None
         if self.ip:
             self.backend.lib.fftw_free(self.ip)
             self.ip = None
-        if self.op:
-            self.backend.lib.fftw_free(self.op)
-            self.op = None
 
     def __enter__(self):
         return self
@@ -320,7 +330,7 @@ def aggregate_power(psd, cuts, sample_rate, n):
 
 def create_real_fft(backend, n, planner="estimate", time_limit=None, *,
                     algorithm="native", convolution_length=None,
-                    operations_library=None):
+                    operations_library=None, in_place=False):
     """Choose the algorithm for the unchanged N-point real DFT explicitly.
 
     The optional Bluestein adapter uses FFTW complex convolutions internally;
@@ -330,13 +340,49 @@ def create_real_fft(backend, n, planner="estimate", time_limit=None, *,
     if algorithm == "native":
         if convolution_length is not None:
             raise ValueError("fft_convolution_length requires fft_algorithm='bluestein'")
-        return RealFFT(backend, n, planner, time_limit)
+        return RealFFT(backend, n, planner, time_limit, in_place=in_place)
     if algorithm == "bluestein":
+        if in_place:
+            raise ValueError("In-place storage requires fft_algorithm='native'")
         from benchmarks._fftw_bluestein import BluesteinRealFFT
         return BluesteinRealFFT(backend, n, planner=planner, time_limit=time_limit,
                                 convolution_length=convolution_length,
                                 operations_library=operations_library)
     raise ValueError("fft_algorithm must be native or bluestein")
+
+
+def fft_buffer_bytes(fft):
+    """Count physical r2c storage once even when its two public views alias."""
+    if hasattr(fft, "memory"):
+        return fft.memory["persistent_buffer_bytes"]
+    return getattr(fft, "allocated_bytes", fft.x.nbytes + fft.y.nbytes)
+
+
+def validation_time_power(fft, window, window_square_sum, samples=None, chunk=262144):
+    """Bounded independent time-domain check outside measured computation.
+
+    In-place FFTs consume their input buffer. The caller must supply the same
+    unchanged signal for this diagnostic; no signal is retained by the plan.
+    """
+    if not getattr(fft, "in_place", False):
+        return math.fsum(float(np.dot(fft.x[first:first + chunk],
+                                      fft.x[first:first + chunk]))
+                         for first in range(0, fft.n, chunk)) / window_square_sum
+    if samples is None:
+        raise ValueError("In-place validation requires the unchanged input samples")
+    values = np.asarray(samples, dtype=np.float64)
+    if values.ndim != 1 or len(values) != fft.n:
+        raise ValueError("Validation samples must match the prepared length")
+    anchor = values[0]
+    mean = math.fsum(float(np.sum(values[first:first + chunk] - anchor))
+                     for first in range(0, fft.n, chunk)) / fft.n
+    terms = []
+    for first in range(0, fft.n, chunk):
+        block = values[first:first + chunk] - anchor
+        block -= mean
+        block *= window[first:first + chunk]
+        terms.append(float(np.dot(block, block)))
+    return math.fsum(terms) / window_square_sum
 
 
 class Periodogram:
@@ -355,7 +401,7 @@ class Periodogram:
                  time_limit=None, window_provider=None, aggregation="log",
                  density="psd", output_dtype="float32", operations="auto",
                  operations_library=None, fft_algorithm="native",
-                 fft_convolution_length=None):
+                 fft_convolution_length=None, fft_in_place=False):
         if aggregation not in ("log", "none") or density not in ("psd", "nsd", "both"):
             raise ValueError("Unknown aggregation or density")
         if operations not in ("auto", "numpy", "native", "native_grouped"):
@@ -370,7 +416,7 @@ class Periodogram:
         self.fft = create_real_fft(backend, n, planner, time_limit,
                                    algorithm=fft_algorithm,
                                    convolution_length=fft_convolution_length,
-                                   operations_library=operations_library)
+                                   operations_library=operations_library, in_place=fft_in_place)
         try:
             provider = window_provider or KaiserWindow()
             operation_library = operations_library if operations_library is not None else getattr(provider, "lib", None)
@@ -406,9 +452,11 @@ class Periodogram:
                     time_buffer=self.fft.x, window=self.window, transform=self.fft.y,
                     n=self.n, sample_rate=self.sample_rate, window_square_sum=self.s2,
                     powers=self.powers, cuts=self.grid["cuts"] if self.grid else None,
-                    density=self._group_density, band_powers=self.last_band_powers)
+                    density=self._group_density, band_powers=self.last_band_powers,
+                    allow_in_place_fft=fft_in_place)
             self.metadata = {
                 "fft_algorithm": fft_algorithm,
+                "fft_in_place": bool(fft_in_place),
                 "fftw_threads": backend.threads,
                 "fft_convolution_length": fft_convolution_length,
                 "fft": self.fft.describe(),
@@ -419,8 +467,8 @@ class Periodogram:
                 "profile_fusion": {
                     "window_in_copy_and_detrend": self.ops.backend == "native",
                     "aggregation_in_power_and_normalization": self.grouped_native},
-                "principal_buffer_bytes": sum(array.nbytes for array in (
-                    self.fft.x, self.fft.y, self.window, self.powers, self.scratch,
+                "principal_buffer_bytes": fft_buffer_bytes(self.fft) + sum(array.nbytes for array in (
+                    self.window, self.powers, self.scratch,
                     self._group_density, self.last_band_powers) if array is not None),
                 "validation_reconstructs_powers": self.grouped_native,
                 "operation_binding": dict(self._bound_ops.metadata) if self._bound_ops else None,
@@ -504,12 +552,12 @@ class Periodogram:
         self.last_profile = phases if profile else None
         return frame
 
-    def validation(self):
+    def validation(self, samples=None):
         """Checks on the last execution, deliberately outside API timers."""
         if not self.fft.plan:
             raise RuntimeError("Periodogram is closed")
         df = self.sample_rate / self.n
-        expected = float(np.sum(self.fft.x * self.fft.x) / self.s2)
+        expected = validation_time_power(self.fft, self.window, self.s2, samples)
         # Direct grouping need not keep N/2 powers during timed computation.
         # Reconstruct this optional diagnostic outside the API timing, then let
         # its temporary go rather than turning it into an unbounded cache.

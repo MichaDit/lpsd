@@ -138,8 +138,8 @@ def test_parent_timeout_updates_child_preserves_history_and_forwards_budget(
 
 
 @pytest.mark.parametrize("methods,power_storage,expected", [
-    (("lpsd",), "external", 24_000_000_000),
-    (("lpsd",), "workspace", 24_000_000_000),
+    (("lpsd",), "external", 8_000_000_000),
+    (("lpsd",), "workspace", 8_000_000_000),
     (("fftw", "matched", "lpsd"), "workspace", 24_000_000_000),
     (("fftw", "matched", "lpsd"), "external", 28_000_000_008),
 ])

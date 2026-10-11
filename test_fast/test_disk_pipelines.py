@@ -58,7 +58,7 @@ def test_complete_disk_estimator_matches_existing_pipeline(fftw, tmp_path, n, po
         assert not (tmp_path / "powers.f64").exists()
         assert details["phases"]["workspace_cleanup_s"] >= 0
         if power_storage == "workspace" or method == "lpsd":
-            assert details["power_storage"]["maximum_large_file_bytes"] == 24 * n
+            assert details["power_storage"]["maximum_large_file_bytes"] == (8 if method == "lpsd" else 24) * n
             assert details["power_storage"]["extra_power_file_bytes"] == 0
         if power_storage == "workspace" and method != "lpsd":
             assert details["fft"]["power_storage"] == "workspace"

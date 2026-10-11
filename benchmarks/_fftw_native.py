@@ -88,7 +88,7 @@ class FFTWOperations:
 
     def bind(self, *, time_buffer, window, transform, n, sample_rate,
              window_square_sum, powers=None, scratch=None, cuts=None,
-             density=None, band_powers=None):
+             density=None, band_powers=None, allow_in_place_fft=False):
         """Validate and bind private, fixed buffers once for a prepared plan.
 
         The plan owner must not resize/rebind these arrays or free an external
@@ -104,7 +104,7 @@ class FFTWOperations:
             self, time_buffer=time_buffer, window=window, transform=transform,
             n=n, sample_rate=sample_rate, window_square_sum=window_square_sum,
             powers=powers, scratch=scratch, cuts=cuts, density=density,
-            band_powers=band_powers)
+            band_powers=band_powers, allow_in_place_fft=allow_in_place_fft)
 
     def center_window(self, data, window, mean):
         """Subtract a supplied mean and apply a window to an anchored buffer."""
@@ -198,7 +198,7 @@ class _BoundFFTWOperations:
 
     def __init__(self, operations, *, time_buffer, window, transform, n,
                  sample_rate, window_square_sum, powers, scratch, cuts,
-                 density, band_powers):
+                 density, band_powers, allow_in_place_fft=False):
         if (not isinstance(n, (int, np.integer)) or isinstance(n, (bool, np.bool_))
                 or n < 2 or sample_rate <= 0 or window_square_sum <= 0):
             raise ValueError("Invalid bound transform shape or normalization")
@@ -238,8 +238,17 @@ class _BoundFFTWOperations:
         if any(not array.flags.aligned for array in buffers):
             raise ValueError("Bound buffers must be aligned for their dtype")
         for j, array in enumerate(buffers):
-            if any(np.shares_memory(array, other) for other in buffers[:j]):
-                raise ValueError("Bound work buffers must not overlap")
+            for other in buffers[:j]:
+                if not np.shares_memory(array, other):
+                    continue
+                # Only these two phase-disjoint views may alias. FFTW owns
+                # sufficient padded real storage; every other overlap remains
+                # invalid, including a shifted/partial time/transform overlap.
+                fft_pair = ((array is self.transform and other is self.time_buffer)
+                            or (other is self.transform and array is self.time_buffer))
+                if not (allow_in_place_fft and fft_pair
+                        and array.ctypes.data == other.ctypes.data):
+                    raise ValueError("Bound work buffers must not overlap")
         self._operations = operations
         self.backend = operations.backend
         self._closed = False
@@ -266,6 +275,7 @@ class _BoundFFTWOperations:
         elif self.powers is not None and self.scratch is None:
             self.scratch = np.empty_like(self.powers)
         self.metadata = {"private_buffers_bound": True,
+                         "in_place_fft_alias_allowed": bool(allow_in_place_fft),
                          "buffer_validation": "construction",
                          "input_validation": "per-call by owning pipeline",
                          "cached_native_pointers": operations.lib is not None,

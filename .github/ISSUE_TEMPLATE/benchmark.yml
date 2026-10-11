@@ -1,0 +1,27 @@
+name: Benchmark result
+description: Share a sanitized LPSD / FFTW benchmark report without repository push access.
+title: "[benchmark] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run the [portable benchmark](https://github.com/MichaDit/lpsd/blob/main/docs/portable-benchmark.md) and use its prepared `*.github-issue.md` report below.
+        Automated submission is also available through `--upload-github --accept-public-upload`.
+
+        This issue is public and associated with your GitHub account. Read the [public-report data policy](https://github.com/MichaDit/lpsd/blob/main/docs/benchmark-privacy.md) before submitting.
+        No repository write permission, fork or pull request is needed.
+  - type: textarea
+    id: result
+    attributes:
+      label: Prepared benchmark report
+      description: Paste the generated issue body, including its JSON or compressed payload. Do not attach installer logs, raw signals, paths, tokens or other personal information.
+      placeholder: Paste the contents of the generated .github-issue.md file here.
+    validations:
+      required: true
+  - type: checkboxes
+    id: publication
+    attributes:
+      label: Public submission
+      options:
+        - label: I reviewed this report and understand that it will be public and associated with my GitHub account.
+          required: true

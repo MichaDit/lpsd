@@ -681,7 +681,11 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
      * first projections and the outer eight-segment statistics stay fixed.
      * Check this extra instruction-set requirement once per frequency. */
     const bool fused_four = fused_psd && segLen >= 256 && segLen < 1024 &&
+#if defined(__FMA__)
+        true;
+#else
         __builtin_cpu_supports("fma");
+#endif
 #endif
 
     const double segments_started = profile ? monotonic_seconds() : 0.0;
@@ -1196,6 +1200,7 @@ LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, con
 }
 
 /* Independent FFTW pipeline helpers; they do not link against FFTW. */
+#include "streaming_lpsd.c"
 #include "fftw_ops.h"
 #include "fftw_smoothing.h"
 #include "fftw_bluestein_ops.h"

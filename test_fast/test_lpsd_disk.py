@@ -76,6 +76,139 @@ def _assert_same_spectrum(actual, expected):
     return exact
 
 
+@pytest.mark.parametrize("workers", [1, 8])
+@pytest.mark.parametrize("kind", ["white", "dc_nanovolt", "offbin_tone"])
+def test_bounded_ram_streaming_matches_stored_coefficient_spectrum(workers, kind):
+    n = 65539
+    values = _signal(n, kind)
+    original = values.copy()
+    plan = _plan(n)
+    with DiskLPSDSubset(n, FS, plan, workers=workers, streaming="off") as reference:
+        expected = reference.compute(values, outputs=("psd", "nsd"))
+        expected_points = reference.last_profile["frequencies"]
+    with DiskLPSDSubset(n, FS, plan, workers=workers, streaming="on") as method:
+        actual = method.compute(values, outputs=("psd", "nsd"))
+        assert method.last_profile["streaming_points"] > 0
+        assert method.last_profile["storage_mode"] == "bounded_memory"
+        assert method.last_profile["scratch_buffer_bytes"] < 16 * n
+        assert method.metadata["total_mapped_bytes"] == 0
+        for output in actual:
+            _assert_same_spectrum(actual[output], expected[output])
+        for row, old in zip(method.last_profile["frequencies"], expected_points):
+            for key in ("L", "K", "window_s1", "window_s2", "enbw_hz"):
+                assert row[key] == old[key]
+            if row["execution_method"] == "streaming_kaiser_blocks":
+                assert row["scratch_bytes"] == 0
+                assert row["window_generation_s"] is None
+        assert method.last_profile["peak_reserved_bytes"] <= method.last_profile["concurrency_budget_bytes"]
+        assert method.last_profile["peak_active_streaming_points"] <= method.metadata[
+            "bounded_memory_model"]["maximum_concurrent_streaming_points"]
+        np.testing.assert_array_equal(np.sqrt(actual.psd.to_numpy().astype(np.complex64)).real,
+                                      actual.nsd.to_numpy())
+    np.testing.assert_array_equal(values, original)
+
+
+def test_all_streaming_subset_accepts_one_slot_map(tmp_path):
+    n = 65539
+    values = _signal(n, "dc_nanovolt")
+    plan = _plan(n)
+    mask = np.asarray(plan[3]) >= 2048
+    with DiskLPSDSubset(n, FS, plan, plan_mask=mask, streaming="on") as method:
+        assert method.recommended_scratch_slots == method.minimum_scratch_slots == 1
+        data = np.memmap(tmp_path / "input.f64", mode="w+", dtype=np.float64, shape=(n,))
+        workspace = np.memmap(tmp_path / "scratch.c128", mode="w+", dtype=np.complex128, shape=(1,))
+        try:
+            data[:] = values
+            workspace[:] = 123 + 456j
+            actual = method.compute(data, workspace, outputs=("psd", "nsd"))
+            assert method.last_profile["peak_active_scratch_bytes"] == 0
+            assert workspace[0] == 123 + 456j
+            assert method.metadata["scratch_bytes"] == 16
+            assert method.metadata["total_mapped_bytes"] == 8 * n + 16
+            expected = method.compute(values, outputs=("psd", "nsd"))
+            for output in actual:
+                np.testing.assert_array_equal(actual[output], expected[output])
+        finally:
+            workspace._mmap.close()
+            data._mmap.close()
+
+
+def test_billion_point_plan_has_bounded_ram_scratch_without_data_allocation():
+    n = 1_000_000_000
+    with DiskLPSDSubset(n, 50, workers=8, max_working_mb=2048) as method:
+        assert method.metadata["streaming"]["eligible_points"] > 0
+        assert method.recommended_scratch_slots < n // 8
+        assert method.metadata["recommended_scratch_bytes"] <= 2048 * 1024**2
+        assert 8 * n + method.metadata["recommended_scratch_bytes"] < 10 * 1024**3
+        for length, enabled in zip(method.plan[3], method._streaming_mask):
+            if enabled:
+                assert 2 * (24 * int(length) + 8192) > method._working_capacity
+
+
+@pytest.mark.parametrize("kwargs", [{"streaming": "unknown"},
+                                   {"streaming_block_samples": 129},
+                                   {"streaming_max_segments": 257}])
+def test_streaming_configuration_guards(kwargs):
+    with pytest.raises(ValueError):
+        DiskLPSDSubset(4096, FS, **kwargs)
+
+
+def test_invalid_memory_input_is_rejected_before_scratch_allocation(monkeypatch):
+    with DiskLPSDSubset(4096, FS) as method:
+        def forbidden(*args, **kwargs):
+            raise AssertionError("Invalid input must be rejected before scratch allocation")
+        with monkeypatch.context() as patch:
+            patch.setattr(disk_module.np, "empty", forbidden)
+            with pytest.raises(ValueError, match="float64"):
+                method.compute(np.zeros(4096, dtype=np.float32))
+
+
+def test_ram_streaming_passes_original_input_pointer_and_releases_failed_gate(monkeypatch):
+    values = _signal(65539, "white")
+    gates = []
+    original_gate = api._MemoryGate
+    class TrackingGate(original_gate):
+        def __init__(self, *args):
+            super().__init__(*args)
+            gates.append(self)
+    monkeypatch.setattr(api, "_MemoryGate", TrackingGate)
+    with DiskLPSDSubset(len(values), FS, _plan(len(values)), workers=8, streaming="on") as method:
+        function = method._streaming_fn
+        guard = threading.Lock()
+        failed = False
+        def check_pointer_and_fail_once(*args):
+            nonlocal failed
+            assert ct.cast(args[3], ct.c_void_p).value == values.ctypes.data
+            with guard:
+                if not failed:
+                    failed = True
+                    return 3
+            return function(*args)
+        method._streaming_fn = check_pointer_and_fail_once
+        with pytest.raises(RuntimeError, match="allocation failed"):
+            method.compute(values)
+        assert gates and all(gate.used == 0 for gate in gates)
+        method._streaming_fn = function
+        result = method.compute(values)
+        assert np.isfinite(result.psd).all()
+        assert all(gate.used == 0 for gate in gates)
+
+
+def test_ram_fallback_over_budget_is_rejected_before_scratch(monkeypatch):
+    # A source smaller than64MiB is cheap, but the retained long coefficient
+    # fallback for streaming='off' would exceed the64MiB working budget.
+    n = 5_000_000
+    values = np.empty(n, dtype=np.float64)
+    with DiskLPSDSubset(n, FS, streaming="off", max_working_mb=64) as method:
+        assert not method.metadata["bounded_memory_model"]["fits_working_budget"]
+        def forbidden(*args, **kwargs):
+            raise AssertionError("Oversized fallback must be rejected before allocating scratch")
+        with monkeypatch.context() as patch:
+            patch.setattr(disk_module.np, "empty", forbidden)
+            with pytest.raises(MemoryError, match="working budget"):
+                method.compute(values)
+
+
 @pytest.mark.parametrize("n", (4096, 10000))
 @pytest.mark.parametrize("kind", ("white", "dc_nanovolt", "offbin_tone"))
 @pytest.mark.parametrize("workers", (1, 8))

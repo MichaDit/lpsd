@@ -4,8 +4,9 @@
 For N=A*B, the time samples have layout X[n2,n1] with n=n1+B*n2.
 First transform the A-point columns, multiply exp(-2*pi*i*k2*n1/N),
 then transform the B-point rows. The final matrix is Y[k2,k1], whose
-original N-point frequency index is k=k2+A*k1. No full matrix transpose
-or changed physical sample count is involved.
+original N-point frequency index is k=k2+A*k1. The sample count is unchanged.
+The strided path needs no full matrix permutation; the optional transposed
+path permutes the existing file in bounded tiles without a second full array.
 
 The sole workspace file holds N complex128 values (16N bytes). Before
 execute(), its first N doubles are the caller's windowed real input x;
@@ -21,6 +22,11 @@ execution uses backend.threads without another outer worker pool.
 Column gathers/scatters use small row blocks and transpose only RAM-resident
 staging data. That staging reuses the existing twiddle buffer. Optional mmap
 advice disables speculative readahead during the strided file phases.
+For suitable large N=S*S*R, the default instead swaps the equal outer axes
+of [S,R,S] in place and executes the first FFT stage contiguously. Both
+transpose scratch tiles reuse the existing aligned FFTW allocation; no
+additional file or N-sized RAM allocation is introduced. Other lengths
+retain the strided path. ``column_strategy`` can select either explicitly.
 
 close() destroys the plans, releases RAM and closes the mapping. It does
 not unlink the workspace file. The caller owns file cleanup and durability;
@@ -36,6 +42,7 @@ import hashlib
 import math
 import mmap
 import operator
+import os
 from pathlib import Path
 import time
 
@@ -87,8 +94,79 @@ def _factors(n, factors):
     return n, a, b
 
 
-def _layout(n, memory_mb, factors):
+def _memory_ceiling():
+    """Best-effort physical/cgroup ceiling for a performance choice only."""
+    limits = []
+    try:
+        limits.append(int(os.sysconf("SC_PHYS_PAGES")) * int(os.sysconf("SC_PAGE_SIZE")))
+    except (AttributeError, OSError, ValueError):
+        pass
+    for filename in ("/sys/fs/cgroup/memory.max",
+                     "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            value = int(Path(filename).read_text().strip())
+            if 0 < value < 2**60:
+                limits.append(value)
+        except (OSError, ValueError):
+            pass
+    if os.name == "nt":
+        class MemoryStatus(ct.Structure):
+            _fields_ = [("length", ct.c_uint32), ("load", ct.c_uint32)] + [
+                (name, ct.c_uint64) for name in (
+                    "total_physical", "available_physical", "total_pagefile",
+                    "available_pagefile", "total_virtual", "available_virtual", "extended")]
+        status = MemoryStatus()
+        status.length = ct.sizeof(status)
+        try:
+            if ct.windll.kernel32.GlobalMemoryStatusEx(ct.byref(status)):
+                limits.append(int(status.total_physical))
+        except (AttributeError, OSError):
+            pass
+    if not limits:
+        # macOS/BSD expose physical memory through sysctl, without an
+        # external command or package dependency.
+        try:
+            libc = ct.CDLL(None)
+            value, size = ct.c_uint64(), ct.c_size_t(8)
+            if libc.sysctlbyname(b"hw.memsize", ct.byref(value), ct.byref(size), None, 0) == 0:
+                limits.append(int(value.value))
+        except (AttributeError, OSError):
+            pass
+    return min((value for value in limits if value > 0), default=2 * 1024**3)
+
+
+def _layout(n, memory_mb, factors, column_strategy="auto", resident_memory_mb=None):
     n, a, b = _factors(n, factors)
+    if column_strategy not in ("auto", "strided", "transpose"):
+        raise ValueError("column_strategy must be 'auto', 'strided' or 'transpose'")
+    requested_strategy = column_strategy
+    if resident_memory_mb is None:
+        resident_limit = _memory_ceiling()
+    else:
+        if isinstance(resident_memory_mb, (bool, np.bool_)):
+            raise TypeError("resident_memory_mb must be a positive finite number")
+        resident_memory_mb = float(resident_memory_mb)
+        if not math.isfinite(resident_memory_mb) or resident_memory_mb <= 0:
+            raise ValueError("resident_memory_mb must be positive and finite")
+        resident_limit = int(resident_memory_mb * _MIB)
+    prefer_transpose = (column_strategy == "transpose" or
+                        column_strategy == "auto" and n >= 10_000_000 and
+                        24 * n > resident_limit * 0.8)
+    # N=S*S*R can exchange its equal outer axes in-place. This replaces
+    # repeated thin stripes through a large file by two bounded tile
+    # transposes and contiguous FFT batches; it needs no second large file.
+    # Retain the old factor choice for small or explicitly strided calls.
+    if factors is None and prefer_transpose:
+        square = math.isqrt(n)
+        while square > 1 and n % (square * square):
+            square -= 1
+        if square > 1 and n // (square * square) <= 64:
+            a, b = square, n // square
+    transposable = a > 1 and b % a == 0
+    if column_strategy == "transpose" and not transposable:
+        raise ValueError("In-place transpose requires B to be an integer multiple of A > 1")
+    if column_strategy == "auto":
+        column_strategy = "transpose" if transposable and prefer_transpose else "strided"
     if isinstance(memory_mb, (bool, np.bool_)):
         raise TypeError("memory_mb must be a positive finite number")
     memory_mb = float(memory_mb)
@@ -104,6 +182,7 @@ def _layout(n, memory_mb, factors):
     column_batch = min(b, 512, tile_elements // a)
     row_batch = min(a, 512, tile_elements // b)
     work_elements = max(column_batch * a, row_batch * b)
+    transpose_block = min(a, max(1, math.isqrt(work_elements // 2)))
     twiddle_target = min(32 * _MIB, budget // 8)
     twiddle_rows = min(column_batch, max(1, twiddle_target // (16 * a)))
     # Reuse the twiddle storage between arithmetic phases. File copies have
@@ -117,6 +196,16 @@ def _layout(n, memory_mb, factors):
         raise MemoryError(f"Known RAM arrays require {known} bytes, exceeding the {budget}-byte budget")
     return {
         "n": n, "factors": [a, b], "memory_budget_bytes": budget,
+        "column_strategy": column_strategy,
+        "requested_column_strategy": requested_strategy,
+        "resident_memory_decision_bytes": resident_limit,
+        "resident_memory_decision_note": "Explicit budget or detected physical/cgroup ceiling; "
+                                          "performance selection only, not enforcement. Auto "
+                                          "transpose when 24N exceeds 80% of this ceiling.",
+        "transpose_repeat": b // a if transposable else None,
+        "transpose_block": transpose_block,
+        "transpose_extra_file_bytes": 0,
+        "transpose_reuses_fftw_tile": True,
         "workspace_bytes": 16 * n,
         "workspace_power_supported": b % 2 == 0,
         "workspace_power_offset_bytes": 8 * n if b % 2 == 0 else None,
@@ -157,13 +246,14 @@ class DiskFFT:
     """
 
     @staticmethod
-    def memory_estimate(n, memory_mb=256, factors=None):
-        return _layout(n, memory_mb, factors)
+    def memory_estimate(n, memory_mb=256, factors=None, *, column_strategy="auto",
+                        resident_memory_mb=None):
+        return _layout(n, memory_mb, factors, column_strategy, resident_memory_mb)
 
     def __init__(self, backend, n, workspace_path, memory_mb=256, factors=None,
-                 *, io_advice=True, progress=None):
+                 *, io_advice=True, progress=None, column_strategy="auto", resident_memory_mb=None):
         started = time.perf_counter()
-        layout = _layout(n, memory_mb, factors)
+        layout = _layout(n, memory_mb, factors, column_strategy, resident_memory_mb)
         if not isinstance(io_advice, (bool, np.bool_)):
             raise TypeError("io_advice must be boolean")
         if progress is not None and not callable(progress):
@@ -171,6 +261,7 @@ class DiskFFT:
         self.backend, self.n = backend, layout["n"]
         self.a, self.b = layout["factors"]
         self.factors = (self.a, self.b)
+        self.column_strategy = layout["column_strategy"]
         self.workspace_path = Path(workspace_path).expanduser().resolve()
         self.memory_mb, self.memory = float(memory_mb), layout
         self.io_advice = bool(io_advice)
@@ -319,14 +410,58 @@ class DiskFFT:
                     np.copyto(staging, mapped)
                     np.copyto(target, staging.T)
 
-    def _multiply_twiddle(self, tile, first_column):
+    def _transpose_columns(self, phase):
+        """Swap equal outer axes of [A, B/A, A], without a second file.
+
+        Both off-diagonal source rectangles reach disjoint RAM buffers before
+        either file rectangle is overwritten. Each file element is copied
+        exactly once in each direction. The operation is its own inverse.
+        """
+        repeat = self.b // self.a
+        matrix = self._flat.reshape(self.a, repeat, self.a)
+        block = self.memory["transpose_block"]
+        scratch_size = block * block
+        first_scratch = self._work[:scratch_size]
+        second_scratch = self._work[scratch_size:2 * scratch_size]
+        blocks = (self.a + block - 1) // block
+        total = repeat * blocks * (blocks + 1) // 2
+        completed = 0
+        self._notify_progress(phase, 0, total)
+        for first in range(0, self.a, block):
+            rows = min(block, self.a - first)
+            for second in range(first, self.a, block):
+                columns = min(block, self.a - second)
+                left = first_scratch[:rows * columns].reshape(rows, columns)
+                right = second_scratch[:rows * columns].reshape(columns, rows)
+                for middle in range(repeat):
+                    source = matrix[first:first + rows, middle, second:second + columns]
+                    np.copyto(left, source)
+                    if first == second:
+                        np.copyto(source, left.T)
+                    else:
+                        opposite = matrix[second:second + columns, middle, first:first + rows]
+                        np.copyto(right, opposite)
+                        np.copyto(source, right.T)
+                        np.copyto(opposite, left.T)
+                    completed += 1
+                    self._notify_progress(phase, completed, total)
+
+    def _multiply_twiddle(self, tile, first_column, *, transposed=False):
         rows = len(self._twiddle)
         scale = -2.0 * np.pi / self.n
         for first in range(0, len(tile), rows):
             count = min(rows, len(tile) - first)
             twiddle = self._twiddle[:count]
-            np.add(self._column_offsets[:count], float(first_column + first),
-                   out=self._column_numbers[:count])
+            if transposed:
+                repeat = self.b // self.a
+                # After the outer-axis swap, consecutive rows correspond to
+                # original n1 = outer + middle*A, not to consecutive n1.
+                for offset in range(count):
+                    row = first_column + first + offset
+                    self._column_numbers[offset] = row // repeat + (row % repeat) * self.a
+            else:
+                np.add(self._column_offsets[:count], float(first_column + first),
+                       out=self._column_numbers[:count])
             np.multiply(self._column_numbers[:count, None], self._k2[None, :],
                         out=twiddle.imag)
             twiddle.imag *= scale
@@ -346,7 +481,8 @@ class DiskFFT:
         started = time.perf_counter()
         phases = {name: 0.0 for name in (
             "real_expansion_s", "column_gather_s", "column_fftw_s", "twiddle_s",
-            "column_scatter_s", "row_gather_s", "row_fftw_s", "row_scatter_s")}
+            "column_scatter_s", "row_gather_s", "row_fftw_s", "row_scatter_s",
+            "column_transpose_before_s", "column_transpose_after_s")}
         self._advise("normal")
         self._notify_progress("real_expansion", 0, self.n)
         tick = time.perf_counter()
@@ -365,25 +501,43 @@ class DiskFFT:
 
         if self.a > 1:
             self._advise("random")
+            transposed = self.column_strategy == "transpose"
+            if transposed:
+                tick = time.perf_counter()
+                self._transpose_columns("column_transpose_before")
+                phases["column_transpose_before_s"] = time.perf_counter() - tick
+                self._advise("sequential")
+                contiguous_columns = self._flat.reshape(self.b, self.a)
             batches = (self.b + self.column_batch - 1) // self.column_batch
             self._notify_progress("column_fft", 0, batches)
             for first in range(0, self.b, self.column_batch):
                 count = min(self.column_batch, self.b - first)
                 tile = self._work[:count * self.a].reshape(count, self.a)
                 tick = time.perf_counter()
-                self._copy_column_tile(first, tile)
+                if transposed:
+                    np.copyto(tile, contiguous_columns[first:first + count])
+                else:
+                    self._copy_column_tile(first, tile)
                 phases["column_gather_s"] += time.perf_counter() - tick
                 tick = time.perf_counter()
                 self._execute_plan(self._plans[(self.a, count)])
                 phases["column_fftw_s"] += time.perf_counter() - tick
                 if self.b > 1:
                     tick = time.perf_counter()
-                    self._multiply_twiddle(tile, first)
+                    self._multiply_twiddle(tile, first, transposed=transposed)
                     phases["twiddle_s"] += time.perf_counter() - tick
                 tick = time.perf_counter()
-                self._copy_column_tile(first, tile, scatter=True)
+                if transposed:
+                    np.copyto(contiguous_columns[first:first + count], tile)
+                else:
+                    self._copy_column_tile(first, tile, scatter=True)
                 phases["column_scatter_s"] += time.perf_counter() - tick
                 self._notify_progress("column_fft", first // self.column_batch + 1, batches)
+            if transposed:
+                self._advise("random")
+                tick = time.perf_counter()
+                self._transpose_columns("column_transpose_after")
+                phases["column_transpose_after_s"] = time.perf_counter() - tick
         # For A=1 the first FFT and all its twiddles are the identity.
         if self.b > 1:
             self._advise("sequential")
@@ -528,29 +682,35 @@ class DiskFFT:
         pack_s = time.perf_counter() - pack_started
 
         self._advise("random")
-        batches = (half + self.column_batch - 1) // self.column_batch
+        # The compact source [0,4N) and ordered target [8N,12N) are
+        # disjoint. A square tile therefore reads and writes each element
+        # once, with useful contiguous spans in *both* file orientations.
+        # Thin full-height stripes otherwise amplify page faults at large N.
+        work_real = self._work.view(np.float64)
+        edge = min(self.a, half, max(1, math.isqrt(len(work_real) // 2)))
+        row_blocks = (self.a + edge - 1) // edge
+        column_blocks = (half + edge - 1) // edge
+        batches = row_blocks * column_blocks
         self._notify_progress("power_workspace_transpose", 0, batches)
         transpose_started = time.perf_counter()
-        staging_flat = self._twiddle.view(np.float64).reshape(-1)
-        work_real = self._work.view(np.float64)
-        for first in range(0, half, self.column_batch):
-            count = min(self.column_batch, half - first)
-            tile = work_real[:count * self.a].reshape(count, self.a)
-            tick = time.perf_counter()
-            for first_row in range(0, self.a, self.io_row_block):
-                row_count = min(self.io_row_block, self.a - first_row)
-                for column in range(0, count, self.io_column_block):
-                    column_count = min(self.io_column_block, count - column)
-                    staging = staging_flat[:row_count * column_count].reshape(row_count, column_count)
-                    np.copyto(staging, packed[first_row:first_row + row_count,
-                                              first + column:first + column + column_count])
-                    np.copyto(tile[column:column + column_count, first_row:first_row + row_count],
-                              staging.T)
-            gather_s += time.perf_counter() - tick
-            tick = time.perf_counter()
-            np.copyto(ordered[first * self.a:(first + count) * self.a], tile.reshape(-1))
-            store_s += time.perf_counter() - tick
-            self._notify_progress("power_workspace_transpose", first // self.column_batch + 1, batches)
+        output_matrix = ordered[:-1].reshape(half, self.a)
+        scratch_size = edge * edge
+        completed = 0
+        for first_row in range(0, self.a, edge):
+            row_count = min(edge, self.a - first_row)
+            for first in range(0, half, edge):
+                count = min(edge, half - first)
+                source_tile = work_real[:row_count * count].reshape(row_count, count)
+                target_tile = work_real[scratch_size:scratch_size + row_count * count].reshape(count, row_count)
+                tick = time.perf_counter()
+                np.copyto(source_tile, packed[first_row:first_row + row_count, first:first + count])
+                np.copyto(target_tile, source_tile.T)
+                gather_s += time.perf_counter() - tick
+                tick = time.perf_counter()
+                np.copyto(output_matrix[first:first + count, first_row:first_row + row_count], target_tile)
+                store_s += time.perf_counter() - tick
+                completed += 1
+                self._notify_progress("power_workspace_transpose", completed, batches)
         ordered[0] *= 0.5
         ordered[-1] = nyquist_power * 0.5
         transpose_s = time.perf_counter() - transpose_started
@@ -561,6 +721,7 @@ class DiskFFT:
         self.last_phases.update(power_gather_s=gather_s, power_arithmetic_s=arithmetic_s,
                                 power_store_s=store_s, power_workspace_pack_s=pack_s,
                                 power_workspace_transpose_s=transpose_s,
+                                power_workspace_transpose_tile_edge=edge,
                                 power_total_s=time.perf_counter() - started)
         return powers
 
@@ -575,6 +736,7 @@ class DiskFFT:
         return {
             "algorithm": "file-backed exact-N two-factor Cooley-Tukey C2C",
             "n": self.n, "factors": list(self.factors),
+            "column_strategy": self.column_strategy,
             "matrix_shape": [self.a, self.b],
             "time_layout": "X[n2,n1], n=n1+B*n2",
             "frequency_layout": "Y[k2,k1], k=k2+A*k1",
@@ -594,7 +756,10 @@ class DiskFFT:
             "workspace_power_layout": "For even B: packed [k2,k1] powers in [0,4N), then "
                                       "original-bin powers in [8N,12N+8). Consumes the FFT; "
                                       "returned map is caller-owned and aliases this file.",
-            "io_layout": "bounded contiguous file-row blocks; transpose in reused RAM twiddle scratch",
+            "io_layout": ("two bounded in-place swaps of equal [A,B/A,A] outer axes; "
+                          "contiguous FFT batches; transpose scratch reuses FFTW tile"
+                          if self.column_strategy == "transpose" else
+                          "bounded contiguous file-row blocks; transpose in reused RAM twiddle scratch"),
             "io_advice": {"enabled": self.io_advice, "outcomes": dict(self._advice_outcomes),
                           "policy": "normal for reverse expansion; random for FFT columns/external "
                                     "power gather/workspace power transpose; sequential for FFT "

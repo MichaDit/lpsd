@@ -387,16 +387,20 @@ def test_billion_sample_memory_estimate_has_no_large_allocations(monkeypatch):
         patch.setattr(disk_module.np, "memmap", forbidden)
         patch.setattr(disk_module.np, "empty", forbidden)
         patch.setattr(disk_module.np, "arange", forbidden)
-        memory = DiskFFT.memory_estimate(1_000_000_000, memory_mb=256)
-        memory128 = DiskFFT.memory_estimate(1_000_000_000, memory_mb=128)
-    assert memory["factors"] == [31250, 32000]
+        memory = DiskFFT.memory_estimate(1_000_000_000, memory_mb=256, resident_memory_mb=8192)
+        memory128 = DiskFFT.memory_estimate(1_000_000_000, memory_mb=128, resident_memory_mb=8192)
+        old = DiskFFT.memory_estimate(1_000_000_000, memory_mb=128,
+                                      column_strategy="strided")
+    assert memory["factors"] == [10000, 100000]
+    assert memory["column_strategy"] == "transpose"
+    assert old["factors"] == [31250, 32000]
     assert memory["workspace_bytes"] == 16_000_000_000
     assert memory["known_ram_buffer_bytes"] <= 256 * 1024**2
     assert memory["ram_tile_bytes"] <= 128 * 1024**2
-    assert memory["maximum_fftw_transform_length"] == 32000
+    assert memory["maximum_fftw_transform_length"] == 100000
     assert memory128["known_ram_buffer_bytes"] <= 128 * 1024**2
-    assert memory128["column_batch"] == 134 and memory128["row_batch"] == 131
-    assert memory128["io_row_block"] == 256 and memory128["io_column_block"] == 134
+    assert memory128["column_batch"] == 419 and memory128["row_batch"] == 41
+    assert memory128["io_row_block"] <= 256
     assert 16 * memory128["io_row_block"] * memory128["io_column_block"] <= memory128["twiddle_scratch_bytes"]
     assert DiskFFT.memory_estimate(100_000_000)["factors"] == [10000, 10000]
     assert memory128["workspace_power_supported"]
@@ -404,3 +408,55 @@ def test_billion_sample_memory_estimate_has_no_large_allocations(monkeypatch):
     assert memory128["workspace_power_bytes"] == 4_000_000_008
     assert memory128["workspace_power_extra_file_bytes"] == 0
     assert memory128["workspace_power_extra_virtual_mapping_bytes"] == 4_000_000_008
+    assert memory128["transpose_extra_file_bytes"] == 0
+    assert 32 * memory128["transpose_block"]**2 <= memory128["ram_tile_bytes"]
+    roomy = DiskFFT.memory_estimate(1_000_000_000, resident_memory_mb=32768)
+    assert roomy["column_strategy"] == "strided"
+    assert roomy["factors"] == [31250, 32000]
+
+
+@pytest.mark.parametrize("factors", [(8, 16), (17, 51), (64, 640), (125, 125)])
+def test_inplace_outer_axis_transpose_complete_dft_and_reuse(fftw, tmp_path, factors):
+    n = factors[0] * factors[1]
+    events = []
+    with DiskFFT(fftw, n, tmp_path / "transpose.c128", memory_mb=.03,
+                 factors=factors, column_strategy="transpose", progress=events.append) as transform:
+        # Non-Hermitian data and partial edge rectangles test the permutation
+        # independently of the real DFT and its conjugacy symmetries.
+        original = np.arange(n, dtype=np.float64) + .25
+        original = original + 1j * (-original - .5)
+        transform._flat[:] = original
+        a, b = factors
+        expected = original.reshape(a, b // a, a).transpose(2, 1, 0).copy().reshape(-1)
+        transform._transpose_columns("permutation_probe")
+        np.testing.assert_array_equal(transform._flat, expected)
+        transform._transpose_columns("permutation_probe_inverse")
+        np.testing.assert_array_equal(transform._flat, original)
+        rng = np.random.default_rng(734 + n)
+        signals = [rng.normal(size=n), np.eye(1, n, n - 1).ravel()]
+        for values in signals:
+            transform.x[:] = values
+            transform.execute()
+            expected_power = np.empty(n // 2 + 1)
+            _assert_dft_and_power(transform, values, expected_power)
+            if b % 2 == 0:
+                powers = transform.power_in_workspace(50, n)
+                try:
+                    np.testing.assert_array_equal(powers, expected_power)
+                finally:
+                    powers._mmap.close()
+        assert transform.metadata["column_strategy"] == "transpose"
+        assert transform.last_phases["column_transpose_before_s"] > 0
+        assert transform.last_phases["column_transpose_after_s"] > 0
+        for phase in ("column_transpose_before", "column_transpose_after"):
+            reports = [event for event in events if event["phase"] == phase]
+            assert reports[0]["completed"] == 0
+            assert reports[-1]["completed"] == reports[-1]["total"]
+
+
+def test_transpose_strategy_guards_and_prime_fallback():
+    with pytest.raises(ValueError, match="column_strategy"):
+        DiskFFT.memory_estimate(10000, column_strategy="unknown")
+    with pytest.raises(ValueError, match="integer multiple"):
+        DiskFFT.memory_estimate(10000, factors=(125, 80), column_strategy="transpose")
+    assert DiskFFT.memory_estimate(1_000_003)["column_strategy"] == "strided"

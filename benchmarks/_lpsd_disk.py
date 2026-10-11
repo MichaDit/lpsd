@@ -1,12 +1,21 @@
-"""File-backed execution of the unchanged fast Kaiser LPSD kernel.
+"""Bounded-workspace execution of the fast Kaiser LPSD estimator.
 
 This is a separate benchmark adapter, not a new storage option in the public
-LPSD API. The caller supplies and owns an N-element float64 input memmap and
-an N-element complex128 scratch memmap. Each original frequency of length L
-reserves L complex slots, then uses the region's first L real doubles for the
-window and q_r and its next L doubles for q_i. A bounded frequency thread pool
-shares that mapped scratch; no L-sized heap array is created. Both mapped
-files remain open, unflushed and owned by the caller.
+LPSD API. The caller supplies and owns an N-element float64 input. It can
+also supply a complex128 scratch memmap, or omit the workspace to allocate
+the recommended bounded scratch pool in RAM. Each stored-coefficient point
+of length L reserves L complex slots, then uses the region's first L real
+doubles for the window and q_r and its next L doubles for q_i. A bounded
+frequency thread pool shares that pool; it creates no separate L-sized
+heap array per point. Explicit mapped files remain open, unflushed and
+owned by the caller.
+
+Large eligible points can regenerate window/Fourier coefficients in bounded
+RAM blocks, avoiding full coefficient files and releasing the old length-
+based concurrency constraint. The estimator and segment positions remain
+unchanged; blockwise dot summation is separately recorded in metadata.
+``compute(values, workspace=None)`` accepts a contiguous float64 RAM input and
+allocates only the recommended bounded scratch pool for remaining points.
 
 Input validation is blockwise and is included in compute's complete-call
 time. File creation, input generation, mapping and durable flushing belong to
@@ -198,6 +207,14 @@ def _mapping_region(array, name, dtype, length, writable):
             "mapped_bytes": int(array.nbytes), "mode": str(array.mode)}
 
 
+def _memory_input_region(values, n):
+    if (not isinstance(values, np.ndarray) or values.dtype != np.dtype(np.float64)
+            or not values.dtype.isnative or values.ndim != 1 or len(values) != n
+            or not values.flags.c_contiguous or not values.flags.aligned):
+        raise ValueError("RAM input must be an aligned contiguous native float64 vector of exactly n samples.")
+    return {"storage": "caller_array", "bytes": int(values.nbytes)}
+
+
 class DiskLPSDSubset:
     """Evaluate original Kaiser/order-zero PSD points with mapped q scratch.
 
@@ -223,6 +240,16 @@ class DiskLPSDSubset:
     fixed during a call. Reusing the workspace with another adapter requires
     caller synchronization; calls on this one instance are serialized.
 
+    ``streaming='auto'`` selects bounded Kaiser regeneration only when two
+    ordinary point reservations would exceed the working budget. ``'on'``
+    selects every supported point; ``'off'`` retains stored coefficients.
+    Only L>=2048, 0<beta<=32 and K<=streaming_max_segments are supported by
+    the streaming kernel. Other points use the original selected kernel.
+    ``recommended_scratch_slots`` permits a smaller file than N slots; no
+    file shorter than ``minimum_scratch_slots`` is accepted. Omitting the
+    workspace instead allocates that bounded pool anonymously for the call,
+    with no temporary files. Input, results and OS/runtime memory are extra.
+
     Optional ``progress(event)`` callbacks are serialized across workers and
     run only after a completed point has released both resource reservations.
     The first point, start and end are reported immediately; other finished
@@ -236,11 +263,14 @@ class DiskLPSDSubset:
     def __init__(self, n, sample_rate, plan=None, *, psll=200.0, overlap=None,
                  plan_mask=None, n_frequencies=1000, n_averages=100,
                  n_min_bins=1, min_segment_length=0, workers=8, max_working_mb=2048,
-                 validation_chunk_size=262144, progress=None, progress_interval_s=15.0):
+                 validation_chunk_size=262144, progress=None, progress_interval_s=15.0,
+                 streaming="auto", streaming_block_samples=131072,
+                 streaming_max_segments=256):
         started = time.perf_counter()
         self._lock = threading.RLock()
         self._closed = False
         self.last_profile = None
+        self._last_storage_metadata = None
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable or None.")
         self._progress = progress
@@ -292,6 +322,42 @@ class DiskLPSDSubset:
         self._lib = api._LIB
         self._mantissa_bits = int(self._lib.native_long_double_mantissa_bits())
         self._mode = 3 if self._mantissa_bits > 64 else 2
+        if streaming not in ("auto", "off", "on"):
+            raise ValueError("streaming must be 'auto', 'off' or 'on'.")
+        self.streaming_block_samples = _positive_integer(
+            streaming_block_samples, "streaming_block_samples", minimum=128)
+        if self.streaming_block_samples % 128 or self.streaming_block_samples > 1048576:
+            raise ValueError("streaming_block_samples must be a multiple of 128, at most 1048576.")
+        self.streaming_max_segments = _positive_integer(streaming_max_segments, "streaming_max_segments")
+        if self.streaming_max_segments > 256:
+            raise ValueError("streaming_max_segments must be at most 256.")
+        self._streaming_fn = getattr(self._lib, "fast_dft_kaiser_streaming", None)
+        if streaming == "on" and self._streaming_fn is None:
+            raise RuntimeError("Rebuild the native library to enable bounded Kaiser streaming.")
+        if self._streaming_fn is not None:
+            dp, lp = ct.POINTER(ct.c_double), ct.POINTER(ct.c_long)
+            self._streaming_fn.argtypes = [dp, dp, lp, dp, ct.c_long, ct.c_long,
+                ct.c_double, ct.c_double, ct.c_double, ct.c_int, ct.c_long, ct.c_long,
+                dp, dp, dp, dp]
+            self._streaming_fn.restype = ct.c_int
+        self._streaming_mask = tuple(
+            self._streaming_fn is not None and streaming != "off" and 0 < self.beta <= 32
+            and int(length) >= 2048 and int(count) <= self.streaming_max_segments
+            and (streaming == "on" or 2 * (24 * int(length) + 8192) > self._working_capacity)
+            for length, count in zip(self.plan[3], self.plan[4]))
+        lengths = sorted((int(length) for length, streamed in zip(self.plan[3], self._streaming_mask)
+                          if not streamed), reverse=True)
+        self.minimum_scratch_slots = max(lengths, default=1)
+        self.recommended_scratch_slots = min(self.n,
+            max(self.minimum_scratch_slots,
+                min(sum(lengths[:self.effective_workers]), self._working_capacity // 24)))
+        self._streaming_working_bytes = 16 * self.streaming_block_samples + 32768
+        self._streaming_workers_bound = min(self.effective_workers, sum(self._streaming_mask),
+            max(1, self._working_capacity // self._streaming_working_bytes))
+        streaming_bytes = self._streaming_workers_bound * self._streaming_working_bytes
+        bounded_scratch_bytes = 16 * self.recommended_scratch_slots
+        validation_bytes = min(self.n, self.validation_chunk_size)
+        self._ram_working_upper_bound = bounded_scratch_bytes + streaming_bytes + validation_bytes
         self._metadata = {
             "adapter": "benchmarks._lpsd_disk.DiskLPSDSubset",
             "benchmark_category": "file_backed_complete_call",
@@ -310,12 +376,55 @@ class DiskLPSDSubset:
             "source_plan_indices": list(self._source_indices),
             "input_bytes": 8 * self.n, "scratch_bytes": 16 * self.n,
             "total_mapped_bytes": 24 * self.n,
-            "maximum_point_scratch_bytes": max((16 * int(v) for v in self.plan[3]), default=0),
+            "maximum_point_scratch_bytes": 16 * max(lengths, default=0),
+            "original_maximum_point_coefficient_bytes": max((16 * int(v) for v in self.plan[3]), default=0),
             "concurrency_budget_bytes": self._working_capacity,
-            "working_budget_note": "Existing API reservations: 24*L+8192 bytes per active point; "
-                                   "one oversized point runs alone. Not an RSS limit. Actual q "
-                                   "storage is 16*L mapped bytes per point, from a shared pool.",
+            "working_budget_note": "Stored-coefficient points reserve 24*L+8192 bytes; streaming "
+                                   "points reserve their bounded block buffers. Actual stored q "
+                                   "uses 16*L bytes from the shared mapped or anonymous pool. "
+                                   "With explicit file mappings one oversized point may run alone; "
+                                   "workspace=None first checks the full RAM buffer bound. "
+                                   "The scheduling gate is not an RSS limit.",
             "cached_coefficient_bytes": 0, "cached_window_bytes": 0,
+            "streaming": {
+                "policy": streaming, "native_available": self._streaming_fn is not None,
+                "eligible_points": sum(self._streaming_mask),
+                "source_plan_indices": [j for j, enabled in zip(self._source_indices, self._streaming_mask) if enabled],
+                "block_samples": self.streaming_block_samples,
+                "maximum_segments": self.streaming_max_segments,
+                "working_bytes_per_point_upper_bound": self._streaming_working_bytes,
+                "auto_rule": "Use bounded regeneration when two ordinary 24L+8192 reservations "
+                             "would exceed the concurrency budget, L>=2048, K<=limit, 0<beta<=32.",
+                "rounding": "Window/coefficient generation and projector moments retain their arithmetic; "
+                            "dot products use block reductions. No decimation, altered grid or segment starts.",
+            },
+            "minimum_scratch_bytes": 16 * self.minimum_scratch_slots,
+            "recommended_scratch_bytes": 16 * self.recommended_scratch_slots,
+            "bounded_memory_model": {
+                "input_bytes": 8 * self.n,
+                "input_copy_bytes": 0,
+                "scratch_bytes": bounded_scratch_bytes,
+                "maximum_concurrent_streaming_points": self._streaming_workers_bound,
+                "streaming_bytes_per_point_upper_bound": self._streaming_working_bytes,
+                "streaming_bytes_upper_bound": streaming_bytes,
+                "validation_temporary_bytes_upper_bound": validation_bytes,
+                "input_scratch_streaming_validation_bytes_upper_bound": (
+                    8 * self.n + bounded_scratch_bytes + streaming_bytes + validation_bytes),
+                "working_bytes_upper_bound": self._ram_working_upper_bound,
+                "working_budget_bytes": self._working_capacity,
+                "fits_working_budget": self._ram_working_upper_bound <= self._working_capacity,
+                "ram_preflight": "workspace=None raises MemoryError before allocating scratch when "
+                                 "the conservative scratch+streaming+validation bound exceeds the "
+                                 "working budget. Explicit file mappings retain the documented soft gate.",
+                "scratch_formula": "16*min(N,max(max_nonstream_L,min(sum_largest_worker_L,capacity//24))) bytes; "
+                                   "16 bytes if every point streams or the subset is empty.",
+                "streaming_formula": "At most min(workers,eligible_points,capacity//per_point) active "
+                                     "streaming points; per_point=16*block_samples+32768 covers the "
+                                     "two native block vectors and bounded native scalar/stack state.",
+                "excludes": "O(J) plan/result/profile objects, Python/pandas/native runtime, thread "
+                            "runtime stacks outside the kernel, allocator overhead and OS file-cache pages. "
+                            "This is a buffer model, not a process RSS promise.",
+            },
             "progress_enabled": progress is not None,
             "progress_interval_s": self._progress_interval_s,
             "validation_chunk_samples": self.validation_chunk_size,
@@ -325,8 +434,10 @@ class DiskLPSDSubset:
                               "aliases q_r before coefficient generation; returned regions coalesce.",
             "ownership": "Caller owns all mapped files; adapter never flushes, unmaps or deletes them.",
             "memory_note": "Mapped file pages remain subject to the existing memory limit. "
-                           "The adapter allocates O(J) results and bounded validation temporaries; "
-                           "it does not allocate an N- or L-sized heap work array.",
+                           "The adapter allocates O(J) results, bounded validation temporaries "
+                           "and active streaming block buffers. With workspace=None it also "
+                           "allocates the shared recommended scratch pool after a budget check. "
+                           "There is no separate L-sized heap work array per point.",
             "compute_scope": "Storage checks, blockwise finite validation, every selected window, "
                              "normalization, coefficient generation, native projection and original "
                              "segment evaluation, PSD rounding and requested DataFrame output.",
@@ -342,15 +453,27 @@ class DiskLPSDSubset:
     @property
     def metadata(self):
         """JSON-serializable configuration; this is not a measured RAM bound."""
-        return copy.deepcopy(self._metadata)
+        result = copy.deepcopy(self._metadata)
+        if self._last_storage_metadata is not None:
+            result.update(self._last_storage_metadata)
+        return result
 
-    def _validate(self, values, workspace):
-        input_region = _mapping_region(values, "values", np.float64, self.n, False)
-        scratch_region = _mapping_region(workspace, "workspace", np.complex128, self.n, True)
-        same_file = (input_region["device"], input_region["inode"]) == (
-            scratch_region["device"], scratch_region["inode"])
-        overlaps_file = (same_file and input_region["offset_bytes"] < scratch_region["end_bytes"]
-                         and scratch_region["offset_bytes"] < input_region["end_bytes"])
+    def _validate(self, values, workspace, mapped=True):
+        if mapped:
+            input_region = _mapping_region(values, "values", np.float64, self.n, False)
+            if not isinstance(workspace, np.memmap):
+                raise TypeError("workspace must be a caller-owned numpy.memmap.")
+            if not self.minimum_scratch_slots <= len(workspace) <= self.n:
+                raise ValueError(f"workspace must contain between {self.minimum_scratch_slots} and {self.n} complex slots.")
+            scratch_region = _mapping_region(workspace, "workspace", np.complex128, len(workspace), True)
+            same_file = (input_region["device"], input_region["inode"]) == (
+                scratch_region["device"], scratch_region["inode"])
+            overlaps_file = (same_file and input_region["offset_bytes"] < scratch_region["end_bytes"]
+                             and scratch_region["offset_bytes"] < input_region["end_bytes"])
+        else:
+            input_region = _memory_input_region(values, self.n)
+            scratch_region = {"storage": "bounded_anonymous", "bytes": int(workspace.nbytes)}
+            overlaps_file = False
         if overlaps_file or np.shares_memory(values, workspace):
             raise ValueError("Input and scratch mapped regions must not overlap.")
         for start in range(0, self.n, self.validation_chunk_size):
@@ -358,7 +481,7 @@ class DiskLPSDSubset:
                 raise ValueError("Input samples must be finite; clean missing values before calling LPSD.")
         return input_region, scratch_region
 
-    def compute(self, values, workspace, outputs="psd", profile=True):
+    def compute(self, values, workspace=None, outputs="psd", profile=True):
         """Return PSD/NSD in plan order, including bounded input validation.
 
         ``outputs`` is ``'psd'``, ``'nsd'`` or an ordered sequence of these
@@ -367,6 +490,11 @@ class DiskLPSDSubset:
         per-point native preparation/segment timers and stage wall times are
         attached as ``result.attrs['lpsd_disk_profile']`` and ``last_profile``.
         L*K is logical segment coverage, not measured storage traffic.
+
+        With no workspace, ``values`` may be an aligned contiguous native
+        float64 ndarray. The call allocates ``16*recommended_scratch_slots``
+        anonymous bytes plus bounded streaming buffers under the same gate.
+        No input copy, full-length window, or persistent cache is created.
         """
         started = time.perf_counter()
         with self._lock:
@@ -378,8 +506,27 @@ class DiskLPSDSubset:
             if not isinstance(profile, (bool, np.bool_)):
                 raise TypeError("profile must be a boolean.")
             self.last_profile = None
+            self._last_storage_metadata = None
             validation_started = time.perf_counter()
-            input_region, scratch_region = self._validate(values, workspace)
+            mapped = workspace is not None
+            if not mapped:
+                _memory_input_region(values, self.n)
+                if self._ram_working_upper_bound > self._working_capacity:
+                    raise MemoryError(
+                        f"Bounded RAM buffers require {self._ram_working_upper_bound} bytes, exceeding "
+                        f"the {self._working_capacity}-byte working budget. Raise max_working_mb, "
+                        "reduce the dataset, or provide an explicitly file-backed workspace.")
+                workspace = np.empty(self.recommended_scratch_slots, dtype=np.complex128)
+            input_region, scratch_region = self._validate(values, workspace, mapped=mapped)
+            self._last_storage_metadata = {
+                "storage_mode": "mapped" if mapped else "bounded_memory",
+                "scratch_bytes": int(workspace.nbytes),
+                "actual_scratch_bytes": int(workspace.nbytes),
+                "anonymous_scratch_bytes": 0 if mapped else int(workspace.nbytes),
+                "total_mapped_bytes": ((int(values.nbytes) if isinstance(values, np.memmap) else 0)
+                                       + (int(workspace.nbytes) if mapped else 0)),
+                "benchmark_category": "file_backed_complete_call" if mapped else "bounded_memory_complete_call",
+            }
             validation_s = time.perf_counter() - validation_started
             doubles = workspace.view(np.float64)
             xp = api._pointer(values)
@@ -388,7 +535,9 @@ class DiskLPSDSubset:
             rows = [None] * len(self.frequencies) if profile else []
             totals = {name: 0.0 for name in _STAGES}
             gate = api._MemoryGate(self._working_capacity)
-            scratch_pool = _ScratchPool(self.n)
+            scratch_pool = _ScratchPool(len(workspace))
+            streaming_count_lock = threading.Lock()
+            streaming_counts = [0, 0]
             point_progress = (_PointProgress(self._progress, len(self.frequencies),
                                              self._progress_interval_s, started)
                               if self._progress is not None else None)
@@ -397,50 +546,79 @@ class DiskLPSDSubset:
 
             def one(j):
                 length = int(self.plan[3][j])
+                streamed = self._streaming_mask[j]
                 waiting_started = time.perf_counter()
-                reserved = gate.acquire(24 * length + 8192)
+                reserved = gate.acquire(self._streaming_working_bytes if streamed else 24 * length + 8192)
                 gate_acquired = time.perf_counter()
                 scratch_start = None
+                streaming_active = False
                 try:
                     # Always acquire the concurrency gate before the scratch
                     # pool. Holders of scratch never wait on a second gate;
                     # every active allocation is returned even on exceptions.
-                    scratch_start = scratch_pool.acquire(length)
+                    if not streamed:
+                        scratch_start = scratch_pool.acquire(length)
+                    else:
+                        with streaming_count_lock:
+                            streaming_counts[0] += 1
+                            streaming_counts[1] = max(streaming_counts)
+                        streaming_active = True
                     point_started = time.perf_counter()
-                    offset = 2 * scratch_start
-                    cr = doubles[offset:offset + length]
-                    ci = doubles[offset + length:offset + 2 * length]
-                    crp, cip = api._pointer(cr), api._pointer(ci)
                     s1_native, s2_native = ct.c_double(), ct.c_double()
-                    t0 = time.perf_counter()
-                    _check_status(self._lib.generate_kaiser_series(crp, length, self.beta),
-                                  "Kaiser window generation")
-                    t1 = time.perf_counter()
-                    _check_status(self._lib.window_sums(crp, length, ct.byref(s1_native),
-                                                       ct.byref(s2_native)), "Window normalization")
+                    pr, pi, vr, vi = ct.c_double(), ct.c_double(), ct.c_double(), ct.c_double()
+                    navg = ct.c_long()
+                    prep_s, segments_s = ct.c_double(), ct.c_double()
+                    if streamed:
+                        t3 = time.perf_counter()
+                        _check_status(self._streaming_fn(
+                            ct.byref(pr), ct.byref(pi), ct.byref(navg), xp, self.n, length,
+                            self.beta, float(self.plan[2][j]), self.overlap * 100, self._mode,
+                            self.streaming_block_samples, self.streaming_max_segments,
+                            ct.byref(s1_native), ct.byref(s2_native),
+                            ct.byref(prep_s), ct.byref(segments_s)), "Bounded LPSD segment evaluation")
+                        t4 = time.perf_counter()
+                        if profile:
+                            # These components are fused inside the two C
+                            # passes. None means unmeasured, never zero work.
+                            stages = {"window_generation_s": None, "window_sums_s": None,
+                                      "coefficients_s": None, "c_kernel_s": t4 - t3,
+                                      "c_preparation_s": prep_s.value,
+                                      "c_segments_s": segments_s.value}
+                    else:
+                        offset = 2 * scratch_start
+                        cr = doubles[offset:offset + length]
+                        ci = doubles[offset + length:offset + 2 * length]
+                        crp, cip = api._pointer(cr), api._pointer(ci)
+                        t0 = time.perf_counter()
+                        _check_status(self._lib.generate_kaiser_series(crp, length, self.beta),
+                                      "Kaiser window generation")
+                        t1 = time.perf_counter()
+                        _check_status(self._lib.window_sums(crp, length, ct.byref(s1_native),
+                                                           ct.byref(s2_native)), "Window normalization")
+                        if (not math.isfinite(s1_native.value) or not math.isfinite(s2_native.value)
+                                or s1_native.value == 0 or s2_native.value == 0):
+                            raise ValueError("The Kaiser window has nonfinite or zero normalization.")
+                        t2 = time.perf_counter()
+                        # Window aliases q_r only after its sums are saved.
+                        _check_status(self._lib.generate_coefficients_blocked(
+                            crp, cip, crp, length, float(self.plan[2][j])), "Fourier coefficient generation")
+                        t3 = time.perf_counter()
+                        extra = (ct.byref(prep_s), ct.byref(segments_s)) if profile else ()
+                        # The ordinary mapped path retains the previous
+                        # non-FMA selected kernel and its arithmetic.
+                        _check_status(fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi),
+                                         ct.byref(navg), xp, xp, self.n, length, crp, cip,
+                                         self.overlap * 100, 0, False, self._mode, False, True,
+                                         *extra), "LPSD segment evaluation")
+                        t4 = time.perf_counter()
+                        if profile:
+                            stages = {"window_generation_s": t1 - t0, "window_sums_s": t2 - t1,
+                                      "coefficients_s": t3 - t2, "c_kernel_s": t4 - t3,
+                                      "c_preparation_s": prep_s.value,
+                                      "c_segments_s": segments_s.value}
                     s1, s2 = s1_native.value, s2_native.value
                     if not math.isfinite(s1) or not math.isfinite(s2) or s1 == 0 or s2 == 0:
                         raise ValueError("The Kaiser window has nonfinite or zero normalization.")
-                    t2 = time.perf_counter()
-                    # S1/S2 are saved before the coefficient generator overwrites
-                    # the window. Its supported same-index alias is crp == window.
-                    _check_status(self._lib.generate_coefficients_blocked(
-                        crp, cip, crp, length, float(self.plan[2][j])), "Fourier coefficient generation")
-                    t3 = time.perf_counter()
-                    pr, pi, vr, vi = ct.c_double(), ct.c_double(), ct.c_double(), ct.c_double()
-                    navg = ct.c_long()
-                    if profile:
-                        prep_s, segments_s = ct.c_double(), ct.c_double()
-                        extra = (ct.byref(prep_s), ct.byref(segments_s))
-                    else:
-                        extra = ()
-                    # Deliberately do not select fast_dft_selected_bounded: its
-                    # optional FMA path is not used by the eight-worker reference.
-                    _check_status(fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi),
-                                     ct.byref(navg), xp, xp, self.n, length, crp, cip,
-                                     self.overlap * 100, 0, False, self._mode, False, True,
-                                     *extra), "LPSD segment evaluation")
-                    t4 = time.perf_counter()
                     # Preserve the public API's operation order and its complex64
                     # rounding point before any NSD square root is performed.
                     density[j] = 2.0 * complex(pr.value, pi.value) / self.sample_rate / s2
@@ -449,21 +627,23 @@ class DiskLPSDSubset:
                     work = length * int(navg.value)
                     point_wall = point_end - point_started
                     if profile:
-                        stages = {"window_generation_s": t1 - t0, "window_sums_s": t2 - t1,
-                                  "coefficients_s": t3 - t2, "c_kernel_s": t4 - t3,
-                                  "c_preparation_s": prep_s.value, "c_segments_s": segments_s.value,
-                                  "normalization_s": point_end - t4}
+                        stages["normalization_s"] = point_end - t4
                         rows[j] = {"j": j, "source_j": self._source_indices[j],
                                    "frequency": float(self.frequencies[j]), "L": length,
                                    "K": int(navg.value), "planned_K": int(self.plan[4][j]),
-                                   "sample_iterations": work, "scratch_bytes": 16 * length,
-                                   "scratch_offset_bytes": 16 * scratch_start,
+                                   "sample_iterations": work, "scratch_bytes": 0 if streamed else 16 * length,
+                                   "scratch_offset_bytes": None if streamed else 16 * scratch_start,
+                                   "execution_method": "streaming_kaiser_blocks" if streamed else "stored_coefficients",
+                                   "anonymous_working_bytes_upper_bound": self._streaming_working_bytes if streamed else 0,
                                    "window_s1": s1, "window_s2": s2,
                                    "enbw_hz": float(self.enbw[j]), "point_wall_s": point_wall,
                                    "memory_gate_wait_s": gate_acquired - waiting_started,
                                    "scratch_pool_wait_s": point_started - gate_acquired,
                                    **stages}
                 finally:
+                    if streaming_active:
+                        with streaming_count_lock:
+                            streaming_counts[0] -= 1
                     if scratch_start is not None:
                         scratch_pool.release(scratch_start, length)
                     gate.release(reserved)
@@ -499,7 +679,7 @@ class DiskLPSDSubset:
             logical_work = sum(item[0] for item in completed)
             point_wall_sum = sum(item[1] for item in completed)
             if profile:
-                totals = {name: sum(row[name] for row in rows) for name in _STAGES}
+                totals = {name: sum(row[name] for row in rows if row[name] is not None) for name in _STAGES}
             assembly_started = time.perf_counter()
             columns = {}
             if "psd" in requested:
@@ -515,6 +695,8 @@ class DiskLPSDSubset:
             result.attrs["lpsd_disk"]["outputs"] = list(requested)
             result.attrs["lpsd_disk"]["input_mapping"] = input_region
             result.attrs["lpsd_disk"]["scratch_mapping"] = scratch_region
+            result.attrs["lpsd_disk"]["storage_mode"] = "mapped" if mapped else "bounded_memory"
+            result.attrs["lpsd_disk"]["actual_scratch_bytes"] = int(workspace.nbytes)
             assembly_s = time.perf_counter() - assembly_started
             details = {"call_wall_s": time.perf_counter() - started,
                        "validation_wall_s": validation_s, "point_wall_sum_s": point_wall_sum,
@@ -524,6 +706,12 @@ class DiskLPSDSubset:
                        "concurrency_budget_bytes": self._working_capacity,
                        "peak_reserved_bytes": gate.peak,
                        "peak_active_scratch_bytes": 16 * scratch_pool.peak_slots,
+                       "scratch_buffer_bytes": int(workspace.nbytes),
+                       "storage_mode": "mapped" if mapped else "bounded_memory",
+                       "streaming_points": sum(self._streaming_mask),
+                       "peak_active_streaming_points": streaming_counts[1],
+                       "observed_concurrency_streaming_bytes_upper_bound": streaming_counts[1] * self._streaming_working_bytes,
+                       "anonymous_streaming_upper_bound_bytes": self._streaming_workers_bound * self._streaming_working_bytes,
                        "stage_profiling_enabled": bool(profile),
                        "progress": point_progress.summary() if point_progress is not None else None,
                        "frequencies": rows, "stage_totals_s": totals if profile else None,
@@ -533,7 +721,10 @@ class DiskLPSDSubset:
                                      "point_wall_sum_s and stage totals are not call wall time. Native "
                                      "preparation/segments are subdivisions of c_kernel_s; do not add "
                                      "them to c_kernel_s. File paging incurred inside these calls is "
-                                     "included in their elapsed times."}
+                                     "included in their elapsed times. Streaming points regenerate "
+                                     "window and coefficients inside both C passes; their separately "
+                                     "unmeasured window/normalization/coefficient stages are null and "
+                                     "excluded from the corresponding partial stage totals."}
             self.last_profile = details
             result.attrs["lpsd_disk_profile"] = copy.deepcopy(details)
             return result

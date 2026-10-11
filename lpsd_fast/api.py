@@ -284,8 +284,12 @@ def _array(data):
     if values.ndim != 1 or np.iscomplexobj(values):
         raise ValueError('Each input channel must be a one-dimensional real array.')
     result = np.require(values, dtype=np.float64, requirements=['C', 'A'])
-    if not np.isfinite(result).all():
-        raise ValueError('Input samples must be finite; clean missing values before calling LPSD.')
+    # A whole-record isfinite temporary costs another N bytes (1 GB at 1e9
+    # samples). Bounded checks retain the validation and allocate at most
+    # 256 KiB of booleans, independently of record length.
+    for first in range(0, len(result), 262144):
+        if not np.isfinite(result[first:first + 262144]).all():
+            raise ValueError('Input samples must be finite; clean missing values before calling LPSD.')
     return result
 
 

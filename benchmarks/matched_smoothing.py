@@ -21,7 +21,9 @@ import ctypes as ct
 from dataclasses import dataclass
 import hashlib
 import math
+import os
 from pathlib import Path
+import re
 import subprocess
 import time
 
@@ -47,15 +49,33 @@ def _source_metadata():
                  checkout / "lpsd_fast" / "prepared.py",
                  checkout / "benchmarks" / "_fftw_native.py",
                  checkout / "benchmarks" / "_fftw_bluestein.py",
+                 checkout / "benchmarks" / "_lpsd_disk.py",
                  checkout / "lpsd_fast" / "_native" / "fast_dft.c",
+                 checkout / "lpsd_fast" / "_native" / "streaming_lpsd.c",
                  checkout / "lpsd_fast" / "_native" / "fast_dft.h",
                  checkout / "lpsd_fast" / "_native" / "fftw_ops.h",
                  checkout / "lpsd_fast" / "_native" / "fftw_bluestein_ops.h",
                  checkout / "lpsd_fast" / "_native" / "fftw_smoothing.h"]
+        commit = None
+        origin = "unavailable"
+        supplied = os.environ.get("LPSD_BENCHMARK_SOURCE_COMMIT")
+        if supplied is not None:
+            if re.fullmatch(r"[0-9a-f]{40}", supplied):
+                commit, origin = supplied, "pinned_archive"
+        elif (checkout / ".git").exists():
+            try:
+                found = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=checkout, text=True,
+                    stderr=subprocess.DEVNULL, timeout=2).strip()
+                if re.fullmatch(r"[0-9a-f]{40}", found):
+                    commit, origin = found, "checkout"
+            except (OSError, subprocess.SubprocessError):
+                # Pinned source archives and installed environments need no
+                # Git executable or .git directory. File hashes remain exact.
+                pass
         _SOURCE_METADATA = {
             "repo": "https://github.com/MichaDit/lpsd",
-            "commit": subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=checkout, text=True).strip(),
+            "commit": commit, "commit_origin": origin,
             "source_sha256": {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
                               for path in files},
             "native_binary_sha256": hashlib.sha256(Path(_lpsd_api._LIB._name).read_bytes()).hexdigest(),
@@ -256,7 +276,11 @@ class MatchedSmoothing:
                  weight_dtype="float64", smoothing_workers=None,
                  defer_normalization=False, total_cache_mb=None,
                  fft_algorithm="native", fft_convolution_length=None,
-                 time_limit=None):
+                 time_limit=None, fft_in_place=False,
+                 low_frequency_backend="prepared"):
+        if low_frequency_backend not in ("prepared", "bounded"):
+            raise ValueError("low_frequency_backend must be 'prepared' or 'bounded'")
+        self.low_frequency_backend = low_frequency_backend
         started = time.perf_counter()
         self.fft = None
         self._low_prepared = None
@@ -346,7 +370,7 @@ class MatchedSmoothing:
             self.fft = _fftw.create_real_fft(
                 backend, self.n, planner=planner, time_limit=time_limit, algorithm=fft_algorithm,
                 convolution_length=fft_convolution_length,
-                operations_library=_lpsd_api._LIB)
+                operations_library=_lpsd_api._LIB, in_place=fft_in_place)
             phases["fftw_allocation_and_plan_s"] = time.perf_counter() - tick
             tick = time.perf_counter()
             if full_window == "kaiser":
@@ -378,7 +402,8 @@ class MatchedSmoothing:
             self._bound_operations = self.operations.bind(
                 time_buffer=self.fft.x, window=self.window, transform=self.fft.y,
                 n=self.n, sample_rate=self.sample_rate, window_square_sum=self.s2,
-                powers=self.powers, scratch=self.scratch)
+                powers=self.powers, scratch=self.scratch,
+                allow_in_place_fft=fft_in_place)
             phases["windows_normalization_and_buffers_s"] = time.perf_counter() - tick
             tick = time.perf_counter()
             budget = (requested_kernel_budget if total_budget is None else
@@ -423,12 +448,21 @@ class MatchedSmoothing:
             low_budget = (remaining_budget if requested_low_budget is None else
                           requested_low_budget if remaining_budget is None else
                           min(requested_low_budget, remaining_budget))
+            if low_frequency_backend == "bounded":
+                low_budget = 0
             self.window_cache_mb = low_budget / 1024**2
             if np.any(self.low_mask):
-                self._low_prepared = PreparedLPSDSubset(
-                    self.n, self.sample_rate, self._low_plan, psll=self.psll,
-                    overlap=self.overlap, workers=min(self.workers, int(self.low_mask.sum())),
-                    max_cache_mb=self.window_cache_mb, max_working_mb=self.max_working_mb)
+                if low_frequency_backend == "bounded":
+                    from benchmarks._lpsd_disk import DiskLPSDSubset
+                    self._low_prepared = DiskLPSDSubset(
+                        self.n, self.sample_rate, plan=self._low_plan, psll=self.psll,
+                        overlap=self.overlap, workers=min(self.workers, int(self.low_mask.sum())),
+                        max_working_mb=self.max_working_mb, streaming="auto")
+                else:
+                    self._low_prepared = PreparedLPSDSubset(
+                        self.n, self.sample_rate, self._low_plan, psll=self.psll,
+                        overlap=self.overlap, workers=min(self.workers, int(self.low_mask.sum())),
+                        max_cache_mb=self.window_cache_mb, max_working_mb=self.max_working_mb)
                 self._last_low_metadata = self._low_prepared.metadata
             phases["low_frequency_lpsd_preparation_s"] = time.perf_counter() - tick
             if self.beta:
@@ -447,6 +481,7 @@ class MatchedSmoothing:
                 "fftw_threads": backend.threads, "planner": planner,
                 "planner_time_limit_s": time_limit,
                 "fft_algorithm": fft_algorithm,
+                "fft_in_place": bool(fft_in_place),
                 "fft_convolution_length": fft_convolution_length,
                 "fft": self.fft.describe(),
                 "requested_smoothing_workers": self.smoothing_workers,
@@ -469,7 +504,11 @@ class MatchedSmoothing:
                 "low_frequency_max_segment_fraction": float(low_frequency_max_segment_fraction),
                 "exact_low_frequency_points": int(self.low_mask.sum()),
                 "exact_low_frequency_max_hz": float(self.frequencies[self.low_mask].max()) if np.any(self.low_mask) else None,
-                "exact_low_frequency_method": "PreparedLPSDSubset on the unchanged plan subset; reuses bounded native projected coefficients",
+                "low_frequency_backend": low_frequency_backend,
+                "exact_low_frequency_method": (
+                    "Bounded native coefficients, with streamed large windows and stored smaller windows on the unchanged subset; no file or persistent coefficient cache"
+                    if low_frequency_backend == "bounded" else
+                    "PreparedLPSDSubset on the unchanged plan subset; reuses bounded native projected coefficients"),
                 "low_frequency_preparation": self._last_low_metadata,
                 "low_frequency_cache_budget_bytes": low_budget,
                 "low_frequency_working_budget_bytes": int(self.max_working_mb * 1024**2),
@@ -505,7 +544,7 @@ class MatchedSmoothing:
                 "weight_preparation_temporary_bytes_per_worker_upper_bound":
                     max((8 * len(k.weights) for k in self._kernels if k.weights is not None), default=0)
                     if self.weight_dtype == np.float32 else 0,
-                "fftw_array_bytes": int(self.fft.x.nbytes + self.fft.y.nbytes
+                "fftw_array_bytes": int(_fftw.fft_buffer_bytes(self.fft)
                                         + self.window.nbytes + self.powers.nbytes
                                         + (0 if self.scratch is None else self.scratch.nbytes)),
                 "streamed_kernel_temporary_bytes": (0 if self._native_smoothing.backend == "native"
@@ -604,7 +643,7 @@ class MatchedSmoothing:
                              "streamed_frequency_kernels": self.metadata["streamed_frequency_kernels"]}
         return result
 
-    def _compute(self, samples, outputs, phases):
+    def _compute(self, samples, outputs, phases, *, release_fft_before_low=False):
         tick = time.perf_counter() if phases is not None else 0.0
         if self._closed:
             raise RuntimeError("MatchedSmoothing is closed")
@@ -658,8 +697,27 @@ class MatchedSmoothing:
                     density[kernel.output_index] = power / kernel.denominator
         if phases is not None:
             now = time.perf_counter(); phases["frequency_smoothing_s"] = now - tick; tick = now
+        if release_fft_before_low:
+            # A one-shot caller will never execute this FFT again. Its plan,
+            # full window and power vectors have no consumers after smoothing.
+            # Release every pointer-owning binding before the backing arrays.
+            self._bound_operations.close()
+            self._bound_operations = None
+            self._native_smoothing = None
+            self.fft.close()
+            self.fft = None
+            self.window = self.powers = self.scratch = None
+            self.metadata["fft_released_before_low_lpsd"] = True
+            if phases is not None:
+                now = time.perf_counter(); phases["release_fft_before_low_s"] = now - tick; tick = now
         if self._low_prepared is not None:
-            density[self.low_mask] = self._low_prepared._compute_validated(values)
+            if self.low_frequency_backend == "bounded":
+                low = self._low_prepared.compute(values, workspace=None, outputs="psd", profile=False)
+                density[self.low_mask] = low.psd.to_numpy()
+                self._last_low_metadata = self._low_prepared.metadata
+                self.metadata["low_frequency_preparation"] = self._last_low_metadata
+            else:
+                density[self.low_mask] = self._low_prepared._compute_validated(values)
         if phases is not None:
             now = time.perf_counter(); phases["low_frequency_lpsd_s"] = now - tick; tick = now
         psd = density.astype(np.float32)
@@ -676,11 +734,11 @@ class MatchedSmoothing:
             phases["output_conversion_and_dataframe_s"] = time.perf_counter() - tick
         return result
 
-    def validation(self):
+    def validation(self, samples=None):
         """Global FFT normalization check; call outside compute timing."""
         if self._closed:
             raise RuntimeError("MatchedSmoothing is closed")
-        expected = float(np.dot(self.fft.x, self.fft.x) / self.s2)
+        expected = _fftw.validation_time_power(self.fft, self.window, self.s2, samples)
         obtained = float(np.sum(self.powers) * self.df)
         return {"global_windowed_time_power_v2": expected,
                 "global_fftw_integrated_power_v2": obtained,
@@ -725,13 +783,17 @@ def estimate_once(backend, samples, outputs="psd", **kwargs):
     Measure around this function to include planning, windows, computation
     and resource release. Preparation metadata is retained in the returned
     DataFrame's ``matched_smoothing_once`` attribute, without input or cache
-    arrays. Public input validation and PSD/NSD rounding are unchanged.
+    arrays. FFT-only buffers are released before computing the native subset;
+    ``release_fft_before_low=False`` retains the earlier overlap for comparison.
+    Public input validation and PSD/NSD rounding are unchanged.
     """
     options = dict(kwargs)
+    release_fft_before_low = bool(options.pop("release_fft_before_low", True))
     options["max_kernel_cache_mb"] = 0.0
     options["window_cache_mb"] = 0.0
     options.setdefault("defer_normalization", True)
     with MatchedSmoothing(backend, len(samples), **options) as pipeline:
-        result = pipeline.compute(samples, outputs=outputs)
+        result = pipeline._compute(samples, outputs, None,
+                                   release_fft_before_low=release_fft_before_low)
         result.attrs["matched_smoothing_once"] = pipeline.metadata.copy()
     return result

@@ -7,7 +7,23 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.5`; this is not an official upstream release.
+Its package version is `1.0.6+fast.7`; this is not an official upstream release.
+
+Version `fast.7` adds a resource-aware, portable LPSD/FFTW benchmark with
+automatically installed private dependencies and an optional public GitHub
+issue report. It compares the original output count with an actual doubling
+of that count, limits the complete run to at most 24 hours, and admits only
+cases that fit the detected RAM and temporary-disk budgets. Contributors need
+no repository push access. See the [one-command benchmark](docs/portable-benchmark.md)
+and [public-report data policy](docs/benchmark-privacy.md).
+
+For large inputs, the benchmark can reuse the real FFT buffer in place, release
+FFT storage before the matched estimator's native phase, and compute long LPSD
+points with bounded streaming scratch. The disk FFT uses blocked contiguous
+transposition when its workspace exceeds available physical memory. These are
+separate execution choices; their actual storage mode, library versions and
+measured timings are recorded with each result. The native frequency plan,
+window, precision and inherited statistics are retained.
 
 Version `fast.5` optimizes both FFTW comparison pipelines. It adds fused
 native preprocessing and power grouping, reusable projected coefficients

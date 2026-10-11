@@ -18,6 +18,7 @@ import ctypes as ct
 from datetime import datetime, timezone
 import gc
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -64,11 +65,15 @@ def process_memory():
     return values
 
 
-def memory_lower_bound(method, n):
+def memory_lower_bound(method, n, fft_in_place=False):
     # L=N at the first actual LPSD frequency. Window and both real Fourier
     # coefficient vectors coexist in the present native Python implementation.
     if method == "lpsd":
         return 32 * n, "8N input + 24N window and two coefficients at L=N"
+    if fft_in_place:
+        if method in ("matched", "matched_once"):
+            return 16 * n + 24 * (n // 2 + 1), "8N input + 8N window + 16(floor(N/2)+1) shared FFT buffer + 8(floor(N/2)+1) powers; excludes all caches and low-LPSD workspace"
+        return 16 * n + 16 * (n // 2 + 1), "8N input + 8N window + 16(floor(N/2)+1) shared FFT buffer; no full powers array"
     if method in ("matched", "matched_once"):
         return 24 * n + 24 * (n // 2 + 1), "8N input + 8N FFT input + 16(floor(N/2)+1) FFT output + 8N window + 8(floor(N/2)+1) powers; excludes all caches and low-LPSD workspace"
     return 24 * n + 16 * (n // 2 + 1), "8N input + 8N FFT input + 16(floor(N/2)+1) FFT output + 8N window; no full powers array"
@@ -84,12 +89,9 @@ def trim():
         pass
 
 
-def bounded_parseval(obj, chunk=262144):
+def bounded_parseval(obj, chunk=262144, *, samples=None):
     """Independent diagnostic, with O(chunk) instead of O(N) temporaries."""
-    time_sum = 0.0
-    for first in range(0, obj.n, chunk):
-        values = obj.fft.x[first:first + chunk]
-        time_sum += float(np.dot(values, values))
+    expected = bf.validation_time_power(obj.fft, obj.window, obj.s2, samples, chunk)
     power_sum = 0.0
     for first in range(0, len(obj.fft.y), chunk):
         values = obj.fft.y[first:first + chunk]
@@ -97,7 +99,6 @@ def bounded_parseval(obj, chunk=262144):
         power_sum += float(np.sum(values.real * values.real + values.imag * values.imag))
     dc_square = float(abs(obj.fft.y[0])**2)
     nyquist_square = float(abs(obj.fft.y[-1])**2) if obj.n % 2 == 0 else 0.0
-    expected = time_sum / obj.s2
     obtained = (2 * power_sum - dc_square - nyquist_square) / (obj.n * obj.s2)
     np.testing.assert_allclose(obtained, expected, rtol=2e-12, atol=0.0)
     result = {"time_power_v2": expected, "fft_power_v2": obtained,
@@ -127,7 +128,7 @@ def validate_frame(frame, reference, frequencies):
 
 def run_child(args):
     n, method = args.n, args.child
-    lower, definition = memory_lower_bound(method, n)
+    lower, definition = memory_lower_bound(method, n, getattr(args, "fft_in_place", False))
     result = {"n": n, "method": method, "started_utc": datetime.now(timezone.utc).isoformat(),
               "settings": vars(args), "timings": [], "status": "starting",
               "memory_lower_bound_bytes": lower, "memory_lower_bound_definition": definition,
@@ -155,12 +156,15 @@ def run_child(args):
             result["native_binary"]["build_metadata"] = json.loads(build_path.read_text())
         result["fftw"] = {"version": backend.version, "binary": backend.evidence,
                           "threads_binary": backend.threads_evidence}
-        overlap = api._kaiser_rov(api._kaiser_alpha(200.0))
-        plan = api._frequency_plan(n, args.sample_rate, overlap, 1, 0, 1000, 100)
+        overlap = api._kaiser_rov(api._kaiser_alpha(args.psll))
+        plan = api._frequency_plan(n, args.sample_rate, overlap, 1, 0,
+                                   args.n_frequencies, args.n_averages)
         frequencies = np.asarray(plan[0], dtype=np.float64)
         result["plan"] = {"frequency_hz": frequencies, "lengths": plan[3],
                           "segment_counts": plan[4], "frequency_bins": plan[2],
-                          "points": len(frequencies), "overlap": overlap}
+                          "points": len(frequencies), "overlap": overlap,
+                          "requested_j": args.n_frequencies,
+                          "n_averages": args.n_averages, "psll_db": args.psll}
         synthesis_start = time.perf_counter()
         rng = np.random.default_rng(np.random.SeedSequence([args.seed, 0, n]))
         x = rng.standard_normal(n)
@@ -169,18 +173,20 @@ def run_child(args):
                            "sha256": bf.digest_array(x), "seed_sequence": [args.seed, 0, n],
                            "distribution": "Gaussian white noise, one-sided NSD=10 nV/sqrt(Hz)",
                            "synthesis_and_hash_s_excluded": time.perf_counter() - synthesis_start}
-        common = dict(sample_rate=args.sample_rate, psll=200.0, n_frequencies=1000, n_averages=100)
+        common = dict(sample_rate=args.sample_rate, psll=args.psll,
+                      n_frequencies=args.n_frequencies, n_averages=args.n_averages)
         matched_options = dict(**common, window_provider=provider, workers=args.workers,
                                max_working_mb=2048, total_cache_mb=args.total_cache_mb,
                                max_kernel_cache_mb=1536, window_cache_mb=None,
                                smoothing_workers=args.smoothing_workers, weight_dtype="float32",
                                operations_backend="native", smoothing_backend="native",
-                               planner="estimate")
+                               planner="estimate", fft_in_place=args.fft_in_place)
         def make():
             if method == "fftw":
                 return bf.Periodogram(backend, n, **common, window_provider=provider,
                                       operations="native_grouped", operations_library=api._LIB,
-                                      aggregation="log", output_dtype="float32", planner="estimate")
+                                      aggregation="log", output_dtype="float32", planner="estimate",
+                                      fft_in_place=args.fft_in_place)
             return MatchedSmoothing(backend, n, **matched_options)
         def complete(output):
             selected = ("psd", "nsd") if output == "both" else output
@@ -228,7 +234,7 @@ def run_child(args):
                                               "outputs": name, **summarize(times)}
                                              for name, times in rows.items() if times]
                         checkpoint()
-                result["validation"] = bounded_parseval(obj)
+                result["validation"] = bounded_parseval(obj, samples=x)
                 if method == "matched":
                     frame = obj.profile(x, outputs="nsd")
                     result["profile"] = obj.last_profile
@@ -300,6 +306,12 @@ def main():
     parser.add_argument("--smoothing-workers", type=int, default=4)
     parser.add_argument("--total-cache-mb", type=float, default=1024)
     parser.add_argument("--sample-rate", type=float, default=50.0)
+    parser.add_argument("--n-frequencies", type=int, default=1000,
+                        help="Original LPSD planner parameter J; actual output count is recorded separately")
+    parser.add_argument("--n-averages", type=int, default=100)
+    parser.add_argument("--psll", type=float, default=200.0)
+    parser.add_argument("--fft-in-place", action="store_true",
+                        help="Share FFTW's owned input/output allocation; input samples remain untouched")
     parser.add_argument("--seed", type=int, default=20261010)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--child", choices=METHODS)
@@ -308,6 +320,10 @@ def main():
                         help="RAM budget in bytes; required when automatic discovery is unavailable, including Windows")
     parser.add_argument("--address-space-guard-bytes", type=int)
     args = parser.parse_args()
+    if (args.n_frequencies < 2 or args.n_averages < 1
+            or not math.isfinite(args.psll) or args.psll <= 0
+            or not math.isfinite(args.sample_rate) or args.sample_rate <= 0):
+        parser.error("Require J>=2, K>=1 and finite positive PSLL and sample rate")
     if args.repeats < 1 or any(n < 5 for n in args.sizes) or args.total_cache_mb < 0:
         parser.error("Require positive repeats, N>=5 and nonnegative cache budget")
     for name in ("output", "fftw_library", "threads_library"):
@@ -364,9 +380,13 @@ def main():
                        "--repeats", str(args.repeats), "--fftw-threads", str(args.fftw_threads),
                        "--workers", str(args.workers), "--smoothing-workers", str(args.smoothing_workers),
                        "--total-cache-mb", str(args.total_cache_mb), "--sample-rate", str(args.sample_rate),
+                       "--n-frequencies", str(args.n_frequencies),
+                       "--n-averages", str(args.n_averages), "--psll", str(args.psll),
                        "--seed", str(args.seed), "--memory-limit-bytes", str(args.memory_limit_bytes),
                        "--address-space-guard-bytes", str(args.address_space_guard_bytes),
                        "--output", str(job_path), "--outputs", *args.outputs]
+            if args.fft_in_place:
+                command.append("--fft-in-place")
             env = dict(os.environ, MALLOC_ARENA_MAX="2")
             with job_path.with_suffix(".log").open("w") as log:
                 completed = subprocess.run(command, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)

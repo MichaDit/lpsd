@@ -2,8 +2,9 @@
 """Separate out-of-core complete-call experiment; not the RAM pipeline timer.
 
 Uses an exact N-point blocked FFTW factorization and the existing spectral
-definitions. All large workspaces are shared file mappings. The cgroup RAM
-limit is not modified. Input creation is outside the measured call, whereas
+definitions. FFT workspaces are shared file mappings; the native estimator
+uses bounded anonymous scratch. The cgroup RAM limit is not modified.
+Input creation is outside the measured call, whereas
 workspace construction, checks, required paging, computation and cleanup are
 inside. A PSD/NSD pair is produced by each call. No timings are extrapolated.
 
@@ -62,6 +63,9 @@ def large_file_bytes(n, methods, power_storage):
     """Peak file lengths for serial methods; aliased mappings add no file bytes."""
     if power_storage not in ("external", "workspace"):
         raise ValueError("power_storage must be external or workspace")
+    if all(method == "lpsd" for method in methods):
+        # Bounded native coefficients use anonymous scratch, no large file.
+        return 8 * n
     external = power_storage == "external" and any(method != "lpsd" for method in methods)
     return (28 * n + 8) if external else 24 * n
 
@@ -164,10 +168,11 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         "workspace_power_offset_bytes": 8 * n if method != "lpsd" and power_storage == "workspace" else None,
         "note": ("Workspace mode: the returned power mapping aliases the existing file. "
                  "Physical files total 24N bytes; input+FFT+power mapping sizes still total "
-                 "28N+8 virtual bytes. Both mappings close before low LPSD remaps scratch."
+                 "28N+8 virtual bytes. Both mappings close before low LPSD uses bounded RAM scratch."
                  if method != "lpsd" and power_storage == "workspace" else
                  "External mode uses a separate 4N+8-byte power file; native-only LPSD uses "
-                 "no power file. Files are temporary and removed after their last consumer."),
+                 "only the 8N input file and bounded RAM scratch. Files are temporary and "
+                 "removed after their last consumer."),
     }
     tick = time.perf_counter()
     def mark(name):
@@ -177,28 +182,30 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         tick = now
         if progress:
             progress(name, phases[name])
-    overlap = api._kaiser_rov(api._kaiser_alpha(200.0))
-    beta = api._kaiser_alpha(200.0) * np.pi
-    plan = api._frequency_plan(n, args.sample_rate, overlap, 1, 0, 1000, 100)
+    psll = getattr(args, "psll", 200.0)
+    n_frequencies = getattr(args, "n_frequencies", 1000)
+    n_averages = getattr(args, "n_averages", 100)
+    overlap = api._kaiser_rov(api._kaiser_alpha(psll))
+    beta = api._kaiser_alpha(psll) * np.pi
+    plan = api._frequency_plan(n, args.sample_rate, overlap, 1, 0,
+                               n_frequencies, n_averages)
     frequencies = np.asarray(plan[0], dtype=np.float64)
+    metadata["point_plan"] = {"requested_j": n_frequencies,
+                               "n_averages": n_averages,
+                               "output_points": len(frequencies), "psll_db": psll}
     workspace_path = directory / "workspace.c128"
     powers_path = directory / "powers.f64"
     if method == "lpsd":
-        workspace = np.memmap(workspace_path, dtype=np.complex128, mode="w+", shape=(n,))
-        try:
-            estimator = DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=200.0,
-                                       overlap=overlap, workers=args.workers,
-                                       max_working_mb=args.low_working_mb,
-                                       progress=lpsd_progress,
-                                       progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0))
+        with DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=psll,
+                            overlap=overlap, workers=args.workers,
+                            max_working_mb=args.low_working_mb,
+                            progress=lpsd_progress,
+                            progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0)) as estimator:
             mark("workspace_and_plan_s")
-            result = estimator.compute(values, workspace, outputs=("psd", "nsd"), profile=True)
+            result = estimator.compute(values, workspace=None, outputs=("psd", "nsd"), profile=True)
             mark("lpsd_complete_s")
             metadata["lpsd"] = estimator.metadata
             metadata["lpsd_profile"] = estimator.last_profile
-        finally:
-            close_map(workspace)
-            workspace_path.unlink(missing_ok=True)
         mark("workspace_cleanup_s")
         return result, {"phases": phases, **metadata}
 
@@ -225,7 +232,7 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         s1, s2 = s1.value, s2.value
         metadata["window"] = {"name": "kaiser" if method == "fftw" else "periodic_tukey",
                               "taper_fraction": .05 if method == "matched" else None,
-                              "s1": s1, "s2": s2, "target_kaiser_psll_db": 200.0}
+                              "s1": s1, "s2": s2, "target_kaiser_psll_db": psll}
         mark("window_and_normalization_s")
         finite_chunks(values)
         operations = FFTWOperations("native", api._LIB)
@@ -289,29 +296,26 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
                                       "low_mask": low_mask, "workers": args.smoothing_workers}
             mark("matched_frequency_smoothing_s")
             # Nothing still needs FFT content or powers. Close the plans and
-            # all large FFT-only RAM tiles before reusing the same 16N file.
+            # all large FFT-only RAM tiles before bounded native computation.
             del owner, smoother, kernels
             close_map(powers)
             powers = None
             powers_path.unlink(missing_ok=True)
             fft.close()
             fft = None
+            workspace_path.unlink(missing_ok=True)
             trim()
             mark("release_fft_before_low_lpsd_s")
-            workspace = np.memmap(workspace_path, dtype=np.complex128, mode="r+", shape=(n,))
-            try:
-                estimator = DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=200.0,
-                                           overlap=overlap, plan_mask=low_mask,
-                                           workers=args.workers, max_working_mb=args.low_working_mb,
-                                           progress=lpsd_progress,
-                                           progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0))
-                low = estimator.compute(values, workspace, outputs="psd", profile=True)
+            with DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=psll,
+                                overlap=overlap, plan_mask=low_mask,
+                                workers=args.workers, max_working_mb=args.low_working_mb,
+                                progress=lpsd_progress,
+                                progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0)) as estimator:
+                low = estimator.compute(values, workspace=None, outputs="psd", profile=True)
                 density[low_mask] = low.psd.to_numpy()
                 metadata["low_lpsd"] = estimator.metadata
                 metadata["low_lpsd_profile"] = estimator.last_profile
                 result = frame_from_psd(frequencies, density)
-            finally:
-                close_map(workspace)
             mark("low_lpsd_and_outputs_s")
     finally:
         if powers is not None:
@@ -327,10 +331,13 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
 def child(args):
     n, method = args.n, args.child
     # Files consume virtual address space, while their physical pages remain
-    # subject to the original 8-GiB cgroup limit. Permit only bounded anonymous
-    # headroom above the explicitly known shared file mappings.
-    mapped_bytes = (24 if method == "lpsd" else 28) * n + 8
-    guard = mapped_bytes + 2 * GIB
+    # subject to the existing machine/cgroup limit. Native bounded scratch is
+    # anonymous now, so account for its separate budget above the mappings.
+    mapped_bytes = 8 * n if method == "lpsd" else 28 * n + 8
+    native_scratch_budget = (max(64 * 1024**2, int(args.low_working_mb * 1024**2))
+                             if method in ("lpsd", "matched") else 0)
+    runtime_virtual_headroom = 2 * GIB
+    guard = mapped_bytes + native_scratch_budget + runtime_virtual_headroom
     if sys.platform.startswith("linux"):
         resource.setrlimit(resource.RLIMIT_AS, (guard, guard))
     api._native()
@@ -340,6 +347,8 @@ def child(args):
               "status": "running", "pid": os.getpid(), "started_utc": datetime.now(timezone.utc).isoformat(),
               "settings": vars(args), "memory_cgroup_limit": read_file("/sys/fs/cgroup/memory.max"),
               "address_space_guard_bytes": guard, "maximum_large_mapping_bytes": mapped_bytes,
+              "native_anonymous_working_budget_bytes": native_scratch_budget,
+              "runtime_virtual_headroom_bytes": runtime_virtual_headroom,
               "maximum_large_file_bytes": large_file_bytes(n, (method,), args.power_storage),
               "input_sha256_before": bf.digest_array(values),
               "native_binary_sha256": sha256(api._LIB._name),
@@ -425,6 +434,10 @@ def main():
                              "consume an even-B FFT and reuse its 16N-byte file (workspace).")
     parser.add_argument("--low-working-mb", type=float, default=2048)
     parser.add_argument("--sample-rate", type=float, default=50.0)
+    parser.add_argument("--n-frequencies", type=int, default=1000,
+                        help="Original LPSD planner parameter J; actual output count is recorded separately")
+    parser.add_argument("--n-averages", type=int, default=100)
+    parser.add_argument("--psll", type=float, default=200.0)
     parser.add_argument("--seed", type=int, default=20261010)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -436,6 +449,10 @@ def main():
                         help="Seconds between batched completed-point LPSD checkpoints; "
                              "zero reports every point. Start, first point and end always report.")
     args = parser.parse_args()
+    if (args.n_frequencies < 2 or args.n_averages < 1
+            or not math.isfinite(args.psll) or args.psll <= 0
+            or not math.isfinite(args.sample_rate) or args.sample_rate <= 0):
+        parser.error("Require J>=2, K>=1 and finite positive PSLL and sample rate")
     if not math.isfinite(args.lpsd_progress_interval_s) or args.lpsd_progress_interval_s < 0:
         parser.error("--lpsd-progress-interval-s must be finite and nonnegative")
     for name in ("fftw_library", "threads_library", "work_dir", "output", "input"):
@@ -493,6 +510,8 @@ def main():
                                "--fftw-threads", str(args.fftw_threads), "--workers", str(args.workers),
                                "--smoothing-workers", str(args.smoothing_workers), "--fft-memory-mb", str(args.fft_memory_mb),
                                "--low-working-mb", str(args.low_working_mb), "--sample-rate", str(args.sample_rate),
+                               "--n-frequencies", str(args.n_frequencies),
+                               "--n-averages", str(args.n_averages), "--psll", str(args.psll),
                                "--seed", str(args.seed), "--timeout-seconds", str(args.timeout_seconds),
                                "--power-storage", args.power_storage,
                                "--lpsd-progress-interval-s", str(args.lpsd_progress_interval_s)]
