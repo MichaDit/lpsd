@@ -230,6 +230,14 @@ def test_wrapper_pins_match_machine_readable_manifest():
                            if line.startswith("Start-Bounded $uv ") and "'install'" in line)
     assert "'--no-bin'" in windows_install
     assert "'--no-registry'" in windows_install
+    # On PowerShell 7.5+, the .NET setter turns $null into an empty variable.
+    # Unset uv preferences and restore absent session variables through Env:.
+    assert "Remove-Item -LiteralPath Env:UV_PYTHON_PREFERENCE -ErrorAction SilentlyContinue" in powershell
+    assert "SetEnvironmentVariable('UV_PYTHON_PREFERENCE', $null" not in powershell
+    restore = powershell.split("} finally {")[-1]
+    assert "if ($null -eq $savedEnvironment[$key])" in restore
+    assert 'Remove-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue' in restore
+    assert "SetEnvironmentVariable($key, $savedEnvironment[$key], 'Process')" in restore
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX shell entry point")

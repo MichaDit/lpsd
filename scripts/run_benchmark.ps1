@@ -158,7 +158,9 @@ $env:UV_CACHE_DIR = Join-Path $root 'cache'
 $env:UV_TOOL_DIR = Join-Path $root 'tools'
 $env:UV_NO_CONFIG = '1'
 $env:UV_NO_PROGRESS = '1'
-[Environment]::SetEnvironmentVariable('UV_PYTHON_PREFERENCE', $null, 'Process')
+# PowerShell 7.5+ converts $null to an empty string in this .NET API;
+# uv treats that as a supplied preference without a value. Remove it explicitly.
+Remove-Item -LiteralPath Env:UV_PYTHON_PREFERENCE -ErrorAction SilentlyContinue
 $env:UV_PYTHON_ARCH = 'x86_64'
 Start-Bounded $uv @('--no-config', 'python', 'install', '3.12.14', '--no-bin', '--no-registry')
 $python = (& $uv --no-config python find --managed-python 3.12.14).Trim()
@@ -178,7 +180,11 @@ Test-Budget
 if ($LASTEXITCODE -ne 0) { throw ('Benchmark stopped (exit ' + $LASTEXITCODE + ').') }
 } finally {
     foreach ($key in $savedEnvironment.Keys) {
-        [Environment]::SetEnvironmentVariable($key, $savedEnvironment[$key], 'Process')
+        if ($null -eq $savedEnvironment[$key]) {
+            Remove-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue
+        } else {
+            [Environment]::SetEnvironmentVariable($key, $savedEnvironment[$key], 'Process')
+        }
     }
     [Net.ServicePointManager]::SecurityProtocol = $savedTlsPolicy
 }
