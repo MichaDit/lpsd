@@ -191,6 +191,48 @@ def test_explicit_budgets_can_use_available_space_beyond_auto_but_keep_reserves(
     assert tiny.ram_budget == tiny.disk_budget == 0
 
 
+def test_cgroup_active_clean_file_cache_does_not_force_100m_to_disk(tmp_path, monkeypatch):
+    controller = tmp_path / "memory"
+    controller.mkdir()
+    limit, current = 8 * resources.GIB, 5_896_740_864
+    file_bytes, dirty = 5_442_269_184, 21_454_848
+    (controller / "memory.max").write_text(str(limit))
+    (controller / "memory.current").write_text(str(current))
+    (controller / "memory.stat").write_text(
+        f"file {file_bytes}\nactive_file 4488097792\ninactive_file 954171392\n"
+        f"shmem 0\nfile_dirty {dirty}\nfile_writeback 0\nunevictable 0\n")
+    monkeypatch.setattr(resources, "_cgroup_directories", lambda _: [controller])
+    monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(virtual_memory=lambda:
+                        SimpleNamespace(total=16 * resources.GIB, available=9_722_000_000)))
+    monkeypatch.setattr(resources, "cpu_capacity", lambda: (8, 8.))
+    total, available = resources.system_memory()
+    assert total == limit
+    assert available == limit - current + file_bytes - dirty
+    detected = resources.detect_resources(tmp_path, ram="6.25")
+    assert detected.ram_budget == int(6.25 * resources.GIB)
+    mode, _, _, skipped = resources.select_storage(100_000_000, "fftw", "white", "auto", detected)
+    assert mode == "ram" and skipped is None
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("shared,dirty,writeback,unevictable,expected", [
+    (300, 100, 50, 50, 500),
+    (1000, 0, 0, 0, 0),
+    (0, 1000, 0, 0, 0),
+    (0, 0, 1000, 0, 0),
+])
+def test_cgroup_cache_excludes_tmpfs_dirty_writeback_and_unevictable(
+        legacy, shared, dirty, writeback, unevictable, expected):
+    stats = {"cache" if legacy else "file": 1000,
+             "shmem": shared, "active_file": 700, "inactive_file": 300,
+             "dirty" if legacy else "file_dirty": dirty,
+             "writeback" if legacy else "file_writeback": writeback,
+             "unevictable": unevictable}
+    if legacy:
+        stats = {**{name: 0 for name in stats}, **{"total_" + name: value for name, value in stats.items()}}
+    assert resources._clean_file_cache(stats, legacy=legacy) == expected
+
+
 def test_small_arm_budget_prevents_giant_files_and_keeps_small_ram_case():
     limit = resources.Resources(1024 * resources.MIB, 800 * resources.MIB,
                                 4 * resources.GIB, 600 * resources.MIB,

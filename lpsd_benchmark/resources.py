@@ -62,6 +62,24 @@ def _cgroup_directories(controller):
     return sorted(found)
 
 
+def _clean_file_cache(stats, *, legacy=False):
+    """Conservative clean, evictable file bytes in either cgroup layout.
+
+    Active file pages can also be reclaimed. Bound both file LRU lists by
+    file/cache minus shared memory, then subtract dirty, writeback and
+    unevictable pages. Some exclusions may overlap; subtracting twice is
+    deliberately conservative. v1 hierarchical usage needs total_* stats.
+    """
+    def value(name):
+        return stats.get("total_" + name, stats.get(name, 0)) if legacy else stats.get(name, 0)
+    file_bytes = max(0, value("cache" if legacy else "file") - value("shmem"))
+    file_lru = value("active_file") + value("inactive_file")
+    unavailable = (value("dirty" if legacy else "file_dirty")
+                   + value("writeback" if legacy else "file_writeback")
+                   + value("unevictable"))
+    return max(0, min(file_bytes, file_lru) - unavailable)
+
+
 def system_memory():
     """Return total and currently available bytes without host identifiers."""
     try:
@@ -104,6 +122,7 @@ def system_memory():
         limit = _positive_int(_read(directory / "memory.max"))
         current = _positive_int(_read(directory / "memory.current")) or 0
         stat_name = "memory.stat"
+        legacy = limit is None
         if limit is None:
             limit = _positive_int(_read(directory / "memory.limit_in_bytes"))
             current = _positive_int(_read(directory / "memory.usage_in_bytes")) or 0
@@ -114,9 +133,10 @@ def system_memory():
             fields = line.split()
             if len(fields) == 2:
                 stats[fields[0]] = _positive_int(fields[1]) or 0
-        # Inactive file cache is reclaimable. Treating memory.current as all
-        # anonymous memory falsely reports no space after a disk benchmark.
-        reclaimable = stats.get("inactive_file", stats.get("total_inactive_file", 0))
+        # Count clean cache from both file LRUs. A recent disk run can leave
+        # gigabytes on active_file without making those pages unevictable.
+        # Do not count tmpfs/shared memory or pending filesystem writes.
+        reclaimable = min(current, _clean_file_cache(stats, legacy=legacy))
         total = min(total, limit)
         available = min(available, max(0, limit - current + reclaimable))
     return int(total), max(0, min(int(total), int(available)))
