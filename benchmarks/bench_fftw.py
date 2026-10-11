@@ -26,6 +26,15 @@ import pandas as pd
 from lpsd._helpers import _kaiser_alpha, _kaiser_rov, _ltf_plan
 
 try:
+    from benchmarks._fftw_native import FFTWOperations
+except ModuleNotFoundError as exc:
+    # Preserve direct ``python benchmarks/bench_fftw.py`` invocation as well
+    # as module/importlib loading from an installed/editable checkout.
+    if exc.name not in ("benchmarks", "benchmarks._fftw_native"):
+        raise
+    from _fftw_native import FFTWOperations
+
+try:
     import resource
 except ImportError:
     resource = None
@@ -309,24 +318,66 @@ def aggregate_power(psd, cuts, sample_rate, n):
     return sums / counts, sums * (sample_rate / n)
 
 
+def create_real_fft(backend, n, planner="estimate", time_limit=None, *,
+                    algorithm="native", convolution_length=None,
+                    operations_library=None):
+    """Choose the algorithm for the unchanged N-point real DFT explicitly.
+
+    The optional Bluestein adapter uses FFTW complex convolutions internally;
+    it does not pad the signal's frequency grid or change its normalization.
+    There is deliberately no assumed universally fastest factor-size rule.
+    """
+    if algorithm == "native":
+        if convolution_length is not None:
+            raise ValueError("fft_convolution_length requires fft_algorithm='bluestein'")
+        return RealFFT(backend, n, planner, time_limit)
+    if algorithm == "bluestein":
+        from benchmarks._fftw_bluestein import BluesteinRealFFT
+        return BluesteinRealFFT(backend, n, planner=planner, time_limit=time_limit,
+                                convolution_length=convolution_length,
+                                operations_library=operations_library)
+    raise ValueError("fft_algorithm must be native or bluestein")
+
+
 class Periodogram:
-    """Prepared full-record pipeline. Returned DataFrames own their values."""
+    """Prepared full-record pipeline. Returned DataFrames own their values.
+
+    ``operations='numpy'`` selects the unchanged array-operation baseline.
+    ``auto`` uses additive native elementwise operations when available and
+    otherwise falls back to NumPy. ``native_grouped`` additionally accumulates
+    the same FFT bins directly into log groups; that optional reduction can
+    differ in floating-point summation order. ``compute(outputs=('psd','nsd'))``
+    returns both representations after one transform.
+    """
 
     def __init__(self, backend, n, sample_rate=1.0, psll=200.0,
                  n_frequencies=1000, n_averages=100, planner="estimate",
                  time_limit=None, window_provider=None, aggregation="log",
-                 density="psd", output_dtype="float32"):
-        if aggregation not in ("log", "none") or density not in ("psd", "nsd"):
+                 density="psd", output_dtype="float32", operations="auto",
+                 operations_library=None, fft_algorithm="native",
+                 fft_convolution_length=None):
+        if aggregation not in ("log", "none") or density not in ("psd", "nsd", "both"):
             raise ValueError("Unknown aggregation or density")
+        if operations not in ("auto", "numpy", "native", "native_grouped"):
+            raise ValueError("Unknown FFTW operation backend")
         if output_dtype not in ("float32", "float64"):
             raise ValueError("Output dtype must be float32 or float64")
         if not math.isfinite(sample_rate) or sample_rate <= 0:
             raise ValueError("Sample rate must be positive and finite")
         self.n, self.sample_rate = n, sample_rate
         self.aggregation, self.density, self.output_dtype = aggregation, density, output_dtype
-        self.fft = RealFFT(backend, n, planner, time_limit)
+        self._bound_ops = None
+        self.fft = create_real_fft(backend, n, planner, time_limit,
+                                   algorithm=fft_algorithm,
+                                   convolution_length=fft_convolution_length,
+                                   operations_library=operations_library)
         try:
             provider = window_provider or KaiserWindow()
+            operation_library = operations_library if operations_library is not None else getattr(provider, "lib", None)
+            self.ops = FFTWOperations("native" if operations == "native_grouped" else operations,
+                                      operation_library)
+            self.grouped_native = operations == "native_grouped" and aggregation == "log"
+            self.operations = "native_grouped" if self.grouped_native else self.ops.backend
             self.window_metadata = dict(provider.metadata)
             self.beta = _kaiser_alpha(psll) * np.pi
             t = time.perf_counter()
@@ -341,19 +392,53 @@ class Periodogram:
             self.grid = lpsd_grid(n, sample_rate, psll, n_frequencies, n_averages) if aggregation == "log" else None
             self.frequencies = self.grid["frequency_labels_hz"] if self.grid else np.fft.rfftfreq(n, 1.0 / sample_rate)
             grid_s = time.perf_counter() - t
-            self.powers = np.empty(n // 2 + 1)
-            self.scratch = np.empty_like(self.powers)
+            self.powers = None if self.grouped_native else np.empty(n // 2 + 1)
+            self.scratch = np.empty_like(self.powers) if self.ops.backend == "numpy" else None
+            self._group_density = np.empty(len(self.frequencies)) if self.grouped_native else None
             self.setup_phases = {"aligned_allocation_s": self.fft.allocation_s,
                                  "fftw_planning_s": self.fft.planning_s,
                                  "window_generation_s": generation_s,
                                  "window_sums_s": sums_s, "grid_s": grid_s}
             self.last_profile = None
-            self.last_band_powers = None
+            self.last_band_powers = np.empty(len(self.frequencies)) if self.grouped_native else None
+            if self.ops.backend == "native":
+                self._bound_ops = self.ops.bind(
+                    time_buffer=self.fft.x, window=self.window, transform=self.fft.y,
+                    n=self.n, sample_rate=self.sample_rate, window_square_sum=self.s2,
+                    powers=self.powers, cuts=self.grid["cuts"] if self.grid else None,
+                    density=self._group_density, band_powers=self.last_band_powers)
+            self.metadata = {
+                "fft_algorithm": fft_algorithm,
+                "fftw_threads": backend.threads,
+                "fft_convolution_length": fft_convolution_length,
+                "fft": self.fft.describe(),
+                "operations_requested": operations, "operations": self.operations,
+                "native_operations": dict(self.ops.metadata),
+                "mean_reduction": "unchanged numpy.mean of anchored samples",
+                "group_reduction": "SIMD direct FFT-bin accumulation" if self.grouped_native else "unchanged numpy.add.reduceat",
+                "profile_fusion": {
+                    "window_in_copy_and_detrend": self.ops.backend == "native",
+                    "aggregation_in_power_and_normalization": self.grouped_native},
+                "principal_buffer_bytes": sum(array.nbytes for array in (
+                    self.fft.x, self.fft.y, self.window, self.powers, self.scratch,
+                    self._group_density, self.last_band_powers) if array is not None),
+                "validation_reconstructs_powers": self.grouped_native,
+                "operation_binding": dict(self._bound_ops.metadata) if self._bound_ops else None,
+            }
         except BaseException:
             self.close()
             raise
 
-    def compute(self, samples, profile=False):
+    def compute(self, samples, profile=False, outputs=None):
+        if not self.fft.plan:
+            raise RuntimeError("Periodogram is closed")
+        selected = self.density if outputs is None else outputs
+        if isinstance(selected, str):
+            selected = ("psd", "nsd") if selected == "both" else (selected,)
+        else:
+            selected = tuple(selected)
+        if not selected or len(set(selected)) != len(selected) or any(name not in ("psd", "nsd") for name in selected):
+            raise ValueError("Outputs must select psd, nsd, or both without duplicates")
         phases = {}
         tick = time.perf_counter() if profile else 0.0
 
@@ -368,46 +453,77 @@ class Periodogram:
             raise ValueError("Expected one real signal matching the prepared length")
         mark("input_view_s")
         # Anchor subtraction preserves small signals sitting on a large DC level.
-        # All three passes belong to the API timer; caller data are unchanged.
-        np.subtract(values, values[0], out=self.fft.x)
-        self.fft.x -= np.mean(self.fft.x)
-        mark("copy_and_detrend_s")
-        self.fft.x *= self.window
-        mark("window_multiply_s")
+        # All preprocessing belongs to the API timer; caller data are unchanged.
+        if self.ops.backend == "numpy":
+            np.subtract(values, values[0], out=self.fft.x)
+            self.fft.x -= np.mean(self.fft.x)
+            mark("copy_and_detrend_s")
+            self.fft.x *= self.window
+            mark("window_multiply_s")
+        else:
+            self._bound_ops._prepare_validated(values)
+            mark("copy_and_detrend_s")
+            # The native phase includes window multiplication; keep the legacy
+            # timing key present without double-counting this fused work.
+            if profile:
+                phases["window_multiply_s"] = 0.0
         self.fft.execute()
         mark("fftw_execute_s")
-        one_sided_psd(self.fft.y, self.n, self.sample_rate, self.s2, self.powers, self.scratch)
-        mark("power_and_normalization_s")
-        if self.grid:
-            density, self.last_band_powers = aggregate_power(self.powers, self.grid["cuts"], self.sample_rate, self.n)
+        if self.grouped_native:
+            density, self.last_band_powers = self._bound_ops.log_power()
+            mark("power_and_normalization_s")
+            if profile:
+                phases["log_aggregation_s"] = 0.0
         else:
-            density = self.powers
-        mark("log_aggregation_s")
+            if self.ops.backend == "numpy":
+                one_sided_psd(self.fft.y, self.n, self.sample_rate, self.s2, self.powers, self.scratch)
+            else:
+                self._bound_ops.power()
+            mark("power_and_normalization_s")
+            if self.grid:
+                if self._bound_ops is None:
+                    density, self.last_band_powers = aggregate_power(self.powers, self.grid["cuts"], self.sample_rate, self.n)
+                else:
+                    density, self.last_band_powers = self._bound_ops.aggregate_power()
+            else:
+                density = self.powers
+            mark("log_aggregation_s")
         # Keep double arithmetic until output conversion. For float32 NSD use
         # the same complex64 square-root route as the legacy LPSD output.
-        if self.density == "nsd" and self.output_dtype == "float32":
-            result = np.sqrt(np.asarray(density, dtype=np.complex64)).real.copy()
-        else:
-            result = np.array(density, dtype=self.output_dtype, copy=True)
-            if self.density == "nsd":
-                np.sqrt(result, out=result)
-        frame = pd.DataFrame({self.density: result}, index=pd.Index(self.frequencies, name="frequency"), copy=False)
+        results = {}
+        for name in selected:
+            if name == "nsd" and self.output_dtype == "float32":
+                result = np.sqrt(np.asarray(density, dtype=np.complex64)).real.copy()
+            else:
+                result = np.array(density, dtype=self.output_dtype, copy=True)
+                if name == "nsd":
+                    np.sqrt(result, out=result)
+            results[name] = result
+        frame = pd.DataFrame(results, index=pd.Index(self.frequencies, name="frequency"), copy=False)
         mark("conversion_and_dataframe_s")
         self.last_profile = phases if profile else None
         return frame
 
     def validation(self):
         """Checks on the last execution, deliberately outside API timers."""
+        if not self.fft.plan:
+            raise RuntimeError("Periodogram is closed")
         df = self.sample_rate / self.n
         expected = float(np.sum(self.fft.x * self.fft.x) / self.s2)
-        full = float(np.sum(self.powers) * df)
-        dc = float(self.powers[0] * df)
-        positive = float(np.sum(self.powers[1:]) * df)
+        # Direct grouping need not keep N/2 powers during timed computation.
+        # Reconstruct this optional diagnostic outside the API timing, then let
+        # its temporary go rather than turning it into an unbounded cache.
+        powers = self.powers
+        if powers is None:
+            powers = self.ops.power(self.fft.y, self.n, self.sample_rate, self.s2)
+        full = float(np.sum(powers) * df)
+        dc = float(powers[0] * df)
+        positive = float(np.sum(powers[1:]) * df)
         result = {"weighted_detrended_time_power": expected,
                   "full_periodogram_integrated_power": full,
                   "dc_bin_power": dc, "positive_bin_power": positive,
                   "parseval_absolute_error": abs(full - expected),
-                  "finite": bool(np.isfinite(self.powers).all())}
+                  "finite": bool(np.isfinite(powers).all())}
         if self.grid:
             total = float(np.sum(self.last_band_powers))
             result.update(aggregated_positive_power=total,
@@ -417,8 +533,12 @@ class Periodogram:
         return result
 
     def close(self):
+        if self._bound_ops is not None:
+            self._bound_ops.close()
+            self._bound_ops = None
         self.fft.close()
         self.window = self.powers = self.scratch = None
+        self._group_density = self.last_band_powers = None
 
     def __enter__(self):
         return self
@@ -436,9 +556,11 @@ def timed_call(function):
 
 
 def frame_fingerprint(frame):
+    values = frame.iloc[:, 0].to_numpy() if len(frame.columns) == 1 else frame.to_numpy()
     return {"frequency_sha256": digest_array(frame.index.to_numpy()),
-            "output_sha256": digest_array(frame.iloc[:, 0].to_numpy()),
-            "frequencies": len(frame), "dtype": str(frame.iloc[:, 0].dtype)}
+            "output_sha256": digest_array(values),
+            "frequencies": len(frame), "dtype": str(frame.iloc[:, 0].dtype),
+            "outputs": list(frame.columns)}
 
 
 def cold_call(backend, samples, kwargs, profile=False):
@@ -477,6 +599,12 @@ def main(argv=None):
     parser.add_argument("--fftw-library", type=Path)
     parser.add_argument("--threads-library", type=Path)
     parser.add_argument("--window-backend", choices=("auto", "native", "numpy"), default="auto")
+    parser.add_argument("--operations", choices=("auto", "numpy", "native", "native_grouped"), default="auto",
+                        help="Elementwise backend; native_grouped also changes reduction rounding")
+    parser.add_argument("--fft-algorithm", choices=("native", "bluestein"), default="native",
+                        help="Algorithm for the unchanged N-point DFT")
+    parser.add_argument("--fft-convolution-length", type=int,
+                        help="Optional internal Bluestein length, at least N+N//2")
     parser.add_argument("--lpsd-fast-library", type=Path)
     parser.add_argument("--sample-rate", type=float, default=1.0)
     parser.add_argument("--n-frequencies", type=int, default=1000)
@@ -485,7 +613,7 @@ def main(argv=None):
     parser.add_argument("--order", type=int, choices=(0,), default=0)
     parser.add_argument("--seed", type=int, default=20261008)
     parser.add_argument("--aggregation", choices=("log", "none"), default="log")
-    parser.add_argument("--density", choices=("psd", "nsd"), default="psd")
+    parser.add_argument("--density", choices=("psd", "nsd", "both"), default="psd")
     parser.add_argument("--output-dtype", choices=("float32", "float64"), default="float32")
     parser.add_argument("--raw-batch-seconds", type=float, default=0.06)
     parser.add_argument("--profile", action="store_true")
@@ -514,12 +642,16 @@ def main(argv=None):
                   n_frequencies=args.n_frequencies, n_averages=args.n_averages,
                   planner=args.planner, time_limit=args.planner_time_limit,
                   window_provider=provider, aggregation=args.aggregation,
-                  density=args.density, output_dtype=args.output_dtype)
+                  density=args.density, output_dtype=args.output_dtype,
+                  operations=args.operations, operations_library=args.lpsd_fast_library,
+                  fft_algorithm=args.fft_algorithm,
+                  fft_convolution_length=args.fft_convolution_length)
 
     backend.forget_wisdom()
     pipeline, setup = timed_call(lambda: Periodogram(backend, args.n, **kwargs))
     try:
         plan = pipeline.fft.describe()
+        operations_metadata = dict(pipeline.metadata)
         # Plan creation may overwrite the aligned buffers: initialize afterwards.
         pipeline.fft.x[:] = data
         for _ in range(max(1, args.warmups)):
@@ -589,6 +721,10 @@ def main(argv=None):
             "aggregation": args.aggregation, "density": args.density,
             "input_dtype": "float64", "transform_dtype": "complex128",
             "output_dtype": args.output_dtype, "padding_samples": 0,
+            "operations_requested": args.operations,
+            "operations": operations_metadata["operations"],
+            "fft_algorithm": args.fft_algorithm,
+            "fft_convolution_length": args.fft_convolution_length,
         },
         "environment": {"python": platform.python_version(), "numpy": np.__version__,
                         "pandas": pd.__version__, "platform": platform.platform(),
@@ -598,8 +734,10 @@ def main(argv=None):
                  "threads_library": backend.threads_evidence, "plan": plan,
                  "plan_scope": "prepared/raw reusable plan; cold calls are separately replanned"},
         "window_generation": provider.metadata,
+        "pipeline_operations": operations_metadata,
         "source_evidence": {
             "benchmark_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "native_operations_wrapper_sha256": hashlib.sha256(Path(FFTWOperations.prepare.__code__.co_filename).read_bytes()).hexdigest(),
             "lpsd_planning_source_sha256": hashlib.sha256(Path(_ltf_plan.__code__.co_filename).read_bytes()).hexdigest(),
         },
         "input": {"description": "pandas.Series of seeded float64 standard-normal samples", "sha256": input_hash, "setup_s": input_setup_s, "unchanged": True},
@@ -612,6 +750,9 @@ def main(argv=None):
         "notes": [
             "Raw FFT reuses an aligned plan and initialized input/output buffers; it excludes copy, detrending, window, power conversion, grid, DataFrame and allocation. Raw row wall_s/cpu_s are per execution; batch totals and loop counts are also retained.",
             "Prepared pipeline reuses FFTW plan, aligned buffers, window, normalization and grid. All input anchoring, global detrending, window multiplication, FFT, powers, aggregation and output allocation/DataFrame creation are timed.",
+            "operations=numpy is the explicit original array-operation baseline. auto uses additive native operations when available and records any fallback. Native elementwise operations retain the anchored NumPy mean and reduceat sums; native_grouped is a separately selected change of summation rounding with identical bins and normalization.",
+            "Native profiles include window multiplication in copy_and_detrend_s and set window_multiply_s to zero. Direct-group profiles include aggregation in power_and_normalization_s and set log_aggregation_s to zero; these phases must not be counted twice.",
+            "Direct grouping omits full power/scratch buffers during compute; validation reconstructs a temporary full float64 density outside the timer. density=both returns PSD and NSD after one spectrum calculation.",
             "Cold pipeline includes wisdom reset, malloc, planning, window generation, normalization, grid, pipeline, DataFrame and free. Library loading, input generation and hashes are excluded. Both planner setup and complete cold totals are reported for the chosen planner.",
             "Cold denotes a fresh plan and work buffers, not cold CPU caches, a new process, or unloaded shared libraries.",
             "MEASURE/PATIENT planning can overwrite buffers; input is initialized only after planning. FFTW time limits are approximate, not hard deadlines. ESTIMATE is not implicitly a cached MEASURE plan: wisdom is cleared before each cold setup.",

@@ -7,7 +7,18 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.4`; this is not an official upstream release.
+Its package version is `1.0.6+fast.5`; this is not an official upstream release.
+
+Version `fast.5` optimizes both FFTW comparison pipelines. It adds fused
+native preprocessing and power grouping, reusable projected coefficients
+for exact low-frequency LPSD points, native Kaiser-power smoothing with
+bounded caches, and a cache-free complete-call path. An explicit Bluestein
+adapter can compute difficult original FFT lengths through shorter internal
+complex convolutions without changing the frequency grid. Float64 remains
+the data and arithmetic precision; an optional Float32 cache stores only
+normalized smoothing weights. See the
+[FFTW optimization report](docs/performance-fftw-optimized.md) for estimator
+definitions, measured complete-call timings, numerical gates and reproduction.
 
 Version `fast.4` adds bounded FP64 FMA segment projections to single-worker
 `kernel="fast"` calls on supported AVX-512 CPUs, plus shared coefficient
