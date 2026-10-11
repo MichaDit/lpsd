@@ -6,7 +6,7 @@
  * Polynomial detrending: Gerhard Heinzel, AEI, 2008-01-17.
  *
  * This derivative preserves the supplied frequencies and coefficients,
- * segment starts, long-double polynomial detrending, and the original
+ * valid segment starts, long-double polynomial detrending, and the original
  * mean/variance recurrence, INCLUDING its known 1.0.6 defects. Correcting
  * that recurrence is a separate estimator change, not a speed optimization.
  *
@@ -19,6 +19,7 @@
 #endif
 
 #include "fast_dft.h"
+#include "segment_starts.h"
 
 #include <limits.h>
 #include <math.h>
@@ -609,7 +610,8 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
         return 2;
     }
 
-    /* Keep the upstream arithmetic order, including repeated start += shift. */
+    /* Keep the upstream arithmetic order, including repeated start += shift.
+     * Only an otherwise out-of-bounds final start is repaired below. */
     const double ovfact = 1.0 / (1.0 - olap / 100.0);
     const double davg = ((double)(nData - segLen) * ovfact) / segLen + 1.0;
     if (!isfinite(davg) || davg + 0.5 >= (double)INT_MAX) {
@@ -713,7 +715,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             const double *segments[8];
             double rr[8], ri[8];
             for (int b = 0; b < csd_batch; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     free(residual1);
@@ -755,7 +757,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             const double *segments[8];
             double rr[8], ri[8];
             for (int b = 0; b < 8; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     if (owns_projected) {
@@ -797,7 +799,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             const double *segments[8];
             double rr[8], ri[8];
             for (int b = 0; b < 8; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     free(residual1);
@@ -829,7 +831,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             const double *segments[4];
             double rr[4], ri[4];
             for (int b = 0; b < 4; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     free(residual1);
@@ -856,7 +858,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             ii += 3;
             continue;
         }
-        const long int istart = (long int)floor(start + 0.5);
+        const long int istart = lpsd_segment_start(start, ii, navg, nData - segLen);
         start += shift;
         if (istart < 0 || istart > nData - segLen) {
             free(residual1);
