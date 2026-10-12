@@ -315,11 +315,153 @@ directory, use its private Python:
 /path/to/lpsd-benchmark/venv/bin/python -m lpsd_benchmark submit /path/to/results.json
 ```
 
-That command prepares the exact issue body without posting. Once you choose
+With `--save-spectra`, each checkpoint also writes a compact `results.public.json`
+containing exactly the allowlisted report, without spectra. Automatic submission
+uses that explicit file. To submit it manually, select it yourself:
+
+```sh
+/path/to/lpsd-benchmark/venv/bin/python -m lpsd_benchmark submit /path/to/results.public.json
+```
+
+The submit reader retains its **16 MiB input-file limit**. A local report with
+saved spectra can exceed it; use the generated `.public.json` instead. The CLI
+never silently substitutes a sibling file for the path you selected. Both
+`results.json` and `results.public.json` prepare `results.github-issue.md`.
+The compact file still passes through the sanitizer and the unchanged issue-size
+limit. Creating it is local-only and does not select public upload.
+
+That command prepares the exact public content without posting. Once you choose
 to publish, use a logged-in `gh` and append `--accept-public-upload`, or post
 the prepared body in your browser. On Windows the private interpreter is
 `venv\Scripts\python.exe`. If a submission attempt times out without a
 verified issue URL, check existing issues before retrying to avoid duplicates.
+
+### Large reports: one issue and its comments
+
+The existing single-body format is retained whenever the complete sanitized
+report fits, including its existing gzip/base64 fallback. If that still exceeds
+**60,000 bytes**, submission prepares one issue body plus numbered comments.
+Every part stays within the same 60,000-byte limit. There are at most **16 parts
+total: one issue and up to 15 comments**. The 16 MiB input-file and 512-case
+schema limits remain unchanged. A report that cannot fit those limits fails
+before CLI discovery, authentication or network access; no cases are dropped.
+
+All parts contain one SHA256 for the **entire exact uncompressed JSON payload**
+and their own index/total. The gzip stream is created once, encoded as base64,
+then split into chunks. A chunk alone is not a standalone gzip file.
+
+For a three-part report, local preparation produces:
+
+- `results.github-issue.md` — part 1, used as the issue body.
+- `results.github-issue.part-02-of-03.md` — part 2, used as the first comment.
+- `results.github-issue.part-03-of-03.md` — part 3, used as the second comment.
+
+The printed ordered list is authoritative; unrelated older files are not
+deleted. The additional `*.request.json` files contain only the corresponding
+public comment body in the REST request wrapper. Every Markdown body and request
+file is prepared before the first authentication probe or network call.
+The same explicit upload flags authorize this public report, including its
+comments. Creating these local files alone does not authorize publication.
+
+Automatic submission creates the issue first and verifies its repository URL.
+Comments use the documented
+[`gh api --input`](https://cli.github.com/manual/gh_api) route to
+[create issue comments](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment).
+Each returned JSON receipt must contain a positive comment ID, that comment's
+exact URL in the confirmed issue, the matching API issue URL, and the exact
+prepared body. Requests are serial, with a pause between POSTs charged to the
+same upload deadline, following
+[GitHub's guidance](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api#pause-between-mutative-requests).
+Unverified response fields and logs are not included in the report.
+
+**An issue and its comments are not an atomic transaction.** The program reports
+the confirmed prefix, the last part whose acceptance is uncertain, and parts
+not attempted. A local `*.submission.json` receipt is claimed exclusively before
+the first POST and checkpointed before/after subsequent POSTs. It is keyed to the
+entire payload SHA256. Another submit of that same payload reads the saved state;
+it does not recreate the issue, resend a part, or automatically continue.
+Incomplete/unreadable receipts also stop publication instead of being removed.
+
+For manual publication, paste part 1 into one new issue and the remaining parts
+as comments in that issue. If any upload was attempted, first inspect the
+existing issue and its SHA256/index markers: confirmed parts are already public,
+and an unconfirmed part may also have reached GitHub. Add only genuinely missing
+parts to that same issue. When the first issue receipt itself is uncertain,
+check the repository's issues before creating anything. The program never
+automatically retries an uncertain POST.
+
+### Offline reconstruction for collection operators
+
+Save the issue body and matching part comments as local UTF-8 Markdown files.
+Use only parts with the same payload SHA256 and total, collect exactly each
+index once, order their base64 chunks by index, concatenate, decode base64 once,
+and decompress the single gzip stream. Verify SHA256 over the resulting **exact
+JSON bytes before parsing or reformatting them**.
+
+The following optional offline example accepts only explicitly named local
+files. It reads at most 60,001 bytes per input, accepts at most 16 parts, and
+limits decompression to 16 MiB plus one byte for overflow detection. It rejects
+missing/duplicate/mixed parts and trailing or multiple gzip streams. It does not
+follow any URL or execute any text from a report. Save it locally as
+`reconstruct_parts.py`; it is not another benchmark command or network collector.
+
+```python
+import base64
+import hashlib
+import json
+from pathlib import Path
+import re
+import sys
+import zlib
+
+output, *inputs = sys.argv[1:]
+if not 2 <= len(inputs) <= 16:
+    raise ValueError("Supply exactly the local files for one multipart report")
+chunks, digests, totals = {}, set(), set()
+for name in inputs:
+    with Path(name).open("rb") as stream:
+        data = stream.read(60_001)
+    if len(data) > 60_000:
+        raise ValueError("Part exceeds 60,000 bytes")
+    text = data.decode("utf-8").replace("\r\n", "\n")
+    hashes = re.findall(r"^Payload SHA-256: `([0-9a-f]{64})`$", text, re.M)
+    labels = re.findall(r"^Payload part: `([0-9]{1,2})/([0-9]{1,2})`$", text, re.M)
+    blocks = re.findall(r"```text\n([A-Za-z0-9+/=]+)\n```", text)
+    if len(hashes) != 1 or len(labels) != 1 or len(blocks) != 1:
+        raise ValueError("Invalid multipart framing")
+    index, total = map(int, labels[0])
+    if not 1 <= index <= total <= 16 or index in chunks:
+        raise ValueError("Invalid or duplicate part index")
+    chunks[index] = blocks[0]
+    digests.add(hashes[0])
+    totals.add(total)
+if totals != {len(inputs)} or len(digests) != 1:
+    raise ValueError("Missing or mixed payload parts")
+if set(chunks) != set(range(1, len(inputs) + 1)):
+    raise ValueError("Missing part index")
+encoded = "".join(chunks[i] for i in range(1, len(inputs) + 1))
+compressed = base64.b64decode(encoded, validate=True)
+decoder = zlib.decompressobj(wbits=31)
+payload = decoder.decompress(compressed, 16 * 1024 ** 2 + 1)
+if (len(payload) > 16 * 1024 ** 2 or not decoder.eof
+        or decoder.unused_data or decoder.unconsumed_tail):
+    raise ValueError("Oversized, incomplete, or multiple gzip streams")
+if hashlib.sha256(payload).hexdigest() != next(iter(digests)):
+    raise ValueError("Payload SHA256 mismatch")
+json.loads(payload)  # Check JSON syntax; do not reserialize before hashing.
+with Path(output).open("xb") as stream:
+    stream.write(payload)
+```
+
+For a three-part report:
+
+```sh
+python reconstruct_parts.py reconstructed.public.json results.github-issue.md results.github-issue.part-02-of-03.md results.github-issue.part-03-of-03.md
+```
+
+The example refuses to overwrite an existing output file. Reconstruction checks
+completeness and byte integrity; numerical/schema validation and trust in a
+contributor's claimed measurements remain separate.
 
 ## Development and CI
 

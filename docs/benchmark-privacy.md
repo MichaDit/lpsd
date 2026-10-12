@@ -16,7 +16,8 @@ execution time and resource use of LPSD and FFTW across software versions and
 machine classes. The program generates its own fixed synthetic signals. It
 does not read a participant's measurement data or search their documents.
 
-The only implemented result-publication destination is a new public issue in
+The only implemented result-publication destination is one new public issue
+and, when needed for a larger report, up to 15 comments in that same issue in
 [MichaDit/lpsd](https://github.com/MichaDit/lpsd/issues). There is no project
 upload server, email upload, public paste service or automatic push to the
 repository. GitHub allows a user with read access to create an issue;
@@ -26,7 +27,7 @@ See the [GitHub create-issue API documentation](https://docs.github.com/en/rest/
 
 Use the program without a GitHub account when you only want local results.
 `run --upload-github --accept-public-upload` selects publication explicitly.
-`submit RESULTS.json` alone prepares the exact public issue body locally;
+`submit RESULTS.json` alone prepares the exact public body or numbered parts locally;
 `submit RESULTS.json --accept-public-upload` additionally attempts publication.
 `--github-login` is a separate bootstrap choice that requests an interactive
 GitHub browser/device authorization flow. Downloading `gh` is not consent to
@@ -66,19 +67,46 @@ elsewhere. The schema is data-minimizing, not a mathematical anonymity claim.
 
 The authoritative schema is
 [`lpsd_benchmark/privacy.py`](../lpsd_benchmark/privacy.py). Public output is
-size-limited. A large matrix may be encoded as deterministic gzip plus base64
-inside the issue body; it contains the same allowlisted JSON, not additional
-logs or files. The issue body includes a payload SHA256 so that a downloaded
-report can be checked for accidental changes. This hash is not proof that an
+size-limited. The existing single-body format is retained whenever it fits.
+A larger report uses deterministic gzip plus base64 and, if necessary, up to
+16 indexed parts: one issue body and comments in that same issue. Each body is
+limited to 60,000 bytes. The 16 MiB input limit and 512-case schema limit are
+unchanged; reports that exceed the part limit fail before authentication or
+network access. No cases or fields are silently dropped. Every part identifies
+the same full-payload SHA256 and its index/total; concatenating the chunks in
+order reconstructs exactly the same allowlisted JSON. It adds no spectra, logs
+or private files. The SHA256 detects byte changes; this hash is not proof that an
 untrusted contributor ran the claimed experiment on the claimed hardware.
 
 ## Local files and installation traffic
 
-`results.json` is the local report. `--save-spectra` may retain synthetic
-spectra there for plotting, but submission rebuilds its allowlist and excludes
-them. `results.github-issue.md` is the exact proposed public body. Review it
-before manual publication or run locally first if you want that review step
-before opting into automatic upload.
+`results.json` is the local report. With `--save-spectra`, it retains synthetic
+spectra for plotting and each checkpoint also creates a compact
+`results.public.json` directly from the allowlist, without spectra. Both files
+are replaced atomically, separately. Automatic submission explicitly uses the
+compact file; manual submission uses only the file you select, with no silent
+sibling-file fallback. The existing 16 MiB reader limit remains in place, so
+select `.public.json` when a spectra-bearing local report exceeds it. Submission
+reapplies the sanitizer and retains the issue-body size limit. Creating the
+compact local file does not authorize upload.
+
+Both input names prepare `results.github-issue.md`, the first proposed public
+body, plus numbered `*.part-NN-of-TT.md` files if needed. Review the complete
+printed list before manual publication, or run locally first if you want that
+review step before opting into automatic upload. The accompanying
+`*.request.json` files wrap only each public comment body for GitHub's API.
+All parts and requests are prepared before authentication or any network call.
+
+A multipart transfer is not atomic. A local `*.submission.json` file records
+the full payload digest, part count, confirmed issue/comment URLs and the last
+part whose acceptance is uncertain. It includes no account details or raw
+transport responses. The first claim is exclusive; later checkpoints are
+atomic replacements. Existing receipts are retained and never silently reset.
+Repeated submission of the same payload reports the saved state without
+recreating or continuing the transfer. Check the issue and its part markers
+before manually adding missing parts. No uncertain request is retried
+automatically. The original explicit public-upload choice also covers these
+comments; no extra data category or additional destination is introduced.
 
 Synthetic dataset and FFT workspace files use a private directory under the
 original OS/user temporary directory by default. An explicit `--work-dir`

@@ -114,7 +114,18 @@ def _source_dirty():
 
 def write_report(path, report, save_spectra=False):
     clean = sanitize(report)
+    submission_path = path
     if save_spectra:
+        # Serialize the allowlist before adding local-only spectra. Keep this
+        # compact checkpoint within the existing submit reader's size limit.
+        submission_path = path.with_suffix(".public.json")
+        public_bytes = (json.dumps(clean, ensure_ascii=True, allow_nan=False,
+                                   separators=(",", ":")) + "\n").encode("ascii")
+        if len(public_bytes) > MAX_LOCAL_BYTES:
+            raise ValueError("Public benchmark report exceeds the local input size limit")
+        public_temporary = submission_path.with_suffix(submission_path.suffix + ".tmp")
+        public_temporary.write_bytes(public_bytes)
+        public_temporary.replace(submission_path)
         # Only internally generated synthetic spectra enter this local file.
         # sanitize() deliberately never admits this field to an upload.
         clean["spectra"] = report.get("spectra", [])
@@ -123,6 +134,7 @@ def write_report(path, report, save_spectra=False):
         json.dump(clean, stream, allow_nan=False, indent=2)
         stream.write("\n")
     temporary.replace(path)
+    return submission_path
 
 
 def terminate_tree(process):
@@ -510,15 +522,50 @@ def run(args):
         print("Cancelled; completed results are preserved and owned child processes were stopped.", flush=True)
     finally:
         report["elapsed_seconds"] = deadline.elapsed()
-        write_report(args.output, report, args.save_spectra)
+        submission_path = write_report(args.output, report, args.save_spectra)
     print(f"Results: {args.output}", flush=True)
+    if submission_path != args.output:
+        print(f"Public report for optional submission: {submission_path}", flush=True)
     if args.upload_github:
-        result = submit(args.output, accepted=args.accept_public_upload, timeout=deadline.remaining())
+        result = submit(submission_path, accepted=args.accept_public_upload, timeout=deadline.remaining())
         _print_submission(result)
     return 0
 
 
+def _print_multipart_submission(result):
+    confirmed, total = result["confirmed_parts"], result["total_parts"]
+    print(f"Public report transfer: {confirmed}/{total} parts have confirmed receipts.", flush=True)
+    if result.get("url"):
+        print(f"GitHub issue: {result['url']}", flush=True)
+    if result["uncertain_part"] is not None:
+        print(f"Part {result['uncertain_part']} has no verified receipt and may already be public. "
+              "Inspect the issue and its comments before posting any remaining part.", flush=True)
+    elif confirmed < total:
+        print(f"Parts {confirmed + 1} through {total} were not sent by this transfer "
+              f"({result['reason']}).", flush=True)
+    if result["reason"] == "existing_transfer":
+        print("The saved transfer receipt was reused; no new upload or continuation was attempted.", flush=True)
+    if result["reason"] == "local_receipt_unavailable":
+        print("The local transfer receipt could not be updated. Review the issue before submitting again.", flush=True)
+    if confirmed < total:
+        print("No automatic retry or continuation is performed. Use the prepared files for manual completion "
+              "of this same issue after reviewing confirmed and unconfirmed parts.", flush=True)
+    print("Prepared public parts, in order:", flush=True)
+    for index, path in enumerate(result["body_paths"], 1):
+        state = ("confirmed" if index <= confirmed else "unconfirmed; inspect GitHub"
+                 if index == result["uncertain_part"] else "not attempted")
+        print(f"  Part {index}/{total}: {path} ({state})", flush=True)
+    if result["receipt_path"].exists():
+        print(f"Local transfer receipt: {result['receipt_path']}", flush=True)
+    if result["reason"] in ("github_cli_unavailable", "github_login_unavailable"):
+        print("Install GitHub CLI if needed and authenticate with "
+              "`gh auth login --hostname github.com` before explicitly submitting.", flush=True)
+
+
 def _print_submission(result):
+    if result.get("total_parts", 1) > 1:
+        _print_multipart_submission(result)
+        return
     if result["status"] == "submitted":
         print(f"Public GitHub issue: {result['url']}", flush=True)
     elif result["status"] == "uncertain":
@@ -579,7 +626,10 @@ def main(argv=None):
             _print_submission(submit(args.path, args.accept_public_upload))
             return 0
         except (OSError, ValueError):
-            print("Cannot prepare submission: unsupported, unreadable or oversized benchmark report.", file=sys.stderr)
+            print("Cannot prepare submission: unsupported, unreadable or oversized benchmark report "
+                  "(limits: 16 MiB per input file; 60,000 bytes per issue/comment; 16 parts). "
+                  "If --save-spectra created a .public.json report, "
+                  "explicitly submit that file.", file=sys.stderr)
             return 2
     if (not math.isfinite(args.max_hours) or not 0 < args.max_hours <= 24
             or args.threads is not None and args.threads < 1

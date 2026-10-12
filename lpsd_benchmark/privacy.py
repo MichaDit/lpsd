@@ -26,6 +26,7 @@ REPOSITORY = "MichaDit/lpsd"
 MAX_LOCAL_BYTES = 16 * 1024 ** 2
 MAX_CASES = 512
 MAX_ISSUE_BYTES = 60_000
+MAX_ISSUE_PARTS = 16
 STATES = ("completed", "skipped", "timeout", "failed", "cancelled")
 REASONS = ("memory_budget", "disk_budget", "time_budget", "uncalibrated",
            "dependency_unavailable", "time_limit", "memory_limit", "disk_limit",
@@ -213,6 +214,230 @@ def issue_body(report):
     return body
 
 
+def issue_parts(report):
+    """Keep the existing single-body format, or split one lossless payload.
+
+    Multipart transport is one issue followed by comments. Every part carries
+    the SHA-256 of the same uncompressed ASCII JSON, not a per-chunk digest.
+    """
+    clean = sanitize(report)
+    try:
+        return [issue_body(clean)]
+    except ValueError as error:
+        if str(error) != "Sanitized report is too large for one GitHub issue":
+            raise
+    payload = json.dumps(clean, ensure_ascii=True, allow_nan=False,
+                         separators=(",", ":")).encode("ascii")
+    digest = hashlib.sha256(payload).hexdigest()
+    encoded = base64.b64encode(gzip.compress(payload, mtime=0)).decode("ascii")
+    chunk_chars = 56_000  # Multiple of four; leaves room below the body limit.
+    count = (len(encoded) + chunk_chars - 1) // chunk_chars
+    if not 2 <= count <= MAX_ISSUE_PARTS:
+        raise ValueError("Sanitized report exceeds the multipart GitHub issue limit")
+    completed = sum(row["status"] == "completed" for row in clean["cases"])
+    intro = (
+        "## Portable LPSD / FFTW benchmark\n\n"
+        "This multipart synthetic-data report is public and associated with the "
+        "submitting GitHub account. It contains the same allowlisted fields as "
+        "a single-body report; no spectra, paths, hostnames, tokens or logs are "
+        "added. GitHub processes account and connection data separately.\n\n"
+        f"Completed cases: **{completed}/{len(clean['cases'])}**. Times are "
+        "complete PSD+NSD calls; forecasts and timeouts are not measured times.\n\n"
+        f"Payload SHA-256: `{digest}`\n\n"
+    )
+    parts = []
+    for index in range(count):
+        body = (
+            intro + f"Payload part: `{index + 1}/{count}`\n\n"
+            "Encoding: gzip + base64 chunks of ONE stream. Collect exactly "
+            "parts 1 through the stated total, all with the same SHA-256. "
+            "Concatenate their text blocks in index order, decode base64 once, "
+            "then decompress once and verify the uncompressed JSON SHA-256. "
+            "Part 1 belongs in the issue; later parts belong in its comments.\n\n"
+            "```text\n" + encoded[index * chunk_chars:(index + 1) * chunk_chars] + "\n```\n"
+        )
+        if len(body.encode("utf-8")) > MAX_ISSUE_BYTES:
+            raise ValueError("Sanitized report exceeds the multipart GitHub issue limit")
+        parts.append(body)
+    return parts
+
+
+def _atomic_text(path, value):
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_bytes(value.encode("utf-8"))
+    temporary.replace(path)
+
+
+def _valid_issue_url(value):
+    return (isinstance(value, str) and len(value) <= 256
+            and re.fullmatch(r"https://github\.com/MichaDit/lpsd/issues/[1-9][0-9]*", value))
+
+
+def _load_submission_receipt(path, digest, count):
+    """Read only bounded local transfer state; never resume a previous POST."""
+    state = load_report(path)
+    if (not isinstance(state, dict) or state.get("schema") != "lpsd-issue-transfer-v1"
+            or state.get("payload_sha256") != digest or state.get("total_parts") != count):
+        raise ValueError("Invalid local multipart submission receipt")
+    urls, uncertain = state.get("part_urls"), state.get("uncertain_part")
+    if not isinstance(urls, list) or len(urls) > count:
+        raise ValueError("Invalid local multipart submission receipt")
+    if urls and (not _valid_issue_url(urls[0]) or any(
+            not isinstance(url, str) or len(url) > 256
+            or not re.fullmatch(re.escape(urls[0]) + r"#issuecomment-[1-9][0-9]*", url)
+            for url in urls[1:])):
+        raise ValueError("Invalid local multipart submission receipt")
+    if uncertain is not None and (integer(uncertain, 1, count) is None or uncertain != len(urls) + 1):
+        raise ValueError("Invalid local multipart submission receipt")
+    if len(set(urls)) != len(urls):
+        raise ValueError("Invalid local multipart submission receipt")
+    return list(urls), uncertain
+
+
+def _submit_parts(report, parts, body_path, accepted, expires, transport, find_gh):
+    """Prepare everything first, then at most one POST per part; never retry."""
+    clean = sanitize(report)
+    payload = json.dumps(clean, ensure_ascii=True, allow_nan=False,
+                         separators=(",", ":")).encode("ascii")
+    digest, count = hashlib.sha256(payload).hexdigest(), len(parts)
+    paths = [body_path] + [
+        body_path.with_name(f"{body_path.stem}.part-{index:02d}-of-{count:02d}.md")
+        for index in range(2, count + 1)]
+    request_paths = [None] + [path.with_suffix(".request.json") for path in paths[1:]]
+    # This loop and all limits complete before find_gh, auth, or any transport.
+    for index, (path, body) in enumerate(zip(paths, parts)):
+        _atomic_text(path, body)
+        if index:
+            request = json.dumps({"body": body}, ensure_ascii=True, separators=(",", ":")) + "\n"
+            _atomic_text(request_paths[index], request)
+    receipt_path = body_path.with_name(f"{body_path.stem}.{digest}.submission.json")
+    urls, uncertain = [], None
+    existing_receipt = receipt_path.exists()
+    if existing_receipt:
+        urls, uncertain = _load_submission_receipt(receipt_path, digest, count)
+
+    def result(reason):
+        status = ("submitted" if len(urls) == count else "uncertain" if uncertain is not None
+                  else "partial" if urls else "prepared")
+        return {"status": status, "reason": reason, "body_path": paths[0], "body_paths": paths,
+                "total_parts": count, "confirmed_parts": len(urls), "uncertain_part": uncertain,
+                "part_urls": list(urls), "receipt_path": receipt_path,
+                **({"url": urls[0]} if urls else {})}
+
+    def checkpoint(initial=False):
+        state = {"schema": "lpsd-issue-transfer-v1", "payload_sha256": digest,
+                 "total_parts": count, "part_urls": list(urls), "uncertain_part": uncertain}
+        try:
+            text = json.dumps(state, separators=(",", ":")) + "\n"
+            if initial:
+                # An exclusive first claim prevents two concurrent submits
+                # from creating duplicate issues. Partial claims fail closed.
+                with receipt_path.open("x", encoding="utf-8", newline="\n") as stream:
+                    stream.write(text)
+            else:
+                _atomic_text(receipt_path, text)
+        except OSError:
+            return False
+        return True
+
+    # The receipt is keyed by the exact payload. A repeated explicit submit
+    # reports the old transfer; it does not recreate, resume or resend it.
+    if existing_receipt:
+        return result("existing_transfer")
+    if not accepted:
+        return result("public_upload_not_accepted")
+    gh = find_gh("gh")
+    if not gh:
+        return result("github_cli_unavailable")
+    if time.monotonic() >= expires:
+        return result("time_budget")
+    environment = os.environ.copy()
+    environment.update(GH_HOST="github.com", GH_PROMPT_DISABLED="1", GH_PAGER="cat",
+                       GH_TELEMETRY="0", DO_NOT_TRACK="1", GH_NO_UPDATE_NOTIFIER="1",
+                       GH_NO_EXTENSION_UPDATE_NOTIFIER="1", NO_COLOR="1")
+    environment.pop("GH_DEBUG", None)
+    environment.pop("GH_FORCE_TTY", None)
+    try:
+        authentication = transport([gh, "auth", "status", "--hostname", "github.com"],
+                                   env=environment, capture_output=True, text=True,
+                                   stdin=subprocess.DEVNULL,
+                                   timeout=min(10., max(.01, expires - time.monotonic())), check=False)
+    except (OSError, subprocess.SubprocessError, KeyboardInterrupt):
+        return result("github_login_unavailable")
+    if authentication.returncode:
+        return result("github_login_unavailable")
+    env = clean["environment"]
+    title = f"Benchmark: {env['os']} {env['process_arch']} ({len(clean['cases'])} cases)"
+    next_post = 0.
+    for index, body in enumerate(parts):
+        # GitHub recommends a pause between mutating requests. It consumes
+        # the existing shared deadline, never an additional upload budget.
+        delay = max(0., next_post - time.monotonic())
+        if expires - time.monotonic() <= delay:
+            return result("time_budget")
+        if delay:
+            try:
+                time.sleep(delay)
+            except KeyboardInterrupt:
+                return result("cancelled")
+        remaining = expires - time.monotonic()
+        if remaining <= 0:
+            return result("time_budget")
+        if index == 0:
+            command = [gh, "issue", "create", "--repo", REPOSITORY,
+                       "--title", title, "--body-file", str(paths[0])]
+        else:
+            issue_number = urls[0].rsplit("/", 1)[1]
+            command = [gh, "api", "--hostname", "github.com", "--method", "POST",
+                       f"repos/{REPOSITORY}/issues/{issue_number}/comments",
+                       "--input", str(request_paths[index])]
+        # Persist before starting the process. A hard interruption must leave
+        # this part unconfirmed, even if GitHub accepted its POST.
+        uncertain = index + 1
+        if not checkpoint(initial=index == 0):
+            uncertain = None  # This POST has definitely not started.
+            return result("local_receipt_unavailable")
+        remaining = expires - time.monotonic()
+        if remaining <= 0:
+            uncertain = None
+            saved = checkpoint()
+            return result("time_budget" if saved else "local_receipt_unavailable")
+        try:
+            response = transport(command, env=environment, capture_output=True, text=True,
+                                 stdin=subprocess.DEVNULL, timeout=remaining, check=False)
+        except (OSError, subprocess.SubprocessError, KeyboardInterrupt):
+            return result("github_upload_receipt_unavailable")
+        if response.returncode or not isinstance(response.stdout, str):
+            return result("github_upload_receipt_unavailable")
+        if index == 0:
+            url = response.stdout.strip()
+            if not _valid_issue_url(url):
+                return result("github_upload_receipt_unavailable")
+        else:
+            # Do not depend on gh issue comment's human-facing stdout.
+            # gh api exposes the documented REST JSON creation response.
+            try:
+                if len(response.stdout.encode("utf-8")) > MAX_LOCAL_BYTES:
+                    raise ValueError("Oversized comment response")
+                reply = json.loads(response.stdout)
+            except (ValueError, UnicodeError):
+                return result("github_upload_receipt_unavailable")
+            if not isinstance(reply, dict) or integer(reply.get("id"), 1) is None:
+                return result("github_upload_receipt_unavailable")
+            url = f"{urls[0]}#issuecomment-{reply['id']}"
+            if (reply.get("html_url") != url or reply.get("body") != body
+                    or reply.get("issue_url") != f"https://api.github.com/repos/{REPOSITORY}/issues/{issue_number}"):
+                return result("github_upload_receipt_unavailable")
+        if url in urls:
+            return result("github_upload_receipt_unavailable")
+        urls.append(url)
+        uncertain = None
+        if not checkpoint():
+            return result("local_receipt_unavailable")
+        next_post = time.monotonic() + 1.
+    return result("")
+
+
 def load_report(path):
     path = Path(path)
     if path.stat().st_size > MAX_LOCAL_BYTES:
@@ -232,8 +457,14 @@ def submit(path, accepted=False, *, timeout=45., transport=subprocess.run,
     expires = time.monotonic() + max(0., min(45., timeout))
     path = Path(path)
     report = load_report(path)
-    body_path = path.with_suffix(".github-issue.md")
-    body_path.write_text(issue_body(report), encoding="utf-8")
+    # A public sidecar is an explicitly selected input, never an implicit
+    # fallback. Preserve results.github-issue.md for results.public.json.
+    body_source = path.with_suffix("") if path.name.endswith(".public.json") else path
+    body_path = body_source.with_suffix(".github-issue.md")
+    parts = issue_parts(report)
+    if len(parts) > 1:
+        return _submit_parts(report, parts, body_path, accepted, expires, transport, find_gh)
+    body_path.write_text(parts[0], encoding="utf-8")
     if not accepted:
         return {"status": "prepared", "reason": "public_upload_not_accepted", "body_path": body_path}
     gh = find_gh("gh")

@@ -87,6 +87,106 @@ def test_submit_prepares_without_transport_until_explicit_acceptance(tmp_path):
     assert result["body_path"].is_file()
 
 
+def test_large_saved_spectra_have_exact_compact_payload_without_implicit_fallback(tmp_path):
+    path = tmp_path / "results.json"
+    report = report_fixture()
+    report["hostname"] = "HOST_CANARY"
+    report["environment"]["username"] = "USER_CANARY"
+    # The padding makes the boundary test fast without constructing millions
+    # of numerical values. The complete local-only spectra field is excluded.
+    report["spectra"] = [{"frequency_hz": [1.], "psd": [4.], "nsd": [2.],
+                          "local_only_padding": "SPECTRA_CANARY" + "x" * privacy.MAX_LOCAL_BYTES}]
+    expected = privacy.sanitize(report)
+    expected_bytes = (json.dumps(expected, ensure_ascii=True, allow_nan=False,
+                                 separators=(",", ":")) + "\n").encode("ascii")
+    public_path = runner.write_report(path, report, save_spectra=True)
+    assert public_path == tmp_path / "results.public.json"
+    assert path.stat().st_size > privacy.MAX_LOCAL_BYTES
+    assert public_path.read_bytes() == expected_bytes
+    assert public_path.stat().st_size < privacy.MAX_LOCAL_BYTES
+    assert "spectra" not in expected and b"CANARY" not in expected_bytes
+    assert report["spectra"][0]["psd"] == [4.]  # Local spectrum remains available.
+    assert not list(tmp_path.glob("*.tmp"))
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("No GitHub transport or login is authorized in this test")
+
+    # Selecting the oversized original must still fail, even with a valid
+    # sibling sidecar. The reader limit is neither raised nor bypassed.
+    with pytest.raises(ValueError, match="local input size limit"):
+        privacy.submit(path, accepted=False, transport=forbidden, find_gh=forbidden)
+    assert not (tmp_path / "results.github-issue.md").exists()
+    result = privacy.submit(public_path, accepted=False, transport=forbidden, find_gh=forbidden)
+    assert result["status"] == "prepared"
+    assert result["body_path"] == tmp_path / "results.github-issue.md"
+    assert result["body_path"].read_text() == privacy.issue_body(report)
+
+
+def test_report_without_saved_spectra_keeps_original_submission_path(tmp_path):
+    path = tmp_path / "results.json"
+    report = report_fixture()
+    report["spectra"] = [{"local_only": "SPECTRA_CANARY"}]
+    assert runner.write_report(path, report) == path
+    assert json.loads(path.read_text()) == privacy.sanitize(report)
+    assert not path.with_suffix(".public.json").exists()
+
+
+def test_public_checkpoint_replace_failure_preserves_previous_complete_payload(tmp_path, monkeypatch):
+    path = tmp_path / "results.json"
+    report = report_fixture()
+    public_path = runner.write_report(path, report, save_spectra=True)
+    previous = public_path.read_bytes()
+    report["cases"][0]["compute_wall_s"] = .75
+    replace = Path.replace
+
+    def fail_public_replace(temporary, target):
+        if Path(target) == public_path:
+            assert public_path.read_bytes() == previous
+            assert json.loads(temporary.read_text()) == privacy.sanitize(report)
+            raise OSError("simulated replacement failure")
+        return replace(temporary, target)
+
+    monkeypatch.setattr(Path, "replace", fail_public_replace)
+    with pytest.raises(OSError, match="simulated replacement failure"):
+        runner.write_report(path, report, save_spectra=True)
+    assert public_path.read_bytes() == previous
+
+
+@pytest.mark.parametrize("save_spectra", [False, True])
+def test_auto_upload_explicitly_uses_final_checkpoint_submission_path(tmp_path, monkeypatch, save_spectra):
+    monkeypatch.delenv("LPSD_BENCHMARK_DEADLINE_EPOCH", raising=False)
+    fixed = resources.Resources(4 * resources.GIB, 3 * resources.GIB, 4 * resources.GIB,
+                                2 * resources.GIB, resources.GIB, 1, 1.)
+    monkeypatch.setattr(runner, "detect_resources", lambda *args, **kwargs: fixed)
+    monkeypatch.setattr(runner, "_matrix", lambda args: [])
+    monkeypatch.setattr(runner, "environment", lambda resources: report_fixture()["environment"])
+    monkeypatch.setattr(runner, "_source_commit", lambda: "a" * 40)
+    monkeypatch.setattr(runner, "_source_dirty", lambda: False)
+    observed = []
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("No numerical worker, GitHub transport or login may run")
+
+    monkeypatch.setattr(runner, "execute_case", forbidden)
+
+    def prepared_only(path, accepted, *, timeout):
+        observed.append(path)
+        assert accepted and timeout > 0
+        data = privacy.load_report(path)
+        assert data["state"] == "completed" and "spectra" not in data
+        return privacy.submit(path, accepted=False, transport=forbidden, find_gh=forbidden)
+
+    monkeypatch.setattr(runner, "submit", prepared_only)
+    path = tmp_path / "results.json"
+    extra = ["--save-spectra"] if save_spectra else []
+    args = runner.parser().parse_args(
+        ["run", "--output", str(path), "--work-dir", str(tmp_path / "work"),
+         "--upload-github", "--accept-public-upload", *extra])
+    assert runner.run(args) == 0
+    assert observed == [path.with_suffix(".public.json") if save_spectra else path]
+    assert (tmp_path / "results.github-issue.md").is_file()
+
+
 def test_submit_only_sends_prepared_allowlisted_body_and_uses_issue_not_push(tmp_path, monkeypatch):
     monkeypatch.setenv("GH_TELEMETRY", "log")
     monkeypatch.setenv("GH_DEBUG", "api")
