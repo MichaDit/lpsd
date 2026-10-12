@@ -66,8 +66,8 @@ jobs:
           # Exercise the memory-saving route explicitly on every platform;
           # the normal small bootstrap above correctly selects a full window.
           cd "$directory/source"
-          "$python_bin" -m lpsd_benchmark run --sizes 100000 --threads 2 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output "$directory/bounded-results.json"
-          "$python_bin" "$GITHUB_WORKSPACE/test_fast/check_portable_smoke.py" "$directory/bounded-results.json" fft_input_then_blocked
+          "$python_bin" -m lpsd_benchmark run --sizes 100000 --threads 2 --smoothing-workers 8 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output "$directory/bounded-results.json"
+          "$python_bin" "$GITHUB_WORKSPACE/test_fast/check_portable_smoke.py" "$directory/bounded-results.json" fft_input_then_blocked 8
       - name: Require all methods and both actual point counts on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -80,10 +80,10 @@ jobs:
           $boundedReport = Join-Path $reports[0].DirectoryName 'bounded-results.json'
           Push-Location (Join-Path $reports[0].DirectoryName 'source')
           try {
-            & $python -m lpsd_benchmark run --sizes 100000 --threads 2 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output $boundedReport
+            & $python -m lpsd_benchmark run --sizes 100000 --threads 2 --smoothing-workers 8 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output $boundedReport
             if ($LASTEXITCODE -ne 0) { throw 'Bounded window smoke failed' }
           } finally { Pop-Location }
-          & $python test_fast/check_portable_smoke.py $boundedReport fft_input_then_blocked
+          & $python test_fast/check_portable_smoke.py $boundedReport fft_input_then_blocked 8
           if ($LASTEXITCODE -ne 0) { throw 'Incomplete bounded window comparison' }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()

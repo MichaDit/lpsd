@@ -62,6 +62,7 @@ these arguments changes the run:
 | RAM and disk paths, when both fit | `--storage both` |
 | Explicit FFT buffer comparison | `--fft-layout in-place` or `--fft-layout out-of-place` |
 | Explicit one-shot window memory comparison | `--window-storage full` or `--window-storage fft_input_then_blocked` |
+| Explicit matched-FFTW smoothing parallelism | `--threads 8 --smoothing-workers 8` |
 | Preserve local spectra for plotting | `--save-spectra` |
 | Put dataset files on a selected local drive | `--work-dir /path/on/local-drive/lpsd-work` |
 | Use an installed compatible compiler only | `--compiler system` |
@@ -80,6 +81,44 @@ For PowerShell, pass additional arguments as an array:
 ```
 
 ### What the limits mean
+
+`--smoothing-workers` selects the worker limit for the `matched` method in both
+RAM and disk mode. It accepts a positive integer below 2**63 and is capped by
+the thread count admitted through affinity, CPU quota and `--threads`. For
+example, requesting eight smoothing workers on a machine admitted for two
+uses a limit of two. Other methods do not use this option. Without it, the
+historical default remains **min(4, admitted threads)**; there is no automatic
+search or change to that default.
+
+The report distinguishes the explicit request, admitted smoothing limit,
+configured executor capacity, generated task ranges and smoothed point count.
+These are execution settings, not a measurement of how many threads ran at
+the same instant. A serial RAM smoother has executor capacity zero and runs
+its range on the caller thread. Existing `actual_threads` describes the FFTW
+backend (or the native worker setting), not all live threads in the process.
+
+Each smoothing worker above min(4, admitted threads) adds an **empirical
+9 MiB incremental runtime/address reserve** to the resource model. Eight
+instead of four therefore accounts for 36 MiB inside the existing budget.
+This is extra headroom for thread mappings and runtime state; the shared
+N-dependent FFT arrays are not multiplied by the number of workers. It is
+neither a measured RSS increment nor a universal stack-size bound. The
+`incremental_9mib_above_cap4_v1` model identifier and reserved byte count are
+recorded explicitly. Larger platform-specific stack requirements can still
+trigger a guard or allocation failure.
+
+The same reserve is included when choosing storage, FFT layout and window
+storage, and removed from the FFT/native working allowances before allocation.
+It can make a previously marginal case choose a smaller layout, disk storage,
+or skip for insufficient memory. RAM, cgroup and Linux address-space limits
+are not raised, and the program does not silently switch back to four workers.
+The complete-call timer and 24-hour setup/run deadline still cover the whole
+selected computation. When comparing reports, include the smoothing limit
+and reserve model along with the implementation and point counts.
+A controlled 4/8-worker experiment with a fixed native working allowance
+is a separate configuration: this option can change that allowance or the
+selected layout, so the experiment's speedup does not predict every portable
+case.
 
 `--ram-gib` is a conservative **allocation/work budget**, clamped to detected
 physical memory, cgroup limits and currently available memory. It cannot make

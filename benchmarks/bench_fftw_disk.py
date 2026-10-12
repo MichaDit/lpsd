@@ -293,7 +293,9 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
                                       "kernel": "unchanged analytic Kaiser-power response and reflection",
                                       "kernel_cache_bytes": 0, "deferred_normalization": True,
                                       "high_points": int(len(high_indices)), "low_points": int(low_mask.sum()),
-                                      "low_mask": low_mask, "workers": args.smoothing_workers}
+                                      "low_mask": low_mask, "workers": args.smoothing_workers,
+                                      "pool_capacity": args.smoothing_workers, "task_ranges": len(ranges),
+                                      "backend": smoother.backend}
             mark("matched_frequency_smoothing_s")
             # Nothing still needs FFT content or powers. Close the plans and
             # all large FFT-only RAM tiles before bounded native computation.

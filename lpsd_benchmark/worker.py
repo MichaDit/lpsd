@@ -18,7 +18,7 @@ import time
 from types import SimpleNamespace
 
 from .privacy import integer
-from .resources import MIB
+from .resources import MIB, smoothing_controls
 
 
 def _write(path, report):
@@ -176,6 +176,51 @@ def resolve_point_plan(api, n, fs, base_points, factor, explicit_points, average
     }
 
 
+def _case_smoothing_controls(case):
+    """Validate the scalar request again before importing numerical modules.
+
+    Older private cases without control fields retain the historical default.
+    An explicitly supplied limit/reserve may not disagree with the resolver.
+    """
+    controls = smoothing_controls(case.get("method", "lpsd"), case["requested_threads"],
+                                  case.get("requested_smoothing_workers"))
+    for key, value in controls.items():
+        if key == "requested_smoothing_workers" and case.get("method", "lpsd") != "matched":
+            continue  # A validated global CLI request has no effect on other methods.
+        if key in case and (type(case[key]) is not type(value) or case[key] != value):
+            raise ValueError("Inconsistent smoothing control or reserve")
+    return controls
+
+
+def _smoothing_result_fields(case, metadata=None, disk_details=None):
+    """Report configured capacity and work ranges, not sampled active threads."""
+    controls = _case_smoothing_controls(case)
+    if case["method"] != "matched":
+        return {"smoothing_pool_capacity": 0, "smoothing_task_ranges": 0,
+                "smoothed_frequency_points": 0, "smoothing_backend": "not_applicable"}
+    if case["storage"] == "disk":
+        details = (disk_details or {}).get("smoothing", {})
+        supplied = details.get("workers")
+        capacity = details.get("pool_capacity")
+        ranges = details.get("task_ranges")
+        points = details.get("high_points")
+        backend = details.get("backend")
+    else:
+        details = metadata or {}
+        supplied = details.get("requested_smoothing_workers")
+        capacity = details.get("smoothing_pool_capacity")
+        ranges = details.get("smoothing_task_ranges")
+        points = details.get("smoothed_frequency_points")
+        backend = details.get("smoothing_backend")
+    limit = controls["smoothing_workers_limit"]
+    if (integer(supplied, 1) != limit or integer(capacity, 0, limit) is None
+            or integer(points, 0, 65536) is None or integer(ranges, 0, 2 * limit) is None
+            or ranges > points or backend != "native"):
+        raise ValueError("Measured smoothing configuration differs from admission")
+    return {"smoothing_pool_capacity": capacity, "smoothing_task_ranges": ranges,
+            "smoothed_frequency_points": points, "smoothing_backend": backend}
+
+
 def _native_working_budget(case):
     """Return the bounded-native allowance in MiB and available buffer bytes.
 
@@ -188,7 +233,8 @@ def _native_working_budget(case):
     cannot fit, so preflight can skip before constructing it or the input.
     This scalar calculation does not allocate numerical arrays.
     """
-    headroom = case["ram_budget_bytes"] - 256 * MIB
+    controls = _case_smoothing_controls(case)
+    headroom = case["ram_budget_bytes"] - 256 * MIB - controls["smoothing_runtime_reserve_bytes"]
     if case["storage"] == "ram":
         headroom -= 8 * case["n"] + case["requested_threads"] * 3 * MIB
         working_mb = headroom / MIB
@@ -267,6 +313,8 @@ def _address_guard(case):
 
 
 def run(case, directory):
+    controls = _case_smoothing_controls(case)
+    case.update(controls)
     import numpy as np
     from benchmarks import bench_fftw as bf
     from benchmarks.fftw_comparison_signals import signal, theory
@@ -283,13 +331,14 @@ def run(case, directory):
                                         case["target_points"], case["n_averages"])
     case.update(resolved)
     n, method = case["n"], case["method"]
-    result = dict(resolved)
+    result = {**resolved, **controls}
     import lpsd_fast
     result["native_version"] = lpsd_fast.__version__
     result["native_sha256"] = _file_hash(api._LIB._name)
     source = hashlib.sha256()
     from benchmarks import matched_smoothing
-    source_paths = [Path(api.__file__), Path(bf.__file__), Path(matched_smoothing.__file__), Path(__file__)]
+    source_paths = [Path(api.__file__), Path(bf.__file__), Path(matched_smoothing.__file__), Path(__file__),
+                    Path(__file__).with_name("resources.py")]
     if method != "lpsd":
         source_paths.append(Path(bf.__file__).parent / "_fftw_native.py")
         if case.get("window_storage") == "fft_input_then_blocked":
@@ -399,7 +448,7 @@ def run(case, directory):
                                       n_frequencies=case["target_points"], n_averages=case["n_averages"],
                                       fft_memory_mb=case["fft_memory_mb"], power_storage=power_storage,
                                       workers=case["requested_threads"],
-                                      smoothing_workers=min(4, case["requested_threads"]),
+                                      smoothing_workers=controls["smoothing_workers_limit"],
                                       low_working_mb=case["low_working_mb"],
                                       lpsd_progress_interval_s=60.)
             frame, disk_details = disk_pipeline(method, values, backend, directory, options)
@@ -425,12 +474,13 @@ def run(case, directory):
                                   window_provider=provider, workers=case["requested_threads"],
                                   max_working_mb=bounded_options["max_working_mb"], total_cache_mb=0,
                                   max_kernel_cache_mb=0, window_cache_mb=0,
-                                  smoothing_workers=min(4, case["requested_threads"]),
+                                  smoothing_workers=controls["smoothing_workers_limit"],
                                   weight_dtype="float32", operations_backend="native",
                                   smoothing_backend="native", planner="estimate", fft_in_place=in_place,
                                   low_frequency_backend="bounded", window_storage=window_storage)
             window_metadata = frame.attrs["matched_smoothing_once"]
         result.update(compute_wall_s=time.perf_counter() - wall, compute_cpu_s=time.process_time() - cpu)
+        result.update(_smoothing_result_fields(case, window_metadata, disk_details))
         result.update(_native_scratch_fields(method, case["storage"], frame.attrs, disk_details))
         if window_metadata is not None:
             for key in ("window_storage", "window_buffer_bytes", "window_scratch_bytes", "one_shot_window"):

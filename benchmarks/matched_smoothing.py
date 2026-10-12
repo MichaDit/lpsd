@@ -555,6 +555,7 @@ class MatchedSmoothing:
                 "smoothing_backend_unavailable_reason": self._native_smoothing.unavailable_reason,
                 "fftw_operations": self.operations.metadata,
                 "smoothing_workers": min(self.smoothing_workers, len(self._kernels)) if self._executor else 1,
+                "smoothing_pool_capacity": min(self.smoothing_workers, len(self._kernels)) if self._executor else 0,
                 "smoothing_task_ranges": len(self._apply_ranges),
                 "deferred_normalization_requested": bool(defer_normalization),
                 "deferred_normalization": self.defer_normalization,

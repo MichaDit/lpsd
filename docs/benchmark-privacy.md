@@ -48,6 +48,8 @@ format checks. Unknown fields and arbitrary text are not carried through.
 | Restricted Python/NumPy/pandas/SciPy/pyFFTW/LPSD and actual FFTW versions | Keep dependencies and runtime libraries distinguishable |
 | Synthetic preset, sample count, seed, sample rate, window/averaging settings | Reproduce the benchmark input and estimator configuration |
 | Requested and achieved point counts, storage/FFT layout, thread counts | Describe the work actually performed |
+| Explicit smoothing request, admitted limit, executor capacity, task-range/point counts and closed backend/policy enums | Identify the selected matched-FFTW execution configuration without claiming measured active-thread counts |
+| Smoothing runtime-reserve bytes and a closed empirical model identifier | Explain extra headroom charged inside the existing allocation budget; not measured RSS |
 | Wall/CPU times, available phases, input setup, process memory and numeric working-set metadata | Compare completed work and resource use |
 | Native scratch-pool initial/final/peak byte capacities, a replacement Boolean and actual plan indices | Describe observed buffer lifecycle without including policy text or claiming RSS savings |
 | Closed status/reason categories, forecasts and timeouts | Preserve incomplete or infeasible cases without disclosing exception text |
@@ -61,6 +63,19 @@ user-supplied measurement data. Raw sample arrays and optional saved spectra
 are also excluded. Hashes refer to project code, loaded numerical libraries
 and synthetic data; the program does not hash private identity values as a
 substitute for removing them.
+
+Smoothing controls use bounded integer fields and closed enums. The optional
+`requested_smoothing_workers` records the positive user request;
+`smoothing_workers_limit` records the limit after the admitted CPU cap.
+`smoothing_pool_capacity` and `smoothing_task_ranges` describe the configured
+executor and work partition, not observed simultaneous thread activity.
+`smoothing_runtime_reserve_bytes` with model
+`incremental_9mib_above_cap4_v1` is an empirical incremental admission value.
+It is not a measured physical-memory increase or a universal stack bound.
+No paths, thread names or scheduler logs are added. Older reports with missing
+smoothing fields keep them absent; the sanitizer does not infer that four
+workers were actually used in an older measurement. These fields extend the
+existing allowlist without changing its schema identifier or upload consent.
 
 Hardware class, timing and software combinations can still be distinctive,
 especially when associated with a public account or information posted

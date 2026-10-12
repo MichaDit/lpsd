@@ -19,6 +19,42 @@ from . import MAX_SECONDS
 
 MIB = 1024 ** 2
 GIB = 1024 ** 3
+SMOOTHING_RESERVE_MODEL = "incremental_9mib_above_cap4_v1"
+SMOOTHING_EXTRA_WORKER_BYTES = 9 * MIB
+
+
+def smoothing_controls(method, thread_limit, requested=None):
+    """Resolve an explicit smoothing limit without enlarging CPU/RAM budgets.
+
+    The default retains the historical min(4, T) profile. The incremental
+    reserve covers extra runtime/address headroom, not an N-dependent array
+    or a measured RSS value. Linux profiles observed about 8.02 MiB of new
+    virtual mappings per smoothing thread; 9 MiB is an empirical allowance,
+    not a universal stack bound. OS and live-memory guards remain unchanged.
+    """
+    if type(thread_limit) is not int or not 1 <= thread_limit <= 2 ** 63 - 1:
+        raise ValueError("thread_limit must be a positive integer")
+    if requested is not None and (type(requested) is not int or not 1 <= requested <= 2 ** 63 - 1):
+        raise ValueError("smoothing_workers must be a positive integer")
+    if method not in ("fftw", "matched", "lpsd"):
+        raise ValueError("Unknown benchmark method")
+    applicable = method == "matched"
+    baseline = min(4, thread_limit)
+    limit = min(baseline if requested is None else requested, thread_limit) if applicable else 0
+    return {
+        "smoothing_worker_policy": ("not_applicable" if not applicable else
+                                    "default_cap4" if requested is None else "explicit"),
+        "requested_smoothing_workers": requested if applicable else None,
+        "smoothing_workers_limit": limit,
+        "smoothing_runtime_reserve_bytes": SMOOTHING_EXTRA_WORKER_BYTES * max(0, limit - baseline),
+        "smoothing_runtime_reserve_model": SMOOTHING_RESERVE_MODEL if applicable else "not_applicable",
+    }
+
+
+def _smoothing_reserve(method, reserve_bytes):
+    if type(reserve_bytes) is not int or reserve_bytes < 0:
+        raise ValueError("smoothing runtime reserve must be nonnegative integer bytes")
+    return reserve_bytes if method == "matched" else 0
 
 
 def _read(path):
@@ -253,7 +289,7 @@ def fftw_plan_reserve(n, method):
 
 
 def required_ram(n, method, signal="white", fft_layout="out-of-place",
-                 window_storage="full"):
+                 window_storage="full", *, smoothing_runtime_reserve_bytes=0):
     """Peak live arrays, bounded native scratch and interpreter overhead.
 
     This models the complete-call paths used by worker.py, not the much
@@ -286,7 +322,8 @@ def required_ram(n, method, signal="white", fft_layout="out-of-place",
         # estimate_once releases FFT/window/powers before bounded low LPSD.
         low_peak = 8 * n + min(16 * n, max(128 * MIB, math.ceil(n / 3)))
         arrays = max(arrays, low_peak)
-    return max(arrays, source_peak * n) + 256 * MIB
+    return (max(arrays, source_peak * n) + 256 * MIB
+            + _smoothing_reserve(method, smoothing_runtime_reserve_bytes))
 
 
 def required_disk(n, method):
@@ -296,18 +333,21 @@ def required_disk(n, method):
     return (8 if method == "lpsd" else 24) * n + 16 * MIB
 
 
-def choose_fft_layout(n, method, signal, requested, ram_budget, window_storage="auto"):
+def choose_fft_layout(n, method, signal, requested, ram_budget, window_storage="auto", *,
+                      smoothing_runtime_reserve_bytes=0):
     if method == "lpsd":
         return "not_applicable"
     if requested != "auto":
         return requested
     considered_window = "full" if window_storage == "auto" else window_storage
-    if required_ram(n, method, signal, "out-of-place", considered_window) <= ram_budget:
+    if required_ram(n, method, signal, "out-of-place", considered_window,
+                    smoothing_runtime_reserve_bytes=smoothing_runtime_reserve_bytes) <= ram_budget:
         return "out-of-place"
     return "in-place"
 
 
-def choose_window_storage(n, method, signal, requested, fft_layout, ram_budget):
+def choose_window_storage(n, method, signal, requested, fft_layout, ram_budget, *,
+                          smoothing_runtime_reserve_bytes=0):
     """Keep the fast reusable full window when it fits the chosen FFT layout.
 
     Auto tries full/out-of-place, full/in-place, then bounded/in-place.
@@ -318,26 +358,30 @@ def choose_window_storage(n, method, signal, requested, fft_layout, ram_budget):
         return "not_applicable"
     if requested != "auto":
         return requested
-    full_need = required_ram(n, method, signal, fft_layout, "full")
-    bounded_need = required_ram(n, method, signal, fft_layout, "fft_input_then_blocked")
+    full_need = required_ram(n, method, signal, fft_layout, "full",
+                             smoothing_runtime_reserve_bytes=smoothing_runtime_reserve_bytes)
+    bounded_need = required_ram(n, method, signal, fft_layout, "fft_input_then_blocked",
+                                smoothing_runtime_reserve_bytes=smoothing_runtime_reserve_bytes)
     if full_need <= ram_budget or full_need <= bounded_need:
         return "full"
     return "fft_input_then_blocked"
 
 
 def select_storage(n, method, signal, requested, resources, fft_layout="out-of-place",
-                   window_storage="full"):
-    ram_need = required_ram(n, method, signal, fft_layout, window_storage)
+                   window_storage="full", *, smoothing_runtime_reserve_bytes=0):
+    reserve = _smoothing_reserve(method, smoothing_runtime_reserve_bytes)
+    ram_need = required_ram(n, method, signal, fft_layout, window_storage,
+                            smoothing_runtime_reserve_bytes=reserve)
     if requested in ("auto", "ram") and ram_need <= resources.ram_budget:
         return "ram", ram_need, 0, None
     if requested == "ram":
         return "ram", ram_need, 0, "memory_budget"
-    if signal != "white" and 72 * n + 256 * MIB > resources.ram_budget:
+    if signal != "white" and 72 * n + 256 * MIB + reserve > resources.ram_budget:
         # Coloured Fourier synthesis itself needs RAM. Small historical
         # signal cases can still use the disk estimator after synthesis.
-        return "disk", 72 * n + 256 * MIB, required_disk(n, method), "memory_budget"
+        return "disk", 72 * n + 256 * MIB + reserve, required_disk(n, method), "memory_budget"
     disk_need = required_disk(n, method)
-    minimum_ram = 384 * MIB
+    minimum_ram = 384 * MIB + reserve
     if resources.ram_budget < minimum_ram:
         return "disk", minimum_ram, disk_need, "memory_budget"
     if disk_need > resources.disk_budget:
@@ -376,7 +420,9 @@ def predict_seconds(case, completed, safety_factor=4.0):
     """Conservative whole-process forecast; never report this as a timing."""
     matching = [row for row in completed if row.get("status") == "completed"
                 and row.get("method") == case["method"]
-                and row.get("signal") == case["signal"]]
+                and row.get("signal") == case["signal"]
+                and (case["method"] != "matched"
+                     or row.get("smoothing_workers_limit") == case.get("smoothing_workers_limit"))]
     if not matching:
         # Small calibration cases get a bounded opportunity on an unknown
         # machine. They are the only starts without measured scaling evidence.

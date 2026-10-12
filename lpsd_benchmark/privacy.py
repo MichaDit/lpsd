@@ -65,6 +65,32 @@ def _numbers(source, names):
             if key in source and number(source[key]) is not None}
 
 
+def _smoothing_fields(source, *, settings=False):
+    """Optional closed controls; older reports retain absent provenance."""
+    result = {}
+    if not isinstance(source, dict):
+        return result
+    value = integer(source.get("requested_smoothing_workers"), 1)
+    if value is not None:
+        result["requested_smoothing_workers"] = value
+    enums = {
+        "smoothing_worker_policy": ("default_cap4", "explicit", "not_applicable"),
+        "smoothing_runtime_reserve_model": ("incremental_9mib_above_cap4_v1", "not_applicable"),
+    }
+    if not settings:
+        enums["smoothing_backend"] = ("native", "numpy", "not_applicable")
+        for key in ("smoothing_workers_limit", "smoothing_pool_capacity", "smoothing_task_ranges",
+                    "smoothed_frequency_points", "smoothing_runtime_reserve_bytes"):
+            value = integer(source.get(key), 0, 65536 if key == "smoothed_frequency_points" else 2 ** 63 - 1)
+            if value is not None:
+                result[key] = value
+    for key, choices in enums.items():
+        value = source.get(key)
+        if isinstance(value, str) and value in choices:
+            result[key] = value
+    return result
+
+
 def sanitize(report):
     """Construct a new report from a closed schema, never delete-list redact.
 
@@ -93,6 +119,7 @@ def sanitize(report):
             **_numbers(environment, ("logical_cpus_available", "cpu_quota", "ram_total_mib")),
         },
         "settings": {
+            **_smoothing_fields(settings, settings=True),
             **_numbers(settings, ("max_seconds", "bootstrap_remaining_seconds", "ram_budget_mib",
                                   "disk_budget_mib", "threads", "sample_rate_hz", "seed",
                                   "n_averages", "psll_db", "prediction_safety_factor", "base_points")),
@@ -134,6 +161,7 @@ def sanitize(report):
                 or integer(row.get("target_points"), 2, 65536) is None):
             continue
         result = {
+            **_smoothing_fields(row),
             "n": row["n"], "target_points": row["target_points"],
             "method": row["method"], "signal": row["signal"],
             "storage": _enum(row.get("storage"), ("ram", "disk"), "ram"),

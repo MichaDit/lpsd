@@ -24,7 +24,8 @@ import time
 from . import DEFAULT_SIZES, MAX_SECONDS, METHODS, SCHEMA, SIGNALS
 from .privacy import MAX_CASES, MAX_LOCAL_BYTES, sanitize, submit
 from .resources import (Deadline, MIB, choose_fft_layout, choose_window_storage,
-                        detect_resources, fftw_plan_reserve, predict_seconds, select_storage)
+                        detect_resources, fftw_plan_reserve, predict_seconds, select_storage,
+                        smoothing_controls)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -429,6 +430,8 @@ def run(args):
     args.work_dir.mkdir(parents=True, exist_ok=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     resources = detect_resources(args.work_dir, args.ram_gib, args.disk_gib, args.threads)
+    smoothing_request = getattr(args, "smoothing_workers", None)
+    smoothing = smoothing_controls("matched", resources.threads, smoothing_request)
     matrix = _matrix(args)
     if len(matrix) > MAX_CASES:
         raise ValueError(f"Matrix exceeds {MAX_CASES} cases; use fewer sizes, point choices or storage modes")
@@ -439,6 +442,9 @@ def run(args):
                            "ram_budget_mib": resources.ram_budget // MIB,
                            "disk_budget_mib": resources.disk_budget // MIB,
                            "threads": resources.threads, "sample_rate_hz": 50., "seed": 20261010,
+                           "smoothing_worker_policy": smoothing["smoothing_worker_policy"],
+                           "requested_smoothing_workers": smoothing_request,
+                           "smoothing_runtime_reserve_model": smoothing["smoothing_runtime_reserve_model"],
                            "n_averages": 100, "psll_db": 200., "prediction_safety_factor": 4.,
                            "storage": args.storage, "fft_layout": args.fft_layout,
                            "window_storage": args.window_storage,
@@ -450,6 +456,10 @@ def run(args):
     print(f"Budget: RAM {resources.ram_budget / (1024 ** 3):.2f} GiB, "
           f"disk {resources.disk_budget / (1024 ** 3):.2f} GiB, "
           f"threads {resources.threads}, remaining {deadline.remaining() / 3600:.2f} h.", flush=True)
+    if smoothing_request is not None and "matched" in args.methods:
+        print(f"Matched smoothing: requested {smoothing_request}, admitted limit "
+              f"{smoothing['smoothing_workers_limit']}; extra runtime/address reserve "
+              f"{smoothing['smoothing_runtime_reserve_bytes'] / MIB:.0f} MiB within the RAM budget.", flush=True)
     print("Only synthetic signals are used. Results stay local unless public GitHub upload was explicitly selected.", flush=True)
     if args.upload_github:
         print("Public upload selected: the issue will be associated with your GitHub account.", flush=True)
@@ -461,6 +471,8 @@ def run(args):
             row = {key: value for key, value in specification.items() if key != "requested_storage"}
             row.update(base_target_points=args.base_points, requested_threads=resources.threads,
                        point_count_resolved=False)
+            row.update(smoothing_controls(row["method"], resources.threads, smoothing_request))
+            smoothing_reserve = row["smoothing_runtime_reserve_bytes"]
             refreshed = detect_resources(args.work_dir, args.ram_gib, args.disk_gib, args.threads)
             # A run never grows its original budget just because another
             # process exits. Reduced free resources are honoured immediately.
@@ -469,19 +481,23 @@ def run(args):
                                         min(resources.disk_budget, refreshed.disk_budget),
                                         resources.threads, resources.cpu_capacity)
             fft_layout = choose_fft_layout(row["n"], row["method"], row["signal"], args.fft_layout,
-                                           refreshed.ram_budget, args.window_storage)
+                                           refreshed.ram_budget, args.window_storage,
+                                           smoothing_runtime_reserve_bytes=smoothing_reserve)
             window_storage = choose_window_storage(row["n"], row["method"], row["signal"],
-                                                    args.window_storage, fft_layout, refreshed.ram_budget)
+                                                    args.window_storage, fft_layout, refreshed.ram_budget,
+                                                    smoothing_runtime_reserve_bytes=smoothing_reserve)
             storage, ram_need, disk_need, skip = select_storage(
                 row["n"], row["method"], row["signal"], specification["requested_storage"],
-                refreshed, fft_layout, window_storage)
+                refreshed, fft_layout, window_storage,
+                smoothing_runtime_reserve_bytes=smoothing_reserve)
+            working_ram = max(0, refreshed.ram_budget - smoothing_reserve)
             row.update(storage=storage, ram_required_bytes=ram_need, disk_required_bytes=disk_need,
                        fft_layout="blocked" if storage == "disk" and row["method"] != "lpsd" else fft_layout,
                        window_storage="blocked" if storage == "disk" and row["method"] != "lpsd" else window_storage,
                        fftw_plan_reserve_bytes=fftw_plan_reserve(row["n"], row["method"]) if storage == "ram" else 0,
                        ram_budget_mib=refreshed.ram_budget // MIB, disk_budget_mib=refreshed.disk_budget // MIB,
-                       fft_memory_mb=max(1., min(128., refreshed.ram_budget / MIB / 8)),
-                       low_working_mb=max(1., min(2048., refreshed.ram_budget / MIB / 3)))
+                       fft_memory_mb=max(1., min(128., working_ram / MIB / 8)),
+                       low_working_mb=max(1., min(2048., working_ram / MIB / 3)))
             prediction = predict_seconds(row, report["cases"])
             calibration = (row["n"] <= 100_000 and not any(
                 old.get("status") == "completed" and old.get("method") == row["method"]
@@ -591,6 +607,16 @@ def _print_submission(result):
                   "then repeat `python -m lpsd_benchmark submit RESULTS.json --accept-public-upload`.", flush=True)
 
 
+def _positive_smoothing_workers(value):
+    try:
+        count = int(value)
+    except (TypeError, ValueError) as error:
+        raise argparse.ArgumentTypeError("smoothing-workers must be a positive integer") from error
+    if not 1 <= count <= 2 ** 63 - 1:
+        raise argparse.ArgumentTypeError("smoothing-workers must be a positive integer below 2**63")
+    return count
+
+
 def parser():
     root = argparse.ArgumentParser(description=__doc__)
     commands = root.add_subparsers(dest="command", required=True)
@@ -599,6 +625,8 @@ def parser():
     run_parser.add_argument("--ram-gib", default="auto", help="Allocation budget in GiB, bounded by available RAM")
     run_parser.add_argument("--disk-gib", default="auto", help="Temporary dataset-file budget in GiB, bounded by free disk")
     run_parser.add_argument("--threads", type=int, help="Maximum threads, capped by affinity and CPU quota")
+    run_parser.add_argument("--smoothing-workers", type=_positive_smoothing_workers,
+                            help="Matched FFTW smoothing worker limit, capped by admitted threads; default min(4, threads)")
     run_parser.add_argument("--sizes", nargs="+", type=int, default=list(DEFAULT_SIZES))
     points = run_parser.add_mutually_exclusive_group()
     points.add_argument("--points", nargs="+", type=int, help="Raw native planner J targets, e.g. 1000 2000")
