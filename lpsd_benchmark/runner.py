@@ -165,36 +165,99 @@ def terminate_tree(process):
 
 
 def _linux_status(path):
-    """Read only numeric process relationships and memory counters."""
+    """Read process relationships/state and memory counters; None is unknown."""
     try:
         fields = {}
-        for line in path.read_text().splitlines():
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             items = line.split()
             if len(items) < 2:
                 continue
             if items[0] in ("Pid:", "PPid:"):
                 fields[items[0][:-1]] = int(items[1])
+            elif items[0] == "Threads:":
+                fields["Threads"] = int(items[1])
             elif items[0] == "NSpid:":
                 fields["NSpid"] = tuple(map(int, items[1:]))
+            elif items[0] == "State:":
+                fields["State"] = items[1]
             elif items[0] in ("VmRSS:", "RssAnon:"):
                 fields[items[0][:-1]] = int(items[1]) * 1024
         return fields
     except (OSError, ValueError):
-        return {}
+        return None
+
+
+_LINUX_CHILDREN_UNSUPPORTED = object()
+
+
+def _linux_path_missing(path):
+    """Only an observed disappearance may be treated as an exit race."""
+    try:
+        path.stat()
+    except (FileNotFoundError, ProcessLookupError):
+        return True
+    except OSError:
+        pass
+    return False
 
 
 def _linux_children(proc_root, visible_pid):
-    """Children are expressed in the PID namespace of the procfs mount."""
+    """Read every task's children; distinguish missing support from read gaps."""
     found = set()
+    observed_task = False
     try:
         for task in (proc_root / str(visible_pid) / "task").iterdir():
             try:
-                found.update(int(value) for value in (task / "children").read_text().split())
+                children = {int(value) for value in (task / "children").read_text().split()}
+                if any(child <= 0 for child in children):
+                    return None
+                found.update(children)
+                observed_task = True
+            except FileNotFoundError:
+                # A thread may have exited during enumeration. A still
+                # present task without a children file needs the PPid scan
+                # used on kernels without CONFIG_CHECKPOINT_RESTORE.
+                try:
+                    task.stat()
+                except (FileNotFoundError, ProcessLookupError):
+                    continue
+                except OSError:
+                    return None
+                return _LINUX_CHILDREN_UNSUPPORTED
             except (OSError, ValueError):
-                continue
+                return None
     except OSError:
-        pass
-    return found
+        return None
+    return found if observed_task else None
+
+
+def _linux_process_snapshot(proc_root):
+    """Fallback inventory, shared by the entire probe rather than per child.
+
+    The kernel's optional task/children files are faster but are absent on
+    some supported hosts. Retain verified PPid relationships and reuse the
+    status values from one scan. Neither interface is an atomic snapshot.
+    An unreadable process that still exists makes this inventory unknown.
+    """
+    statuses, children = {}, {}
+    try:
+        for path in proc_root.iterdir():
+            if not path.name.isdecimal():
+                continue
+            pid = int(path.name)
+            fields = _linux_status(path / "status")
+            if fields is None:
+                if _linux_path_missing(path):
+                    continue
+                return None
+            parent = fields.get("PPid")
+            if fields.get("Pid") != pid or type(parent) is not int or parent < 0:
+                return None
+            statuses[pid] = fields
+            children.setdefault(parent, set()).add(pid)
+    except OSError:
+        return None
+    return statuses, children
 
 
 class _LinuxMemoryReader:
@@ -208,7 +271,7 @@ class _LinuxMemoryReader:
     def __init__(self, pid, proc_root=Path("/proc")):
         self.pid = pid
         self.proc_root = proc_root
-        parent = _linux_status(proc_root / "self" / "status")
+        parent = _linux_status(proc_root / "self" / "status") or {}
         self.parent_pid = parent.get("Pid")
         self.depth = len(parent.get("NSpid", ()))
         self.same_namespace = self.parent_pid == os.getpid()
@@ -218,28 +281,31 @@ class _LinuxMemoryReader:
         if self.parent_pid is None:
             return
         candidates = _linux_children(self.proc_root, self.parent_pid)
-        if not candidates:
-            # Older kernels may not expose task/children. Restrict fallback
-            # candidates to a verified direct child of this controller.
-            try:
-                candidates = {int(path.name) for path in self.proc_root.iterdir() if path.name.isdecimal()}
-            except OSError:
+        snapshot = None
+        if candidates is _LINUX_CHILDREN_UNSUPPORTED:
+            snapshot = _linux_process_snapshot(self.proc_root)
+            if snapshot is None:
                 return
+            candidates = snapshot[1].get(self.parent_pid, ())
+        elif candidates is None:
+            return
         for candidate in candidates:
-            fields = _linux_status(self.proc_root / str(candidate) / "status")
-            if fields.get("PPid") != self.parent_pid:
+            fields = (snapshot[0].get(candidate) if snapshot is not None
+                      else _linux_status(self.proc_root / str(candidate) / "status"))
+            if fields is None or fields.get("PPid") != self.parent_pid:
                 continue
             nested = fields.get("NSpid", ())
             if ((self.depth and len(nested) >= self.depth and nested[self.depth - 1] == self.pid)
                     or (not self.depth and self.same_namespace and candidate == self.pid)):
                 self.visible_pid = candidate
-                return
+                return snapshot
 
     def read(self):
+        snapshot = None
         if self.visible_pid is None:
-            self._resolve()
+            snapshot = self._resolve()
         if self.visible_pid is None:
-            return 0, 0
+            return None, None
         pending = [(self.visible_pid, self.parent_pid)]
         visited = set()
         rss, anonymous = 0, 0
@@ -248,14 +314,44 @@ class _LinuxMemoryReader:
             if pid in visited:
                 continue
             visited.add(pid)
-            fields = _linux_status(self.proc_root / str(pid) / "status")
+            process_path = self.proc_root / str(pid)
+            fields = (snapshot[0].get(pid) if snapshot is not None
+                      else _linux_status(process_path / "status"))
+            if fields is None:
+                if pid != self.visible_pid and _linux_path_missing(process_path):
+                    continue
+                return None, None
+            if (fields.get("Pid") != pid or type(fields.get("PPid")) is not int
+                    or fields["PPid"] < 0):
+                return None, None
             if fields.get("PPid") != parent:
                 continue
-            resident = fields.get("VmRSS", 0)
+            # A zombie group leader can still have live threads and their
+            # address space after pthread_exit(). Only a verified single-task
+            # zombie/dead process is known to have released its user memory.
+            if fields.get("State") in ("Z", "X", "x"):
+                if type(fields.get("Threads")) is not int or fields["Threads"] != 1:
+                    return None, None
+                continue
+            resident = fields.get("VmRSS")
+            private = fields.get("RssAnon", resident)
+            if (type(resident) is not int or resident < 0
+                    or type(private) is not int or private < 0):
+                return None, None
+            if snapshot is None:
+                children = _linux_children(self.proc_root, pid)
+                if children is _LINUX_CHILDREN_UNSUPPORTED:
+                    snapshot = _linux_process_snapshot(self.proc_root)
+                    if snapshot is None:
+                        return None, None
+                elif children is None:
+                    return None, None
+            if snapshot is not None:
+                children = snapshot[1].get(pid, ())
             rss += resident
             # Old kernels without RssAnon use a conservative RSS fallback.
-            anonymous += fields.get("RssAnon", resident)
-            pending.extend((child, pid) for child in _linux_children(self.proc_root, pid))
+            anonymous += private
+            pending.extend((child, pid) for child in children)
         return rss, anonymous
 
 
