@@ -1,15 +1,15 @@
 """Observe the actual CSD route while preserving the production arithmetic."""
 import ctypes as ct
+import hashlib
 import math
 import os
 from pathlib import Path
-import re
 
 import numpy as np
 import pytest
 
 from lpsd_fast import api
-from lpsd_fast.build import build_shared
+from lpsd_fast.build import build_shared, source_manifest
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +19,23 @@ def csd_route_probe(tmp_path_factory):
     # the production library. Counts establish that an extreme late input
     # really replays earlier batches and that ordinary inputs still batch.
     native = Path(api.__file__).resolve().parent / "_native" / "fast_dft.c"
-    content = native.read_text(encoding="utf-8")
+    directory = tmp_path_factory.mktemp("csd-route")
+    copy_root = directory / "source"
+    project_root = native.parents[2]
+    original_manifest = source_manifest(native)
+    # Keep every included file's bytes and relative project layout. In
+    # particular, Windows source and pytest temp may be on different drives;
+    # absolute includes back into the checkout would break relative provenance.
+    for relative, digest in original_manifest.items():
+        original = (native.parent / relative).resolve()
+        copied = copy_root / original.relative_to(project_root)
+        copied.parent.mkdir(parents=True, exist_ok=True)
+        data = original.read_bytes()
+        assert hashlib.sha256(data).hexdigest() == digest
+        copied.write_bytes(data)
+    source = copy_root / native.relative_to(project_root)
+    assert source_manifest(source) == original_manifest
+    content = source.read_text(encoding="utf-8")
     insertions = (
         ("if (csd_batch != 0) {", "if (csd_batch != 0) {\n"
          "            ++probe_batch_calls;", 1),
@@ -32,15 +48,6 @@ def csd_route_probe(tmp_path_factory):
     for original, instrumented, count in insertions:
         assert content.count(original) == count
         content = content.replace(original, instrumented)
-    # Preserve each quoted include's real source directory for the ordinary
-    # build helper and its recursive source-provenance checks.
-    content = re.sub(
-        r'(?m)^(\s*#\s*include\s*)"([^"\r\n]+)"',
-        lambda match: match[1] + '"' +
-        (native.parent / match[2]).resolve().as_posix() + '"', content,
-    )
-    directory = tmp_path_factory.mktemp("csd-route")
-    source = directory / "probe.c"
     source.write_text(
         "static long int probe_batch_calls, probe_single_calls, probe_restarts;\n" +
         content + r'''
