@@ -759,6 +759,27 @@ class DiskFFT:
                                 power_total_s=time.perf_counter() - started)
         return powers
 
+    def group_power(self, cuts, sample_rate, window_square_sum, library=None):
+        """Explicit read-only log groups with no N-sized power vector.
+
+        Result arrays own their storage and survive close(). The existing
+        original-N FFT matrix remains available until execute() or close().
+        Pipeline profile admission is separate from this ordinary reducer.
+        """
+        self._require_open()
+        if not self._has_transform:
+            raise RuntimeError("Execute the original transform before group reduction")
+        if self.matrix.size != self.n:
+            raise ValueError("Direct log power requires the original full complex N-point matrix")
+        from benchmarks._fftw_direct_power import DirectLibrary, reduce_matrix
+        if library is None:
+            library = DirectLibrary()
+        started = time.perf_counter()
+        result = reduce_matrix(self.matrix, cuts, sample_rate, window_square_sum, library)
+        self._power_storage = "direct_log_groups"
+        self.last_phases["direct_log_groups_and_energy_s"] = time.perf_counter() - started
+        return result
+
     def power_in_frequency_order_into(self, powers, sample_rate, window_square_sum):
         return self.power_into(powers, sample_rate, window_square_sum)
 

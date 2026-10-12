@@ -54,6 +54,7 @@ CHUNK = 262144
 GIB = 1024**3
 METHODS = ("fftw", "matched", "lpsd")
 DISK_FFT_ALGORITHMS = ("full", "packed-real")
+DISK_POWER_REDUCTIONS = ("materialized", "direct-log")
 TIMEOUT_SCOPE = ("Parent-enforced whole-child-process budget, including process/import/library "
                  "startup, input hashes before and after the measured call, the complete "
                  "call and report finalization. A timeout is not a completed-call timing "
@@ -79,6 +80,16 @@ def large_file_bytes(n, methods, power_storage):
         return 8 * n
     external = power_storage == "external" and any(method != "lpsd" for method in methods)
     return (28 * n + 8) if external else 24 * n
+
+
+def require_direct_log_profile(n, args):
+    """Reject unqualified direct pipeline settings before dataset allocation."""
+    if (getattr(args, "disk_fft_algorithm", "full") != "full" or not 2 <= n <= 1_000_000_000
+            or args.sample_rate != 50.0 or args.fft_memory_mb != 128.0
+            or getattr(args, "psll", 200.0) != 200.0
+            or getattr(args, "n_averages", 100) != 100
+            or getattr(args, "power_storage", "external") != "workspace"):
+        raise ValueError("Direct log power requires the original full/fs50/K100/Kaiser200/128MiB/workspace profile, N<=1B")
 
 
 def archive_checkpoint(path, reason):
@@ -167,6 +178,12 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
                   fft_progress=None, lpsd_progress=None):
     n = len(values)
     fft_algorithm = getattr(args, "disk_fft_algorithm", "full")
+    reduction = getattr(args, "disk_power_reduction", "materialized")
+    if reduction not in DISK_POWER_REDUCTIONS:
+        raise ValueError("disk_power_reduction must be materialized or direct-log")
+    direct_groups = method == "fftw" and reduction == "direct-log"
+    if direct_groups:
+        require_direct_log_profile(n, args)
     fft_class = disk_fft_class(fft_algorithm)
     power_storage = getattr(args, "power_storage", "external")
     file_bytes = large_file_bytes(n, (method,), power_storage)
@@ -175,12 +192,16 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         raise ValueError("Workspace power storage requires an even B factor; choose --power-storage external")
     phases, metadata = {}, {}
     metadata["disk_fft_algorithm"] = fft_algorithm if method != "lpsd" else None
+    metadata["disk_power_reduction"] = reduction if method == "fftw" else "not_applicable"
     metadata["power_storage"] = {
-        "mode": "none" if method == "lpsd" else power_storage,
+        "mode": "none" if method == "lpsd" else "direct_log_groups" if direct_groups else power_storage,
         "maximum_large_file_bytes": file_bytes,
         "extra_power_file_bytes": (4 * n + 8) if method != "lpsd" and power_storage == "external" else 0,
-        "workspace_power_offset_bytes": 8 * n if method != "lpsd" and power_storage == "workspace" else None,
-        "note": ("Workspace mode: the returned power mapping aliases the existing file. "
+        "workspace_power_offset_bytes": 8 * n if method != "lpsd" and power_storage == "workspace" and not direct_groups else None,
+        "note": ("Direct groups retain the original 8N-byte input and 16N-byte full complex "
+                 "workspace: 24N logical file and mapping bytes, with no power vector or extra file."
+                 if direct_groups else
+                 "Workspace mode: the returned power mapping aliases the existing file. "
                  "Physical files total 24N bytes; input+FFT+power mapping sizes still total "
                  "28N+8 virtual bytes. Both mappings close before low LPSD uses bounded RAM scratch."
                  if method != "lpsd" and power_storage == "workspace" else
@@ -207,6 +228,14 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
     metadata["point_plan"] = {"requested_j": n_frequencies,
                                "n_averages": n_averages,
                                "output_points": len(frequencies), "psll_db": psll}
+    direct_library = None
+    if direct_groups:
+        from benchmarks._fftw_direct_power import DirectLibrary, MAX_GROUPS
+        if not 1 <= len(frequencies) <= min(MAX_GROUPS, n // 2):
+            raise ValueError("Direct log power actual output count is outside its qualified range")
+        # Check the selected ABI before creating any large FFT workspace.
+        # Default and other estimator routes never load this wrapper.
+        direct_library = DirectLibrary(api._LIB)
     if method == "lpsd":
         with DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=psll,
                             overlap=overlap, workers=args.workers,
@@ -235,7 +264,7 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         # The window occupies the second half of the file before complex
         # expansion. Preprocessing consumes it before execute overwrites it.
         window = fft.window
-        if power_storage == "external":
+        if power_storage == "external" and not direct_groups:
             powers = np.memmap(powers_path, dtype=np.float64, mode="w+", shape=(n // 2 + 1,))
         mark("workspace_and_fftw_planning_s")
         if method == "fftw":
@@ -264,22 +293,36 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         fft.execute()
         mark("blocked_fftw_s")
         metadata["fft_profile"] = getattr(fft, "last_profile", None)
-        if power_storage == "workspace":
-            powers = fft.power_in_workspace(args.sample_rate, s2)
+        if direct_groups:
+            grid = bf.partitions(n, args.sample_rate, frequencies)
+            groups = fft.group_power(grid["cuts"], args.sample_rate, s2, direct_library)
+            metadata["direct_group_reduction"] = groups["metadata"]
+            metadata["fft"] = fft.metadata
+            mark("direct_log_groups_and_energy_s")
+            obtained = groups["energy_power_sum"] * args.sample_rate / n
         else:
-            fft.power_into(powers, args.sample_rate, s2)
-        metadata["fft"] = fft.metadata
-        mark("ordered_one_sided_power_s")
-        obtained = mapped_sum(powers) * args.sample_rate / n
+            if power_storage == "workspace":
+                powers = fft.power_in_workspace(args.sample_rate, s2)
+            else:
+                fft.power_into(powers, args.sample_rate, s2)
+            metadata["fft"] = fft.metadata
+            mark("ordered_one_sided_power_s")
+            obtained = mapped_sum(powers) * args.sample_rate / n
         np.testing.assert_allclose(obtained, expected, rtol=1e-10, atol=0.0)
         metadata["parseval"] = {"time_power_v2": expected, "fft_power_v2": obtained,
                                 "relative_error": 0.0 if expected == 0.0 else abs(obtained - expected) / expected,
                                 "diagnostic_passes_included_in_timer": True}
         mark("frequency_energy_diagnostic_s")
         if method == "fftw":
-            grid = bf.partitions(n, args.sample_rate, frequencies)
-            density = np.asarray([np.sum(powers[first:stop], dtype=np.float64) / (stop - first)
-                                  for first, stop in zip(grid["cuts"][:-1], grid["cuts"][1:])])
+            if direct_groups:
+                density = np.asarray([groups["sums"][index] / (stop - first)
+                                      for index, (first, stop) in enumerate(
+                                          zip(grid["cuts"][:-1], grid["cuts"][1:]))])
+            else:
+                grid = bf.partitions(n, args.sample_rate, frequencies)
+                density = np.asarray([np.sum(powers[first:stop], dtype=np.float64) / (stop - first)
+                                      for first, stop in zip(grid["cuts"][:-1], grid["cuts"][1:])])
+            metadata["power_vector_created"] = not direct_groups
             result = frame_from_psd(frequencies, density)
             mark("logarithmic_grouping_and_outputs_s")
         else:
@@ -454,6 +497,9 @@ def main():
     parser.add_argument("--fft-memory-mb", type=float, default=128)
     parser.add_argument("--disk-fft-algorithm", choices=DISK_FFT_ALGORITHMS, default="full",
                         help="Full complex FFT or original-N real packing into N/2 complex values")
+    parser.add_argument("--disk-power-reduction", choices=DISK_POWER_REDUCTIONS, default="materialized",
+                        help="Explicit simple/full FFTW reduction; direct-log requires fs50/K100/PSLL200, "
+                             "128 MiB FFT tiles and workspace admission. Other methods are unchanged.")
     parser.add_argument("--power-storage", choices=("external", "workspace"), default="external",
                         help="Store FFT powers in a separate 4N+8-byte file (external), or "
                              "consume an even-B FFT and reuse its 16N-byte file (workspace).")
@@ -480,6 +526,15 @@ def main():
         parser.error("Require J>=2, K>=1 and finite positive PSLL and sample rate")
     if not math.isfinite(args.lpsd_progress_interval_s) or args.lpsd_progress_interval_s < 0:
         parser.error("--lpsd-progress-interval-s must be finite and nonnegative")
+    if (args.disk_power_reduction == "direct-log"
+            and (args.child == "fftw" if args.child else "fftw" in args.methods)):
+        try:
+            for n in ([args.n] if args.child else args.sizes):
+                require_direct_log_profile(n, args)
+                if not DiskFFT.memory_estimate(n, args.fft_memory_mb)["workspace_power_supported"]:
+                    raise ValueError("Direct log power retains the original even-B workspace admission")
+        except (TypeError, ValueError, MemoryError) as error:
+            parser.error(str(error))
     for name in ("fftw_library", "threads_library", "work_dir", "output", "input"):
         value = getattr(args, name)
         if value is not None:
@@ -499,7 +554,10 @@ def main():
                                  ROOT / "benchmarks/fftw_comparison_metrics.py", ROOT / "benchmarks/matched_smoothing.py",
                                  ROOT / "benchmarks/_fftw_native.py", ROOT / "lpsd_fast/api.py",
                                  ROOT / "lpsd_fast/planning.py", ROOT / "lpsd_fast/prepared.py",
-                                 ROOT / "lpsd/_helpers.py"]},
+                                 ROOT / "lpsd/_helpers.py"] +
+                                ([ROOT / "benchmarks/_fftw_direct_power.py",
+                                  ROOT / "lpsd_fast/_native/fftw_direct_log_power.c"]
+                                 if args.disk_power_reduction == "direct-log" and "fftw" in args.methods else [])},
               "scope": "One observed complete PSD+NSD call per N/method. Includes bounded energy diagnostics, workspace creation, progress checkpoints, actual paging and deletion of disposable work files. Excludes signal creation, input hashes, process/import/library loading. Work files are not durable outputs; no final fsync is forced. Original cgroup RAM limit unchanged; shared file mappings are normal pageable filesystem I/O. Different FFT factorization and workspace strategy from the optimized RAM implementations; no RAM reuse timing or in-RAM speedup claim.",
               "memory_events_before": read_file("/sys/fs/cgroup/memory.events"), "inputs": [], "jobs": [],
               "timeout_scope": TIMEOUT_SCOPE,
@@ -536,6 +594,7 @@ def main():
                                "--fftw-threads", str(args.fftw_threads), "--workers", str(args.workers),
                                "--smoothing-workers", str(args.smoothing_workers), "--fft-memory-mb", str(args.fft_memory_mb),
                                "--disk-fft-algorithm", args.disk_fft_algorithm,
+                               "--disk-power-reduction", args.disk_power_reduction,
                                "--low-working-mb", str(args.low_working_mb), "--sample-rate", str(args.sample_rate),
                                "--n-frequencies", str(args.n_frequencies),
                                "--n-averages", str(args.n_averages), "--psll", str(args.psll),

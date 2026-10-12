@@ -353,6 +353,71 @@ def _disk_fft_result_fields(case, details):
             "disk_fft_effective_algorithm": "packed-real" if inner < n else "full"}
 
 
+def _case_disk_power_reduction(case):
+    """Validate selection before imports; only simple disk FFTW applies it."""
+    selection = case.get("disk_power_reduction", "materialized")
+    if not isinstance(selection, str) or selection not in ("materialized", "direct-log", "not_applicable"):
+        raise ValueError("Invalid disk power reduction")
+    if case["storage"] != "disk" or case["method"] != "fftw":
+        return "not_applicable"
+    if selection == "not_applicable":
+        raise ValueError("Simple disk FFTW requires a power reduction")
+    return selection
+
+
+def _direct_power_profile_supported(case):
+    """Keep the first explicitly qualified full-disk profile unchanged."""
+    return (type(case.get("n")) is int and 2 <= case["n"] <= 1_000_000_000
+            and case.get("disk_fft_algorithm", "full") == "full"
+            and case.get("sample_rate_hz") == 50.0
+            and case.get("n_averages") == 100 and case.get("psll_db", 200.0) == 200.0
+            and case.get("fft_memory_mb") == 128.0)
+
+
+def _disk_power_result_fields(case, details):
+    """Validate completed actual reduction after both timer-end readings."""
+    selection = _case_disk_power_reduction(case)
+    if selection == "not_applicable":
+        return {"disk_power_reduction": selection}
+    if not isinstance(details, dict) or "disk_power_reduction" not in details:
+        if selection == "materialized":
+            return {"disk_power_reduction": selection}  # Older private adapters.
+        raise ValueError("Direct log-power execution metadata is missing")
+    if details["disk_power_reduction"] != selection:
+        raise ValueError("Measured disk power reduction differs from admission")
+    fields = {"disk_power_reduction": selection}
+    if selection == "materialized":
+        if details.get("power_vector_created") is not True:
+            raise ValueError("Materialized power metadata is inconsistent")
+        return {**fields, "power_vector_created": True}
+    source = details.get("direct_group_reduction", {})
+    storage = details.get("power_storage", {})
+    fft = details.get("fft", {})
+    points = integer(case.get("actual_points"), 1, min(65536, case["n"] // 2))
+    if not all(isinstance(value, dict) for value in (source, storage, fft)) or points is None:
+        raise ValueError("Direct log-power execution metadata is invalid")
+    expected = {"n": case["n"], "groups": points, "abi_version": 3,
+                "energy_bins": case["n"] // 2 + 1, "dc_bins": 1,
+                "nyquist_bins": int(case["n"] % 2 == 0),
+                "array_state_bytes": 48 * points + 48, "additional_workers": 0}
+    if (any(type(source.get(key)) is not int or source[key] != value for key, value in expected.items())
+            or source.get("power_vector_created") is not False
+            or source.get("matrix_written") is not False
+            or source.get("ordinary_result_arrays") is not True
+            or details.get("power_vector_created") is not False
+            or storage.get("mode") != "direct_log_groups"
+            or type(storage.get("extra_power_file_bytes")) is not int or storage["extra_power_file_bytes"] != 0
+            or type(storage.get("maximum_large_file_bytes")) is not int
+            or storage["maximum_large_file_bytes"] != 24 * case["n"]
+            or storage.get("workspace_power_offset_bytes") is not None
+            or fft.get("power_storage") != "direct_log_groups"
+            or type(fft.get("n")) is not int or fft["n"] != case["n"]):
+        raise ValueError("Direct log-power counts, ABI or storage metadata differ from execution")
+    return {**fields, "direct_log_power_abi": source["abi_version"],
+            "direct_log_power_state_bytes": source["array_state_bytes"],
+            "power_vector_created": False}
+
+
 def run(case, directory):
     algorithm = case.get("disk_fft_algorithm", "full")
     if algorithm not in ("full", "packed-real", "not_applicable"):
@@ -361,6 +426,10 @@ def run(case, directory):
     if needs_fft and algorithm == "not_applicable":
         raise ValueError("Disk FFT cases require a transform algorithm")
     applied_algorithm = algorithm if needs_fft else "not_applicable"
+    reduction = _case_disk_power_reduction(case)
+    if reduction == "direct-log" and not _direct_power_profile_supported(case):
+        return {"status": "skipped", "reason": "unsupported",
+                "disk_fft_algorithm": applied_algorithm, "disk_power_reduction": reduction}
     controls = _case_smoothing_controls(case)
     case.update(controls)
     working_mb, headroom, native_controls = _case_native_working_controls(case)
@@ -382,7 +451,15 @@ def run(case, directory):
     case.update(resolved)
     n, method = case["n"], case["method"]
     result = {**resolved, **controls, **native_controls,
-              "disk_fft_algorithm": applied_algorithm}
+              "disk_fft_algorithm": applied_algorithm, "disk_power_reduction": reduction}
+    if reduction == "direct-log":
+        from benchmarks._fftw_direct_power import DirectLibrary, MAX_GROUPS
+        if not 1 <= resolved["actual_points"] <= min(MAX_GROUPS, n // 2):
+            return {**result, "status": "skipped", "reason": "unsupported"}
+        try:
+            DirectLibrary(api._LIB)
+        except RuntimeError as error:
+            raise ImportError("Direct log-power ABI3 is unavailable") from error
     import lpsd_fast
     result["native_version"] = lpsd_fast.__version__
     result["native_sha256"] = _file_hash(api._LIB._name)
@@ -398,6 +475,9 @@ def run(case, directory):
         source_paths.extend(Path(bf.__file__).parent / name for name in ("bench_fftw_disk.py", "_fftw_disk.py", "_lpsd_disk.py"))
     if needs_fft and algorithm == "packed-real":
         source_paths.append(Path(bf.__file__).parent / "_fftw_packed_real.py")
+    if reduction == "direct-log":
+        source_paths.extend((Path(bf.__file__).parent / "_fftw_direct_power.py",
+                             Path(api.__file__).parent / "_native" / "fftw_direct_log_power.c"))
     for path in source_paths:
         source.update(path.name.encode("ascii") + b"\0")
         source.update(path.read_bytes())
@@ -452,6 +532,8 @@ def run(case, directory):
                 estimate = disk_fft_class(algorithm).memory_estimate(n, case["fft_memory_mb"])
             except (ValueError, MemoryError):
                 return {**result, "status": "skipped", "reason": "unsupported"}
+            if reduction == "direct-log" and not estimate["workspace_power_supported"]:
+                return {**result, "status": "skipped", "reason": "unsupported"}
             disk_needed = 24 * n + (0 if estimate["workspace_power_supported"] else 4 * n + 8) + 16 * MIB
         else:
             disk_needed = 8 * n + 16 * MIB
@@ -500,6 +582,7 @@ def run(case, directory):
                                       n_frequencies=case["target_points"], n_averages=case["n_averages"],
                                       fft_memory_mb=case["fft_memory_mb"], power_storage=power_storage,
                                       disk_fft_algorithm=algorithm if needs_fft else "full",
+                                      disk_power_reduction=reduction if method == "fftw" else "materialized",
                                       workers=case["requested_threads"],
                                       smoothing_workers=controls["smoothing_workers_limit"],
                                       low_working_mb=(working_mb if bounded_options is not None
@@ -537,6 +620,7 @@ def run(case, directory):
         result.update(_smoothing_result_fields(case, window_metadata, disk_details))
         result.update(_native_working_result_fields(case, frame.attrs, disk_details))
         result.update(_disk_fft_result_fields(case, disk_details))
+        result.update(_disk_power_result_fields(case, disk_details))
         result.update(_native_scratch_fields(method, case["storage"], frame.attrs, disk_details))
         if window_metadata is not None:
             for key in ("window_storage", "window_buffer_bytes", "window_scratch_bytes", "one_shot_window"):
