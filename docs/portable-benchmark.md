@@ -151,6 +151,22 @@ when needed, then a bounded disk path. The selected path is included in each
 result. An in-place FFT reuses its transform buffer while preserving the
 original input samples.
 
+For native LPSD with a file-backed input, an internally owned anonymous
+coefficient pool of at least 512 MiB may shrink once during the call. The
+adapter waits for the complete prefix of frequency points to finish, releases
+the old pool and allocates the space required by the remaining points when
+their largest concurrent stored lengths fit within 128 MiB. The same point
+plan, streaming selection, gate capacity and arithmetic continue afterward.
+Ordinary RAM inputs and caller-owned scratch mappings retain their lifecycle.
+The wait, release and new allocation remain inside the complete-call timer.
+
+The report records initial, final and peak pool capacity and whether and where
+the replacement actually occurred. The original admission estimate is retained.
+These byte counts describe allocations during the call; physical page return
+depends on the allocator and OS. A smaller final pool does not itself establish
+lower peak RSS or a speed gain. Compare completed times and observed memory
+under the same input, storage and resource settings.
+
 The outer bootstrap sets an absolute deadline; installing Python, downloading
 packages, compiling, optional login, importing libraries, generating data and
 checking results all consume that same budget. The Python stages also use a

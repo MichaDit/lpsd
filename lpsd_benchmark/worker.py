@@ -17,6 +17,7 @@ import sys
 import time
 from types import SimpleNamespace
 
+from .privacy import integer
 from .resources import MIB
 
 
@@ -198,6 +199,45 @@ def _native_working_budget(case):
     return working_mb, headroom
 
 
+def _native_scratch_fields(method, storage, attrs, disk_details=None):
+    """Scalar pool capacities from completed-call metadata, never RSS.
+
+    Read the returned metadata, not the constructor's admission preview.
+    Missing lifecycle data remains absent for older adapters and FFTW-only
+    calls. Planned or failed replacements do not publish retirement indices.
+    """
+    if method not in ("lpsd", "matched"):
+        return {}
+    if storage == "disk":
+        source = (disk_details.get("lpsd" if method == "lpsd" else "low_lpsd")
+                  if isinstance(disk_details, dict) else None)
+    elif isinstance(attrs, dict):
+        source = attrs.get("lpsd_disk" if method == "lpsd" else "matched_smoothing_once")
+        if method == "matched":
+            source = source.get("low_frequency_preparation") if isinstance(source, dict) else None
+    else:
+        source = None
+    lifecycle = source.get("scratch_pool_lifecycle") if isinstance(source, dict) else None
+    if not isinstance(lifecycle, dict):
+        return {}
+    fields = {}
+    for key, public_key in (("initial_bytes", "native_scratch_initial_bytes"),
+                            ("final_bytes", "native_scratch_final_bytes"),
+                            ("peak_allocated_bytes", "native_scratch_peak_bytes")):
+        value = integer(lifecycle.get(key))
+        if value is not None:
+            fields[public_key] = value
+    state = lifecycle.get("state")
+    retired = isinstance(state, str) and state == "retired"
+    fields["native_scratch_retired"] = retired
+    if retired:
+        for key in ("retirement_index", "retirement_source_index"):
+            value = integer(lifecycle.get(key))
+            if value is not None:
+                fields["native_scratch_" + key] = value
+    return fields
+
+
 def _address_guard(case):
     """Additional Linux guard on allocations plus explicitly allowed mappings.
 
@@ -348,6 +388,7 @@ def run(case, directory):
                                                else 0.))
         result.setdefault("native_backend", "not_applicable")
         result["cache_bytes"] = 0
+        disk_details = None
         wall, cpu = time.perf_counter(), time.process_time()
         phases = {}
         window_metadata = None
@@ -361,8 +402,8 @@ def run(case, directory):
                                       smoothing_workers=min(4, case["requested_threads"]),
                                       low_working_mb=case["low_working_mb"],
                                       lpsd_progress_interval_s=60.)
-            frame, details = disk_pipeline(method, values, backend, directory, options)
-            phases = details.get("phases", {})
+            frame, disk_details = disk_pipeline(method, values, backend, directory, options)
+            phases = disk_details.get("phases", {})
         elif method == "lpsd":
             # A fresh constructor keeps planning and workspace preparation
             # inside the complete-call timer despite the earlier preflight.
@@ -390,6 +431,7 @@ def run(case, directory):
                                   low_frequency_backend="bounded", window_storage=window_storage)
             window_metadata = frame.attrs["matched_smoothing_once"]
         result.update(compute_wall_s=time.perf_counter() - wall, compute_cpu_s=time.process_time() - cpu)
+        result.update(_native_scratch_fields(method, case["storage"], frame.attrs, disk_details))
         if window_metadata is not None:
             for key in ("window_storage", "window_buffer_bytes", "window_scratch_bytes", "one_shot_window"):
                 result[key] = window_metadata[key]

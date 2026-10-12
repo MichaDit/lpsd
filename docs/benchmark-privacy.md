@@ -49,6 +49,7 @@ format checks. Unknown fields and arbitrary text are not carried through.
 | Synthetic preset, sample count, seed, sample rate, window/averaging settings | Reproduce the benchmark input and estimator configuration |
 | Requested and achieved point counts, storage/FFT layout, thread counts | Describe the work actually performed |
 | Wall/CPU times, available phases, input setup, process memory and numeric working-set metadata | Compare completed work and resource use |
+| Native scratch-pool initial/final/peak byte capacities, a replacement Boolean and actual plan indices | Describe observed buffer lifecycle without including policy text or claiming RSS savings |
 | Closed status/reason categories, forecasts and timeouts | Preserve incomplete or infeasible cases without disclosing exception text |
 | Numeric quality checks, noise roughness, peak widths, comparison summaries and spectrum hashes | Check whether speed results remain numerically comparable |
 

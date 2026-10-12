@@ -30,6 +30,7 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import copy
 import ctypes as ct
+import heapq
 import math
 import os
 from pathlib import Path
@@ -48,6 +49,36 @@ _ERRORS = {1: "invalid native arguments", 2: "unsafe segment bounds",
            3: "native allocation failed", 4: "kernel/order combination unsupported"}
 _STAGES = ("window_generation_s", "window_sums_s", "coefficients_s",
            "c_kernel_s", "c_preparation_s", "c_segments_s", "normalization_s")
+_SCRATCH_RETIRE_TARGET_BYTES = 128 * 1024**2
+_SCRATCH_RETIRE_MINIMUM_FACTOR = 4
+
+
+def _scratch_retirement_split(lengths, streaming_mask, workers, initial_slots):
+    """One safe suffix split, using O(J log workers) scalar planning.
+
+    The caller has already validated lengths/mask/workers. Keep the largest
+    ``workers`` stored-coefficient lengths in each suffix, rather than relying
+    on monotone lengths or changing the supplied point order. Their sum fits
+    every possible concurrent combination after the split. A completely
+    streamed subset does not benefit from retiring unused coefficient slots.
+    """
+    target_slots = _SCRATCH_RETIRE_TARGET_BYTES // 16
+    if (len(lengths) < 2 or workers < 1 or
+            initial_slots < _SCRATCH_RETIRE_MINIMUM_FACTOR * target_slots):
+        return None
+    largest, slots, choice = [], 0, None
+    for j in range(len(lengths) - 1, -1, -1):
+        if not streaming_mask[j]:
+            length = int(lengths[j])
+            if len(largest) < workers:
+                heapq.heappush(largest, length)
+                slots += length
+            elif length > largest[0]:
+                slots += length - heapq.heapreplace(largest, length)
+        required = max(1, slots)
+        if j > 0 and required <= target_slots:
+            choice = (j, required)
+    return choice if largest else None
 
 
 class _PointProgress:
@@ -326,6 +357,14 @@ class DiskLPSDSubset:
     budget can accommodate several long points concurrently. No temporary
     files are created. Input, results and OS/runtime memory are extra.
 
+    With file-backed input and internally owned scratch, a pool of at least
+    512 MiB can be replaced once after a complete point-prefix drain, when
+    the sum of the largest remaining stored lengths for the workers needs
+    at most 128 MiB. The point plan, streaming mask and gate capacity stay
+    fixed. Ordinary RAM input and caller-owned scratch never use this path.
+    Metadata records initial, final and peak allocated pool bytes separately;
+    the existing scratch-size fields continue to describe initial/peak size.
+
     Optional ``progress(event)`` callbacks are serialized across workers and
     run only after a completed point has released both resource reservations.
     The first point, start and end are reported immediately; other finished
@@ -603,6 +642,34 @@ class DiskLPSDSubset:
                         "reduce the dataset, or provide an explicitly file-backed workspace.")
                 workspace = np.empty(self.recommended_ram_scratch_slots, dtype=np.complex128)
             input_region, scratch_region = self._validate(values, workspace, mapped=mapped)
+            initial_scratch_bytes = int(workspace.nbytes)
+            owned_disk_pool = not mapped and isinstance(values, np.memmap)
+            retirement = (_scratch_retirement_split(
+                self.plan[3], self._streaming_mask, self.effective_workers, len(workspace))
+                if owned_disk_pool else None)
+            pool_lifecycle = {
+                "scope": "Only an internally owned anonymous pool with file-backed input may shrink. "
+                         "Caller-owned scratch mappings and ordinary RAM inputs retain their lifecycle.",
+                "policy": "At most one drain/replacement; initial pool at least four target sizes; "
+                          "sum of the largest remaining nonstream lengths for the workers fits the target. "
+                          "Gate capacity, streaming selection and input validation are unchanged.",
+                "eligible_storage": owned_disk_pool,
+                "target_bytes": _SCRATCH_RETIRE_TARGET_BYTES,
+                "minimum_initial_bytes": _SCRATCH_RETIRE_MINIMUM_FACTOR * _SCRATCH_RETIRE_TARGET_BYTES,
+                "initial_bytes": initial_scratch_bytes,
+                "final_bytes": initial_scratch_bytes,
+                "peak_allocated_bytes": initial_scratch_bytes,
+                "planned_retirement_index": retirement[0] if retirement is not None else None,
+                "retirement_index": None,
+                "retirement_source_index": None,
+                "index_note": "retirement_index is a zero-based selected-plan index; "
+                              "retirement_source_index refers to the supplied unmasked plan.",
+                "state": "scheduled" if retirement is not None else "unchanged",
+                "allocation_note": "Capacity in bytes, not observed RSS. The old NumPy base and all "
+                                   "views are released before replacement allocation; OS page return "
+                                   "depends on the allocator. Existing scratch_bytes fields retain "
+                                   "the initial/peak allocation instead of concealing it with the final size.",
+            }
             self._last_storage_metadata = {
                 "storage_mode": "mapped" if mapped else "bounded_memory",
                 "scratch_bytes": int(workspace.nbytes),
@@ -611,6 +678,7 @@ class DiskLPSDSubset:
                 "total_mapped_bytes": ((int(values.nbytes) if isinstance(values, np.memmap) else 0)
                                        + (int(workspace.nbytes) if mapped else 0)),
                 "benchmark_category": "file_backed_complete_call" if mapped else "bounded_memory_complete_call",
+                "scratch_pool_lifecycle": pool_lifecycle,
             }
             validation_s = time.perf_counter() - validation_started
             doubles = workspace.view(np.float64)
@@ -621,6 +689,7 @@ class DiskLPSDSubset:
             totals = {name: 0.0 for name in _STAGES}
             gate = _FairMemoryGate(self._working_capacity)
             scratch_pool = _ScratchPool(len(workspace))
+            previous_peak_scratch_slots = 0
             streaming_count_lock = threading.Lock()
             streaming_counts = [0, 0]
             point_progress = (_PointProgress(self._progress, len(self.frequencies),
@@ -745,13 +814,50 @@ class DiskLPSDSubset:
                     point_progress.record(point)
                 return work, point_wall
 
+            def retire_pool():
+                nonlocal workspace, doubles, scratch_pool, previous_peak_scratch_slots
+                # Every prefix future and callback has returned before this
+                # function runs. No point-local ndarray view or ctypes pointer
+                # can still own the old buffer. Do not change the gate/mask.
+                if (gate.used or gate._waiters or scratch_pool.used_slots or
+                        scratch_pool._waiters):
+                    raise RuntimeError("Cannot retire LPSD scratch while reservations are active.")
+                previous_peak_scratch_slots = max(previous_peak_scratch_slots,
+                                                  scratch_pool.peak_slots)
+                del doubles
+                del workspace
+                pool_lifecycle["final_bytes"] = 0
+                pool_lifecycle["state"] = "allocating_replacement"
+                try:
+                    workspace = np.empty(retirement[1], dtype=np.complex128)
+                    pool_lifecycle["final_bytes"] = int(workspace.nbytes)
+                    doubles = workspace.view(np.float64)
+                    scratch_pool = _ScratchPool(len(workspace))
+                except BaseException:
+                    pool_lifecycle["state"] = "replacement_failed"
+                    raise
+                pool_lifecycle["retirement_index"] = retirement[0]
+                pool_lifecycle["retirement_source_index"] = self._source_indices[retirement[0]]
+                pool_lifecycle["state"] = "retired"
+
+            def evaluate(mapper):
+                if retirement is None:
+                    return list(mapper(one, range(len(self.frequencies))))
+                # Use one executor and one validation for the complete call.
+                # Waiting for this full prefix also drains out-of-order tasks
+                # and callbacks; no suffix task has been submitted yet.
+                completed = list(mapper(one, range(retirement[0])))
+                retire_pool()
+                completed.extend(mapper(one, range(retirement[0], len(self.frequencies))))
+                return completed
+
             try:
                 if self.effective_workers <= 1:
-                    completed = list(map(one, range(len(self.frequencies))))
+                    completed = evaluate(map)
                 else:
                     with ThreadPoolExecutor(max_workers=self.effective_workers,
                                             thread_name_prefix="lpsd-disk") as pool:
-                        completed = list(pool.map(one, range(len(self.frequencies))))
+                        completed = evaluate(pool.map)
             except BaseException:
                 if point_progress is not None:
                     try:
@@ -781,7 +887,7 @@ class DiskLPSDSubset:
             result.attrs["lpsd_disk"]["input_mapping"] = input_region
             result.attrs["lpsd_disk"]["scratch_mapping"] = scratch_region
             result.attrs["lpsd_disk"]["storage_mode"] = "mapped" if mapped else "bounded_memory"
-            result.attrs["lpsd_disk"]["actual_scratch_bytes"] = int(workspace.nbytes)
+            result.attrs["lpsd_disk"]["actual_scratch_bytes"] = initial_scratch_bytes
             assembly_s = time.perf_counter() - assembly_started
             details = {"call_wall_s": time.perf_counter() - started,
                        "validation_wall_s": validation_s, "point_wall_sum_s": point_wall_sum,
@@ -790,8 +896,10 @@ class DiskLPSDSubset:
                        "native_mode": self._mode,
                        "concurrency_budget_bytes": self._working_capacity,
                        "peak_reserved_bytes": gate.peak,
-                       "peak_active_scratch_bytes": 16 * scratch_pool.peak_slots,
-                       "scratch_buffer_bytes": int(workspace.nbytes),
+                       "peak_active_scratch_bytes": 16 * max(previous_peak_scratch_slots,
+                                                            scratch_pool.peak_slots),
+                       "scratch_buffer_bytes": initial_scratch_bytes,
+                       "scratch_pool_lifecycle": copy.deepcopy(pool_lifecycle),
                        "storage_mode": "mapped" if mapped else "bounded_memory",
                        "streaming_points": sum(self._streaming_mask),
                        "peak_active_streaming_points": streaming_counts[1],

@@ -154,6 +154,19 @@ def sanitize(report):
                              "input_setup_s", "peak_rss_bytes", "sample_iterations",
                              "minimum_frequency_hz", "maximum_frequency_hz")),
         }
+        # Pool capacities are observed allocations, not resident-memory
+        # measurements. Keep integer bytes and only actual retirement indices.
+        for key in ("native_scratch_initial_bytes", "native_scratch_final_bytes", "native_scratch_peak_bytes"):
+            value = integer(row.get(key))
+            if value is not None:
+                result[key] = value
+        if isinstance(row.get("native_scratch_retired"), bool):
+            result["native_scratch_retired"] = row["native_scratch_retired"]
+            if row["native_scratch_retired"]:
+                for key in ("native_scratch_retirement_index", "native_scratch_retirement_source_index"):
+                    value = integer(row.get(key))
+                    if value is not None:
+                        result[key] = value
         for key in HASHES:
             value = _hash(row.get(key))
             if value:
