@@ -11,13 +11,13 @@ Start in a writable directory. On the supported desktop/Linux routes, the comman
 **Linux x86-64 / ARM64 and macOS:**
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --point-factors 1 2
 ```
 
 **Windows PowerShell 5.1 or PowerShell 7:**
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--point-factors','1','2')
 ```
 
 The wrapper and source use the same full commit. Review the [pinned instructions and scripts](https://github.com/MichaDit/lpsd/blob/6246f0c6061b5f72dba8e235e640fb0b71281a20/docs/portable-benchmark.md) before executing downloaded code if desired.
@@ -34,7 +34,7 @@ The default sizes are **100,000; 1,000,000; 1,000,003; 10,000,000; 30,000,000; 1
 
 `--point-factors 1 2` requests the baseline and **twice the actual number of returned frequency points**. It resolves the native planner parameter `J` separately and records achieved counts; a planner plateau remains visible. Simply changing `J` from 1,000 to 2,000 does not ensure twice as many outputs. To add a further useful comparison, replace the argument with `--point-factors 1 2 4`.
 
-Each `compute_wall_s` / `compute_cpu_s` pair describes **one complete call producing both PSD and NSD**, including planning and working arrays. Input generation, integrity checks, and the full worker lifetime are recorded separately. The matrix takes one observation per case; repeat a campaign to assess variation. Forecasts, skips, and timeouts are labelled separately from completed measurements. The report also identifies the actual FFTW version and binary hash.
+Each `compute_wall_s` / `compute_cpu_s` pair describes **one complete call producing both PSD and NSD**, including planning and working arrays. `input_setup_s` includes input generation and its initial checksum. `process_wall_s` covers the full worker lifetime, including imports, setup, computation, and final checks. Integrity outcomes are recorded as flags, hashes, and quality metrics; there is no separate final-check timer. The matrix takes one observation per case; repeat a campaign to assess variation. Forecasts, skips, and timeouts are labelled separately from completed measurements. The report also identifies the actual FFTW version and binary hash.
 
 ## Choose a 32 GB or smaller budget
 
@@ -49,13 +49,13 @@ The default derives RAM, disk, and thread limits from the machine. An explicit R
 **32-decimal-GB campaign, including local spectra for plotting — Linux/macOS:**
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --ram-gib 29.8023223876953125 --point-factors 1 2 --save-spectra
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --ram-gib 29.8023223876953125 --point-factors 1 2 --save-spectra
 ```
 
 **The same 32-decimal-GB campaign — Windows:**
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--ram-gib','29.8023223876953125','--point-factors','1','2','--save-spectra')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--ram-gib','29.8023223876953125','--point-factors','1','2','--save-spectra')
 ```
 
 For **32 GiB**, replace the value after `--ram-gib` with `32`. The admitted budget and measured process memory in your report describe the actual experiment. These commands configure new measurements; this announcement contains no measured 32-GB performance claim.
@@ -68,7 +68,7 @@ The buffer estimates include an empirical FFTW planning allowance. **They are ad
 
 Temporary datasets use a private directory under the original OS/user temporary directory. For large cases, choose a local SSD or another local drive with `--work-dir /path/on/local-drive/lpsd-work`. Avoid synchronized folders, whose background copies can consume space and alter timings. Detected Linux `tmpfs`/`ramfs` workdirs disable the disk fallback before dataset files are created; RAM cases remain available. The private installation has a separate default **2 GiB setup cap**.
 
-The maximum is **24 hours for bootstrap setup plus the benchmark**; `--max-hours` can shorten it. Installation, compilation, optional login, data generation, computation, and checks consume that budget. Larger cases are admitted using conservative forecasts from smaller completed cases, and owned worker processes have timeouts. Completed results are checkpointed. Long-running cases print the elapsed process time and effective process limit once per minute; these are not completed compute timings. The deadline cannot keep a suspended or powered-off device running.
+Once the downloaded wrapper starts, the maximum is **24 hours for bootstrap setup plus the benchmark**; `--max-hours` can shorten it. The initial wrapper request has a separate 60-second client timeout and precedes this setup/run budget. Installation, compilation, optional login, data generation, computation, and checks consume that budget. Larger cases are admitted using conservative forecasts from smaller completed cases, and owned worker processes have timeouts. Completed results are checkpointed. Long-running cases print the elapsed process time and effective process limit once per minute; these are not completed compute timings. The deadline cannot keep a suspended or powered-off device running.
 
 ## Platform coverage
 
@@ -93,13 +93,13 @@ Read the [pinned privacy notice](https://github.com/MichaDit/lpsd/blob/6246f0c60
 **Automatic submission with an existing GitHub CLI login — Linux/macOS:**
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --point-factors 1 2 --upload-github --accept-public-upload
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --point-factors 1 2 --upload-github --accept-public-upload
 ```
 
 **Windows:**
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--point-factors','1','2','--upload-github','--accept-public-upload')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--point-factors','1','2','--upload-github','--accept-public-upload')
 ```
 
 The bootstrap reuses an installed `gh`, or obtains a pinned private copy when available. To explicitly request a new browser/device login, also add `--github-login`—as another shell argument, or as `'--github-login'` in the PowerShell array. You complete that authorization using your own GitHub account. Login time counts against the deadline.
@@ -108,7 +108,7 @@ If authentication or connectivity is unavailable, results and prepared public bo
 
 When `--save-spectra` is selected, every checkpoint also writes a compact **`results.public.json`** containing the exact allowlisted report without spectra. Automatic submission uses this file. Select it explicitly for later manual submission if the larger local spectra report exceeds the unchanged 16 MiB reader limit. The uploader does not silently substitute a different input file.
 
-Large reports are compressed and, when necessary, divided into **one issue and numbered comments on that same issue**, with at most 16 parts of 60,000 bytes each. No cases are silently omitted. Every part identifies the same complete-payload SHA256; the documented offline procedure reconstructs the exact public JSON. All public bodies and comment requests are prepared before authentication or upload.
+Large reports are compressed and, when necessary, divided into **one issue and numbered comments on that same issue**, with at most 16 parts of 60,000 bytes each. No cases are silently omitted. Every part identifies the same complete-payload SHA256; the documented offline procedure reconstructs the exact public JSON. The uploader prepares all public bodies and comment requests before its noninteractive authentication check and any result upload. An explicitly requested `--github-login` is a separate earlier bootstrap step; it can run before the measurements and report preparation.
 
 A multipart receipt records confirmed and uncertain parts. If a response is lost, inspect the existing issue and its digest/index markers before manually adding any missing parts. Repeating the same local multipart submission does not automatically recreate, retry, or continue it. A completed local calculation does not depend on successful publication.
 

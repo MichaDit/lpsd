@@ -72,8 +72,9 @@ size-limited. The existing single-body format is retained whenever it fits.
 A larger report uses deterministic gzip plus base64 and, if necessary, up to
 16 indexed parts: one issue body and comments in that same issue. Each body is
 limited to 60,000 bytes. The 16 MiB input limit and 512-case schema limit are
-unchanged; reports that exceed the part limit fail before authentication or
-network access. No cases or fields are silently dropped. Every part identifies
+unchanged; the uploader rejects reports that exceed the part limit before its
+noninteractive authentication check or any result transfer. No cases or fields
+are silently dropped. Every part identifies
 the same full-payload SHA256 and its index/total; concatenating the chunks in
 order reconstructs exactly the same allowlisted JSON. It adds no spectra, logs
 or private files. The SHA256 detects byte changes; this hash is not proof that an
@@ -96,7 +97,10 @@ body, plus numbered `*.part-NN-of-TT.md` files if needed. Review the complete
 printed list before manual publication, or run locally first if you want that
 review step before opting into automatic upload. The accompanying
 `*.request.json` files wrap only each public comment body for GitHub's API.
-All parts and requests are prepared before authentication or any network call.
+The uploader prepares all parts and requests before its noninteractive
+authentication check or any result transfer. Installation downloads and an
+explicitly requested `--github-login` are separate earlier bootstrap steps;
+they can occur before the measurements and report preparation.
 
 A multipart transfer is not atomic. A local `*.submission.json` file records
 the full payload digest, part count, confirmed issue/comment URLs and the last

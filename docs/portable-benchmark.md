@@ -16,13 +16,13 @@ command with that value already filled in.
 Linux x86-64 / ARM64 and macOS, from a writable directory:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.sh | sh -s -- --revision COMMIT
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.sh | sh -s -- --revision COMMIT
 ```
 
 Windows, in Windows PowerShell 5.1 or PowerShell 7:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT'
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT'
 ```
 
 The command creates a fresh `lpsd-benchmark...` directory under the current
@@ -46,8 +46,10 @@ sh scripts/run_benchmark.sh --revision COMMIT
 
 ## Choose resource and time budgets
 
-The default is at most **24 hours for setup plus the benchmark**, with RAM,
-thread and temporary-disk budgets derived from the current machine. Appending
+The default is at most **24 hours from wrapper start for setup plus the
+benchmark**, with RAM, thread and temporary-disk budgets derived from the current
+machine. The initial wrapper request has a separate 60-second client timeout
+and precedes this setup/run budget. Appending
 these arguments changes the run:
 
 | Goal | Arguments |
@@ -68,13 +70,13 @@ these arguments changes the run:
 For example, the Unix command with a 32 GiB allocation ceiling is:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.sh | sh -s -- --revision COMMIT --ram-gib 32 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.sh | sh -s -- --revision COMMIT --ram-gib 32 --point-factors 1 2
 ```
 
 For PowerShell, pass additional arguments as an array:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
 ```
 
 ### What the limits mean
@@ -167,9 +169,10 @@ depends on the allocator and OS. A smaller final pool does not itself establish
 lower peak RSS or a speed gain. Compare completed times and observed memory
 under the same input, storage and resource settings.
 
-The outer bootstrap sets an absolute deadline; installing Python, downloading
-packages, compiling, optional login, importing libraries, generating data and
-checking results all consume that same budget. The Python stages also use a
+The downloaded shell or PowerShell wrapper sets an absolute deadline when it
+starts. Installing Python, downloading packages, compiling, optional login,
+importing libraries, generating data and checking results all consume that
+same budget. The Python stages also use a
 monotonic clock and terminate owned child processes at the deadline. Completed
 cases are checkpointed. A clock or OS scheduling delay, device suspension,
 external termination or forced power-off is not under application control.
@@ -359,8 +362,9 @@ report fits, including its existing gzip/base64 fallback. If that still exceeds
 **60,000 bytes**, submission prepares one issue body plus numbered comments.
 Every part stays within the same 60,000-byte limit. There are at most **16 parts
 total: one issue and up to 15 comments**. The 16 MiB input-file and 512-case
-schema limits remain unchanged. A report that cannot fit those limits fails
-before CLI discovery, authentication or network access; no cases are dropped.
+schema limits remain unchanged. The uploader rejects a report that cannot fit
+those limits before its CLI discovery, noninteractive authentication check or
+result transfer; no cases are dropped.
 
 All parts contain one SHA256 for the **entire exact uncompressed JSON payload**
 and their own index/total. The gzip stream is created once, encoded as base64,
@@ -374,8 +378,10 @@ For a three-part report, local preparation produces:
 
 The printed ordered list is authoritative; unrelated older files are not
 deleted. The additional `*.request.json` files contain only the corresponding
-public comment body in the REST request wrapper. Every Markdown body and request
-file is prepared before the first authentication probe or network call.
+public comment body in the REST request wrapper. The uploader prepares every
+Markdown body and request file before its noninteractive authentication check
+or any result transfer. Installation downloads and an explicitly requested
+`--github-login` are separate earlier bootstrap steps.
 The same explicit upload flags authorize this public report, including its
 comments. Creating these local files alone does not authorize publication.
 
