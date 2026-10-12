@@ -7,7 +7,48 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.4`; this is not an official upstream release.
+Its package version is `1.0.6+fast.8`; this is not an official upstream release.
+
+Version `fast.8` integrates the recovered cross-platform and large-input
+measurements. On Apple Silicon, eligible mean-detrended segments fuse the
+existing residual subtraction into the native dot product. Windows and macOS
+use actual available RAM for automatic concurrency. The disk benchmark adds
+an explicit `--disk-fft-algorithm packed-real` route and an optional
+`--native-working-mib` cap. Null-energy diagnostics, workspace ownership and
+a Windows bootstrap directory race are corrected. The established full FFT
+and automatic native precision remain the defaults. See the
+[platform follow-up](docs/performance-platform-followup.md) and
+[large-input and output-count evidence](docs/performance-memory-points.md).
+
+Version `fast.7` adds a resource-aware, portable LPSD/FFTW benchmark with
+automatically installed private dependencies and an optional public GitHub
+issue report. It compares the original output count with an actual doubling
+of that count, limits the complete run to at most 24 hours, and admits only
+cases that fit the detected RAM and temporary-disk budgets. Contributors need
+no repository push access. See the [one-command benchmark](docs/portable-benchmark.md)
+and [public-report data policy](docs/benchmark-privacy.md). The
+[October 2026 campaign](docs/benchmark-campaign-2026-10.md) provides
+commit-pinned commands for the validated runtime, including
+32-GB budgets and optional issue submission without repository write access.
+
+For large inputs, the benchmark can reuse the real FFT buffer in place, release
+FFT storage before the matched estimator's native phase, and compute long LPSD
+points with bounded streaming scratch. The disk FFT uses blocked contiguous
+transposition when its workspace exceeds available physical memory. These are
+separate execution choices; their actual storage mode, library versions and
+measured timings are recorded with each result. The native frequency plan,
+window, precision and inherited statistics are retained.
+
+Version `fast.5` optimizes both FFTW comparison pipelines. It adds fused
+native preprocessing and power grouping, reusable projected coefficients
+for exact low-frequency LPSD points, native Kaiser-power smoothing with
+bounded caches, and a cache-free complete-call path. An explicit Bluestein
+adapter can compute difficult original FFT lengths through shorter internal
+complex convolutions without changing the frequency grid. Float64 remains
+the data and arithmetic precision; an optional Float32 cache stores only
+normalized smoothing weights. See the
+[FFTW optimization report](docs/performance-fftw-optimized.md) for estimator
+definitions, measured complete-call timings, numerical gates and reproduction.
 
 Version `fast.4` adds bounded FP64 FMA segment projections to single-worker
 `kernel="fast"` calls on supported AVX-512 CPUs, plus shared coefficient

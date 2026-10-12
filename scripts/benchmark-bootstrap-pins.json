@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "uv_version": "0.13.0",
+  "python_version": "3.12.14",
+  "zig_version": "0.15.2",
+  "generated_from": [
+    "https://pypi.org/pypi/uv/0.13.0/json",
+    "https://ziglang.org/download/index.json",
+    "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_checksums.txt"
+  ],
+  "uv": {
+    "x86_64-unknown-linux-gnu": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "1468ebd5a5541121837c5a2817b9972ba6090fa6caa3d142620850a47fb75154"
+    },
+    "aarch64-unknown-linux-gnu": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-aarch64-unknown-linux-gnu.tar.gz",
+      "sha256": "3ccfb6af6e242433eb552f7d9676abd5412c6595c497e990d9c8cb7b5bd4d2c3"
+    },
+    "x86_64-apple-darwin": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-apple-darwin.tar.gz",
+      "sha256": "5f44dcbde809b632f47c36fadb241cb4d6f9af71d0c8f172b5d2026d3dde742c"
+    },
+    "aarch64-apple-darwin": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-aarch64-apple-darwin.tar.gz",
+      "sha256": "a9c1b29002cf3c83f07fa9cd8a887a3be0107d90e23189721221e7257db8e3d6"
+    },
+    "x86_64-pc-windows-msvc": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-x86_64-pc-windows-msvc.zip",
+      "sha256": "088962f9e7b7bd9ea740c04c650b2a21c8928c345bd99ac24350dc924dba656c"
+    },
+    "aarch64-pc-windows-msvc": {
+      "url": "https://github.com/astral-sh/uv/releases/download/0.13.0/uv-aarch64-pc-windows-msvc.zip",
+      "sha256": "cb54028b59aa87f11cf6dec293ce000420043a49a8aea522e822a671321f8932"
+    }
+  },
+  "zig": {
+    "x86_64-linux": {
+      "url": "https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz",
+      "sha256": "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239",
+      "size": 53733924
+    },
+    "aarch64-linux": {
+      "url": "https://ziglang.org/download/0.15.2/zig-aarch64-linux-0.15.2.tar.xz",
+      "sha256": "958ed7d1e00d0ea76590d27666efbf7a932281b3d7ba0c6b01b0ff26498f667f",
+      "size": 49471996
+    },
+    "x86_64-macos": {
+      "url": "https://ziglang.org/download/0.15.2/zig-x86_64-macos-0.15.2.tar.xz",
+      "sha256": "375b6909fc1495d16fc2c7db9538f707456bfc3373b14ee83fdd3e22b3d43f7f",
+      "size": 55800460
+    },
+    "aarch64-macos": {
+      "url": "https://ziglang.org/download/0.15.2/zig-aarch64-macos-0.15.2.tar.xz",
+      "sha256": "3cc2bab367e185cdfb27501c4b30b1b0653c28d9f73df8dc91488e66ece5fa6b",
+      "size": 50635984
+    },
+    "x86_64-windows": {
+      "url": "https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip",
+      "sha256": "3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c",
+      "size": 92614574
+    },
+    "aarch64-windows": {
+      "url": "https://ziglang.org/download/0.15.2/zig-aarch64-windows-0.15.2.zip",
+      "sha256": "b926465f8872bf983422257cd9ec248bb2b270996fbe8d57872cca13b56fc370",
+      "size": 88464585
+    }
+  },
+  "gh_version": "2.102.0",
+  "gh": {
+    "x86_64-linux": {
+      "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz",
+      "sha256": "bb766f710eef8ede859c18578c72c327597cd4c8a85b06001b1f3843c6019386",
+      "size": 15319960
+    },
+    "aarch64-linux": {
+      "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_arm64.tar.gz",
+      "sha256": "7862c86c72f43df3a2d93ddde6f473285b4e2af61b494849846827e513ef6484",
+      "size": 13917794
+    },
+    "x86_64-macos": {
+      "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_macOS_amd64.zip",
+      "sha256": "b245f24eb2bf5f75b426b4c26da3651a107f8d5b6f4fddfbfccc5679041378b3",
+      "size": 15995994
+    },
+    "aarch64-macos": {
+      "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_macOS_arm64.zip",
+      "sha256": "da922c20d1792e5b2cbf375593d7a658acf034c12c84e007e71c76ef959c337e",
+      "size": 14359983
+    },
+    "x86_64-windows": {
+      "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_windows_amd64.zip",
+      "sha256": "ae64e556ecc240b200f7eba60d550e4bb60d78e860e69dd88c449405b86067f4",
+      "size": 15512013
+    },
+    "aarch64-windows": {
+      "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_windows_arm64.zip",
+      "sha256": "5dcf12aa8525eabd0c46ec414f323ab6cf65229fc2cd46543cc705001bbaf223",
+      "size": 13907525
+    }
+  }
+}

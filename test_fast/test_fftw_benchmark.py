@@ -167,6 +167,8 @@ def test_windows_plan_description_avoids_incompatible_free(adapter, monkeypatch)
     transform.planner='estimate'
     transform.time_limit=None
     transform.planning_s=transform.allocation_s=0.
+    transform.in_place=False
+    transform.allocated_bytes=0
     monkeypatch.setattr(adapter,'os',SimpleNamespace(name='nt'))
     description=transform.describe()
     assert description['plan_text_available'] is False

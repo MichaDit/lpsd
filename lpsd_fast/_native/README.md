@@ -1,7 +1,7 @@
 # Native LPSD kernels
 
 These sources implement the LPSD 1.0.6 estimator. They keep its frequency
-plan, segment starts, normalization and legacy mean/variance recurrence.
+plan, valid segment starts, normalization and legacy mean/variance recurrence.
 The polynomial routines are included directly from the unchanged original
 `lpsd/c_sources/polyreg.c`; there is no second maintained copy.
 
@@ -18,6 +18,18 @@ The Python API selects mode 2 only for detrending order 0 in automatic mode.
 Explicit projection for order 1 can lose accuracy for a large ramp with a
 very small residual. See [numerical limits](../../docs/numerics.md).
 
+On targets where C `long double` has the same precision and exponent range
+as `double`, mode 1 with order-0 detrending subtracts the original mean
+directly in the SIMD dot. It preserves `polyreg0`'s serial sum,
+reciprocal-then-multiply mean and double residual rounding. No projected
+coefficients are substituted. The length-sized residual vectors and their
+write/read pass are omitted; the scalar mode and wider long-double targets
+retain the existing path. `native_inline_mean_supported()` reports this
+compiled capability, and public results report whether the call used it in
+`inline_mean_residual`. A native test compares both channel projections with
+the original residual-vector helpers bitwise, including odd vector tails,
+DC plus nanovolt noise, constants and a large starting transient.
+
 Mode 3 keeps an upper and lower FP64 part for each coefficient sum and for
 the mean. It uses independent SIMD lanes, compensated division and
 compensated subtraction. Extreme coefficient magnitudes fall back to the
@@ -28,9 +40,22 @@ long double has more than 64 significand bits. Its value must not be
 inferred from `sizeof(long double)` or the processor family. Mode 3 is
 limited to detrending order 0; the other original modes remain available.
 
-Segment starts deliberately use repeated `start += shift`, followed by
-`floor(start + 0.5)`. Multiplying the segment number by the shift can select
-a different sample through rounding.
+Segment starts deliberately use `floor(start + 0.5)` followed by the repeated
+`start += shift` update for the next segment. Multiplying the segment number
+by the shift can select a different sample through rounding. Every previously
+valid start is retained, including a final start that rounds below `N - L`.
+
+There is one narrow endpoint repair shared by the direct and rolling kernels:
+if the **last** segment's finite rounded start would exceed `N - L`, use the
+exact endpoint `N - L`. Negative rounded starts, nonfinite starts and nonfinal out-of-bounds starts
+are still rejected. Bounds are checked before converting to a C `long`.
+This avoids cumulative binary64 drift aborting a valid large plan. For
+`N = 1,000,000,000`, `L = 146` and `K = 29,251,388`, the recorded Kaiser
+overlap produces a final recursive start of `999,999,854.5296893`, which
+formerly rounded one sample beyond the endpoint `999,999,854`. No earlier
+start, segment count, shift, projection, normalization or statistics update
+is changed. The helper regression walks this actual recurrence using constant
+memory; it does not allocate a billion-sample signal.
 
 The original statistics have two known defects: the mean update uses the
 zero-based segment index as divisor, and M2 is overwritten rather than

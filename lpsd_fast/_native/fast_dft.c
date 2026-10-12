@@ -6,7 +6,7 @@
  * Polynomial detrending: Gerhard Heinzel, AEI, 2008-01-17.
  *
  * This derivative preserves the supplied frequencies and coefficients,
- * segment starts, long-double polynomial detrending, and the original
+ * valid segment starts, long-double polynomial detrending, and the original
  * mean/variance recurrence, INCLUDING its known 1.0.6 defects. Correcting
  * that recurrence is a separate estimator change, not a speed optimization.
  *
@@ -19,7 +19,9 @@
 #endif
 
 #include "fast_dft.h"
+#include "segment_starts.h"
 
+#include <float.h>
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
@@ -123,6 +125,71 @@ static LPSD_ALWAYS_INLINE void dot_csd_simd(const double *x1, const double *x2,
     *ri1 = i1;
     *rr2 = r2;
     *ri2 = i2;
+}
+
+/* On Apple's arm64 ABI, long double is ordinary FP64. Keep polyreg0's
+ * original serial sum, reciprocal-then-multiply mean and residual rounding,
+ * but form the residual directly in the existing SIMD dot. This removes
+ * one length-sized allocation and its write/read pass per PSD frequency.
+ * Wider long-double targets retain the separate residuals: interleaving
+ * software-quad/x87 subtraction with the dot prevents efficient SIMD. */
+#if LDBL_MANT_DIG == DBL_MANT_DIG && LDBL_MAX_EXP == DBL_MAX_EXP
+#define LPSD_INLINE_MEAN 1
+static LPSD_ALWAYS_INLINE long double original_order0_mean(const double *x, long int length)
+{
+    long double sum = 0.L;
+    for (long int j = 0; j < length; ++j) {
+        sum += x[j];
+    }
+    const long double reciprocal = 1.L / (1.L * (long double)length + 0);
+    return reciprocal * sum;
+}
+
+static LPSD_ALWAYS_INLINE void dot_psd_mean_simd(const double *x,
+                            const double *cr, const double *ci,
+                            long int length, double *rr, double *ri)
+{
+    const long double mean = original_order0_mean(x, length);
+    double r = 0.0, im = 0.0;
+    #pragma omp simd reduction(+:r,im)
+    for (long int j = 0; j < length; ++j) {
+        const double value = (double)((long double)x[j] - mean);
+        r += cr[j] * value;
+        im += ci[j] * value;
+    }
+    *rr = r;
+    *ri = im;
+}
+
+static LPSD_ALWAYS_INLINE void dot_csd_mean_simd(const double *x1, const double *x2,
+                            const double *cr, const double *ci,
+                            long int length, double *rr1, double *ri1,
+                            double *rr2, double *ri2)
+{
+    const long double mean1 = original_order0_mean(x1, length);
+    const long double mean2 = original_order0_mean(x2, length);
+    double r1 = 0.0, i1 = 0.0, r2 = 0.0, i2 = 0.0;
+    #pragma omp simd reduction(+:r1,i1,r2,i2)
+    for (long int j = 0; j < length; ++j) {
+        const double value1 = (double)((long double)x1[j] - mean1);
+        const double value2 = (double)((long double)x2[j] - mean2);
+        r1 += cr[j] * value1;
+        i1 += ci[j] * value1;
+        r2 += cr[j] * value2;
+        i2 += ci[j] * value2;
+    }
+    *rr1 = r1;
+    *ri1 = i1;
+    *rr2 = r2;
+    *ri2 = i2;
+}
+#else
+#define LPSD_INLINE_MEAN 0
+#endif
+
+int native_inline_mean_supported(void)
+{
+    return LPSD_INLINE_MEAN;
 }
 
 /*
@@ -563,7 +630,7 @@ static LPSD_ALWAYS_INLINE void update_original_statistics(long int ii,
     }
 }
 
-static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                          long int *Navs,
                          const double *x1data, const double *x2data,
                          long int nData, long int segLen,
@@ -572,7 +639,8 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
                          bool statistics, bool batched,
                          double *inplace_r, double *inplace_i,
                          double *preparation_seconds, double *segments_seconds,
-                         double input_peak, long int *fused_batches)
+                         double input_peak, long int *fused_batches,
+                         bool coefficients_prepared)
 {
     if (fused_batches != NULL) {
         *fused_batches = 0;
@@ -594,7 +662,8 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
     *Navs = 0;
     if (mode < 0 || mode > 3 ||
         (mode == 2 && order != 0 && order != 1) ||
-        (mode == 3 && order != 0)) {
+        (mode == 3 && order != 0) ||
+        (coefficients_prepared && (mode < 2 || order != 0 || csd || statistics))) {
         return 4;
     }
     if (order < -1 || order > 10 || !isfinite(olap) ||
@@ -607,7 +676,8 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
         return 2;
     }
 
-    /* Keep the upstream arithmetic order, including repeated start += shift. */
+    /* Keep the upstream arithmetic order, including repeated start += shift.
+     * Only an otherwise out-of-bounds final start is repaired below. */
     const double ovfact = 1.0 / (1.0 - olap / 100.0);
     const double davg = ((double)(nData - segLen) * ovfact) / segLen + 1.0;
     if (!isfinite(davg) || davg + 0.5 >= (double)INT_MAX) {
@@ -633,23 +703,30 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
     bool owns_projected = false;
     double coefficients1[11] = {0.0};
     double coefficients2[11] = {0.0};
+    const bool inline_mean = LPSD_INLINE_MEAN && mode == 1 && order == 0;
     if (mode >= 2) {
-        owns_projected = inplace_r == NULL;
-        projected_r = owns_projected ?
+        owns_projected = !coefficients_prepared && inplace_r == NULL;
+        /* The prepared branch only reads these vectors in the unchanged
+         * segment helpers below. It never projects, modifies or frees them.
+         * Retain the existing mutable local pointer types for the original
+         * in-place preparation branch. */
+        projected_r = coefficients_prepared ? (double *)Cr : owns_projected ?
             (double *)malloc((size_t)segLen * sizeof(double)) : inplace_r;
-        projected_i = owns_projected ?
+        projected_i = coefficients_prepared ? (double *)Ci : owns_projected ?
             (double *)malloc((size_t)segLen * sizeof(double)) : inplace_i;
         if (projected_r == NULL || projected_i == NULL) {
             free(projected_r);
             free(projected_i);
             return 3;
         }
-        if (mode != 3 || !prepare_projected_coefficients_dd(
-                Cr, Ci, segLen, projected_r, projected_i)) {
-            prepare_projected_coefficients(Cr, Ci, segLen, order,
-                                            projected_r, projected_i);
+        if (!coefficients_prepared) {
+            if (mode != 3 || !prepare_projected_coefficients_dd(
+                    Cr, Ci, segLen, projected_r, projected_i)) {
+                prepare_projected_coefficients(Cr, Ci, segLen, order,
+                                                projected_r, projected_i);
+            }
         }
-    } else if (order >= 0) {
+    } else if (order >= 0 && !inline_mean) {
         residual1 = (double *)malloc((size_t)segLen * sizeof(double));
         if (csd) {
             residual2 = (double *)malloc((size_t)segLen * sizeof(double));
@@ -671,7 +748,11 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
      * first projections and the outer eight-segment statistics stay fixed.
      * Check this extra instruction-set requirement once per frequency. */
     const bool fused_four = fused_psd && segLen >= 256 && segLen < 1024 &&
+#if defined(__FMA__)
+        true;
+#else
         __builtin_cpu_supports("fma");
+#endif
 #endif
 
     const double segments_started = profile ? monotonic_seconds() : 0.0;
@@ -705,7 +786,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             const double *segments[8];
             double rr[8], ri[8];
             for (int b = 0; b < csd_batch; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     free(residual1);
@@ -747,7 +828,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             const double *segments[8];
             double rr[8], ri[8];
             for (int b = 0; b < 8; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     if (owns_projected) {
@@ -789,7 +870,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             const double *segments[8];
             double rr[8], ri[8];
             for (int b = 0; b < 8; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     free(residual1);
@@ -821,7 +902,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             const double *segments[4];
             double rr[4], ri[4];
             for (int b = 0; b < 4; ++b) {
-                const long int istart = (long int)floor(start + 0.5);
+                const long int istart = lpsd_segment_start(start, ii + b, navg, nData - segLen);
                 start += shift;
                 if (istart < 0 || istart > nData - segLen) {
                     free(residual1);
@@ -848,7 +929,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             ii += 3;
             continue;
         }
-        const long int istart = (long int)floor(start + 0.5);
+        const long int istart = lpsd_segment_start(start, ii, navg, nData - segLen);
         start += shift;
         if (istart < 0 || istart > nData - segLen) {
             free(residual1);
@@ -861,7 +942,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
         }
         const double *segment1 = x1data + istart;
         const double *segment2 = csd ? x2data + istart : segment1;
-        if (mode < 2 && order >= 0) {
+        if (mode < 2 && order >= 0 && !inline_mean) {
             detrend_original(order, segment1, (int)segLen,
                              residual1, coefficients1);
             segment1 = residual1;
@@ -878,6 +959,11 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
                 dot_csd_anchored_simd(segment1, segment2,
                                        projected_r, projected_i, segLen,
                                        &rxsum1, &ixsum1, &rxsum2, &ixsum2);
+#if LPSD_INLINE_MEAN
+            } else if (inline_mean) {
+                dot_csd_mean_simd(segment1, segment2, Cr, Ci, segLen,
+                                  &rxsum1, &ixsum1, &rxsum2, &ixsum2);
+#endif
             } else if (mode == 0) {
                 dot_csd_serial(segment1, segment2, Cr, Ci, segLen,
                                 &rxsum1, &ixsum1, &rxsum2, &ixsum2);
@@ -889,6 +975,10 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
             if (mode >= 2) {
                 dot_psd_anchored_simd(segment1, projected_r, projected_i,
                                        segLen, &rxsum1, &ixsum1);
+#if LPSD_INLINE_MEAN
+            } else if (inline_mean) {
+                dot_psd_mean_simd(segment1, Cr, Ci, segLen, &rxsum1, &ixsum1);
+#endif
             } else if (mode == 0) {
                 dot_psd_serial(segment1, Cr, Ci, segLen, &rxsum1, &ixsum1);
             } else {
@@ -926,6 +1016,73 @@ static LPSD_TARGET_CLONES int fast_dft_impl(double *Pr_r, double *Pr_i, double *
     }
     *Navs = navg;
     return 0;
+}
+
+/* Keep the internal signature used by all original entry points and the
+ * rolling-boxcar fallback. Existing callers always prepare as before. */
+static LPSD_ALWAYS_INLINE int fast_dft_impl(double *Pr_r, double *Pr_i,
+                         double *Vr_r, double *Vr_i, long int *Navs,
+                         const double *x1data, const double *x2data,
+                         long int nData, long int segLen,
+                         const double *Cr, const double *Ci,
+                         double olap, int order, bool csd, int mode,
+                         bool statistics, bool batched,
+                         double *inplace_r, double *inplace_i,
+                         double *preparation_seconds, double *segments_seconds,
+                         double input_peak, long int *fused_batches)
+{
+    return fast_dft_impl_ready(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+        x1data, x2data, nData, segLen, Cr, Ci, olap, order, csd, mode,
+        statistics, batched, inplace_r, inplace_i,
+        preparation_seconds, segments_seconds, input_peak, fused_batches, false);
+}
+
+/* Additive prepared order-0 auto-spectrum ABI, bound in prepared.py.
+ * It reuses the original projected dots, starts, batching and legacy mean
+ * recurrence; it is not a corrected or reduced LPSD estimator. */
+int fast_dft_prepared_version(void)
+{
+    return 1;
+}
+
+LPSD_TARGET_CLONES int fast_dft_prepare_order0(double *Cr, double *Ci,
+                                               long int length, int mode)
+{
+    if (Cr == NULL || Ci == NULL || Cr == Ci || length < 1 || length > INT_MAX) {
+        return 1;
+    }
+    if (mode != 2 && mode != 3) {
+        return 4;
+    }
+    if (mode != 3 || !prepare_projected_coefficients_dd(Cr, Ci, length, Cr, Ci)) {
+        prepare_projected_coefficients(Cr, Ci, length, 0, Cr, Ci);
+    }
+    return 0;
+}
+
+/* Qr/Qi must be the output of fast_dft_prepare_order0 for this mode/length.
+ * They are read-only and may be reused across calls. A finite input_peak is
+ * an independently verified bound on all |x|; NaN disables the optional FMA
+ * path, exactly as fast_dft_selected does. Keep the input fixed during a call.
+ * Optional timer pointers must be both NULL or both non-NULL. */
+int fast_dft_prepared_order0(double *Pr_r, double *Pr_i, long int *Navs,
+                            const double *x, long int nData, long int segLen,
+                            const double *Qr, const double *Qi,
+                            double olap, int mode, double input_peak,
+                            double *preparation_seconds, double *segments_seconds,
+                            long int *fused_batches)
+{
+    if ((preparation_seconds == NULL) != (segments_seconds == NULL) ||
+        (!isnan(input_peak) && input_peak < 0.0)) {
+        return 1;
+    }
+    if (preparation_seconds != NULL) {
+        *preparation_seconds = *segments_seconds = NAN;
+    }
+    return fast_dft_impl_ready(Pr_r, Pr_i, NULL, NULL, Navs,
+        x, x, nData, segLen, Qr, Qi, olap, 0, false, mode, false, true,
+        NULL, NULL, preparation_seconds, segments_seconds,
+        input_peak, fused_batches, true);
 }
 
 int fast_dft(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -1117,3 +1274,9 @@ LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, con
     }
     return 0;
 }
+
+/* Independent FFTW pipeline helpers; they do not link against FFTW. */
+#include "streaming_lpsd.c"
+#include "fftw_ops.h"
+#include "fftw_smoothing.h"
+#include "fftw_bluestein_ops.h"

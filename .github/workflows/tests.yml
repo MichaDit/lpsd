@@ -61,8 +61,13 @@ jobs:
       - name: Require complete FFTW adapter coverage
         if: matrix.name == 'linux-x64-gcc' && matrix.python == '3.12'
         run: |
-          python -m pytest -o addopts='' -q test_fast/test_fftw_benchmark.py --junitxml=test-results/fftw.xml
-          python -c 'import xml.etree.ElementTree as E; r=E.parse("test-results/fftw.xml").getroot(); n=sum(int(s.get("tests",0)) for s in r.iter("testsuite")); skipped=sum(int(s.get("skipped",0)) for s in r.iter("testsuite")); assert n >= 27 and skipped == 0, (n,skipped)'
+          python -m pytest -o addopts='' -q test_fast/test_fftw_benchmark.py test_fast/test_fftw_pipeline_ops.py test_fast/test_matched_smoothing.py test_fast/test_fftw_bluestein.py test_fast/test_fftw_in_place.py --junitxml=test-results/fftw.xml
+          python -c 'import xml.etree.ElementTree as E; r=E.parse("test-results/fftw.xml").getroot(); n=sum(int(s.get("tests",0)) for s in r.iter("testsuite")); skipped=sum(int(s.get("skipped",0)) for s in r.iter("testsuite")); assert n >= 150 and skipped == 0, (n,skipped)'
+      - name: Require small disk-backed pipeline coverage
+        if: matrix.name == 'linux-x64-gcc' && matrix.python == '3.12'
+        run: |
+          python -m pytest -o addopts='' -q test_fast/test_fftw_disk.py test_fast/test_lpsd_disk.py test_fast/test_disk_pipelines.py test_fast/test_fftw_large_n_reporting.py test_fast/test_streaming_lpsd.py --junitxml=test-results/disk.xml
+          python -c 'import xml.etree.ElementTree as E; r=E.parse("test-results/disk.xml").getroot(); n=sum(int(s.get("tests",0)) for s in r.iter("testsuite")); skipped=sum(int(s.get("skipped",0)) for s in r.iter("testsuite")); assert n >= 121 and skipped == 0, (n,skipped)'
       - name: Optimized implementation regression tests
         run: python -m pytest -o addopts='' -q -ra test_fast --junitxml=test-results/fast.xml
       - name: Original upstream tests
@@ -70,6 +75,18 @@ jobs:
       - name: Small wall-time and phase comparison on native hardware
         if: matrix.benchmark
         run: python benchmarks/ci_architecture.py --n 100000 --output-directory benchmark-results
+      - name: Check out the qualified revision for paired performance measurements
+        if: matrix.benchmark
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: 8bfbf2b0648e6b328df04be434c376dbc8de71a4
+          path: .benchmark-baseline
+          persist-credentials: false
+      - name: Build and compare the baseline with the same compiler and dependencies
+        if: matrix.benchmark
+        run: |
+          make -C .benchmark-baseline compile
+          python benchmarks/ci_architecture.py --comparison-only --baseline-directory .benchmark-baseline --baseline-commit 8bfbf2b0648e6b328df04be434c376dbc8de71a4 --output-directory benchmark-results
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

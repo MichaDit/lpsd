@@ -141,6 +141,47 @@ surrogate. Its timings are not ARM measurements and do not establish an ARM
 speedup. The native Linux AArch64 and Apple measurements below come from
 their own runners, with numerical gates executed on those same architectures.
 
+### Order-0 residuals on the FP64 long-double ABI
+
+Mode 1 still uses the original residual arithmetic on Apple arm64. When the
+compiled `long double` has exactly the precision and exponent range of
+`double`, its order-0 residual can be formed inside the SIMD dot without
+materializing a residual vector. The serial input sum, multiplication by the
+reciprocal length, conversion of each residual to double and legacy power
+updates remain. Scalar mode and wider long-double ABIs keep their original
+implementation. This change does not select the projected mode that failed
+the earlier DC-plus-nanovolt gate.
+
+The optimization removes one residual vector for PSD, or two for CSD, and
+their write/read passes. The public workspace estimate and
+`inline_mean_residual` metadata reflect the path actually used. The native
+regression compiles the original residual-vector and new direct-residual dot
+helpers together and compares their projections bitwise over vector tails,
+noise, large DC, constants and initial transients. A forced-FP64 build on
+x86 is useful for a preliminary arithmetic check; it is not evidence of
+Apple's hardware performance. Same-run native CI comparisons cover the
+actual complete calls separately.
+
+### Available memory for concurrent frequencies
+
+The public API's automatic concurrency budget uses available memory rather
+than a fixed 2 GiB assumption on Windows and macOS. On Windows it reads
+[`GlobalMemoryStatusEx` / `ullAvailPhys`](https://learn.microsoft.com/windows/win32/api/sysinfoapi/ns-sysinfoapi-memorystatusex),
+which includes available standby pages. On macOS it uses the fixed
+[`HOST_VM_INFO` structure](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/mach/vm_statistics.h)
+and counts free plus inactive pages once; speculative pages are already
+included in the reported free-page count. The Mach host-port right is
+released after every query. Both queries use the standard library without
+starting subprocesses or adding a package dependency.
+
+Linux retains its host/cgroup estimate, including the existing clean
+inactive-file-cache adjustment. If a platform query is unavailable, the
+previous 2 GiB fallback remains. The selected fraction, minimum reservation
+budget and explicit `max_working_mb` behavior are unchanged. These numbers
+size concurrent workspaces; they do not impose an RSS ceiling or guarantee
+that currently reclaimable pages remain available. An unavailable affinity
+system call also falls back to Python's usable CPU count instead of aborting.
+
 ## Native CI matrix and small measurements
 
 ### Local Windows validation, 2026-10-10

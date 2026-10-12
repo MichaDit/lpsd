@@ -176,9 +176,9 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
     long int previous_start = 0;
     *rebase_count = 0;
     for (long int ii = 0; ii < navg; ++ii) {
-        /* This repeated addition and rounding is exactly the original
-         * start arithmetic; ii*shift is not interchangeable with it. */
-        const long int istart = (long int)floor(start + 0.5);
+        /* Keep the original recurrence and every previously valid start;
+         * share the final-endpoint repair with the direct projection path. */
+        const long int istart = lpsd_segment_start(start, ii, navg, nData - segLen);
         start += shift;
         if (istart < 0 || istart > nData - segLen) {
             return 2;

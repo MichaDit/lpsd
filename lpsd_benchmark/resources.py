@@ -1,0 +1,536 @@
+"""Conservative admission estimates; an allocation budget is not an OS sandbox.
+
+SPDX-License-Identifier: GPL-3.0-or-later
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+import ctypes
+import math
+import os
+from pathlib import Path
+import platform
+import re
+import shutil
+import subprocess
+import time
+
+from . import MAX_SECONDS
+
+MIB = 1024 ** 2
+GIB = 1024 ** 3
+SMOOTHING_RESERVE_MODEL = "incremental_9mib_above_cap4_v1"
+SMOOTHING_EXTRA_WORKER_BYTES = 9 * MIB
+MAX_NATIVE_WORKING_MIB = (2 ** 63 - 1) // MIB
+
+
+def smoothing_controls(method, thread_limit, requested=None):
+    """Resolve an explicit smoothing limit without enlarging CPU/RAM budgets.
+
+    The default retains the historical min(4, T) profile. The incremental
+    reserve covers extra runtime/address headroom, not an N-dependent array
+    or a measured RSS value. Linux profiles observed about 8.02 MiB of new
+    virtual mappings per smoothing thread; 9 MiB is an empirical allowance,
+    not a universal stack bound. OS and live-memory guards remain unchanged.
+    """
+    if type(thread_limit) is not int or not 1 <= thread_limit <= 2 ** 63 - 1:
+        raise ValueError("thread_limit must be a positive integer")
+    if requested is not None and (type(requested) is not int or not 1 <= requested <= 2 ** 63 - 1):
+        raise ValueError("smoothing_workers must be a positive integer")
+    if method not in ("fftw", "matched", "lpsd"):
+        raise ValueError("Unknown benchmark method")
+    applicable = method == "matched"
+    baseline = min(4, thread_limit)
+    limit = min(baseline if requested is None else requested, thread_limit) if applicable else 0
+    return {
+        "smoothing_worker_policy": ("not_applicable" if not applicable else
+                                    "default_cap4" if requested is None else "explicit"),
+        "requested_smoothing_workers": requested if applicable else None,
+        "smoothing_workers_limit": limit,
+        "smoothing_runtime_reserve_bytes": SMOOTHING_EXTRA_WORKER_BYTES * max(0, limit - baseline),
+        "smoothing_runtime_reserve_model": SMOOTHING_RESERVE_MODEL if applicable else "not_applicable",
+    }
+
+
+def _smoothing_reserve(method, reserve_bytes):
+    if type(reserve_bytes) is not int or reserve_bytes < 0:
+        raise ValueError("smoothing runtime reserve must be nonnegative integer bytes")
+    return reserve_bytes if method == "matched" else 0
+
+
+def native_working_request(requested):
+    """Validate an optional cap before importing any numerical dependency."""
+    if requested is not None and (type(requested) is not int
+                                  or not 64 <= requested <= MAX_NATIVE_WORKING_MIB):
+        raise ValueError(f"native-working-mib must be an integer from 64 to {MAX_NATIVE_WORKING_MIB}")
+    return requested
+
+
+def native_working_budget(case):
+    """Return MiB allowance, existing headroom, and closed cap provenance.
+
+    No request preserves the original RAM/disk budget calculation. An
+    explicit request only lowers that allowance; freed bytes are not spent
+    on FFT buffers, extra threads, or relaxed storage/admission estimates.
+    The adapter's 64-MiB minimum must fit before it can be constructed.
+    """
+    requested = native_working_request(case.get("requested_native_working_mib"))
+    method = case.get("method", "lpsd")
+    smoothing = smoothing_controls(method, case["requested_threads"],
+                                   case.get("requested_smoothing_workers"))
+    fields = {"requested_native_working_mib": requested if method != "fftw" else None,
+              "native_working_policy": ("not_applicable" if method == "fftw" else
+                                        "auto" if requested is None else "explicit_cap")}
+    if method == "fftw":
+        return None, None, fields
+    ram = case["ram_budget_bytes"]
+    if type(ram) is not int or not 0 <= ram <= 2 ** 63 - 1:
+        raise ValueError("RAM budget must be nonnegative integer bytes below 2**63")
+    headroom = ram - 256 * MIB - smoothing["smoothing_runtime_reserve_bytes"]
+    if case["storage"] == "ram":
+        headroom -= 8 * case["n"] + case["requested_threads"] * 3 * MIB
+        automatic_mb = headroom / MIB
+        automatic = max(0, int(automatic_mb * MIB))
+    elif case["storage"] == "disk":
+        automatic_mb = case["low_working_mb"]
+        if (type(automatic_mb) not in (int, float) or not math.isfinite(automatic_mb)
+                or not 0 < automatic_mb <= MAX_NATIVE_WORKING_MIB):
+            raise ValueError("Native automatic disk budget must be positive finite MiB")
+        # Match the unchanged adapter conversion, including old private cases
+        # that supplied less than its documented minimum.
+        automatic = max(64 * MIB, int(automatic_mb * MIB))
+    else:
+        raise ValueError("Native storage must be ram or disk")
+    limit = automatic
+    working_mb = automatic_mb
+    if requested is not None:
+        limit = max(0, min(automatic, headroom, requested * MIB))
+        working_mb = limit / MIB
+        # A very large integer headroom need not be exactly representable in
+        # binary64. Never round the cap upwards when passing MiB to C/Python.
+        if int(working_mb * MIB) > limit:
+            working_mb = math.nextafter(working_mb, 0.0)
+        limit = int(working_mb * MIB)
+    fields.update(native_working_auto_limit_bytes=automatic,
+                  native_working_limit_bytes=limit)
+    if headroom < 64 * MIB or limit < 64 * MIB:
+        working_mb = None
+    return working_mb, headroom, fields
+
+
+def _read(path):
+    try:
+        return Path(path).read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError):
+        return ""
+
+
+def _positive_int(text):
+    try:
+        value = int(text)
+        return value if 0 < value < 2 ** 60 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _cgroup_directories(controller):
+    """Inspect nested v1/v2 limits as well as their visible ancestors."""
+    root = Path("/sys/fs/cgroup")
+    found = {root, root / controller}
+    for line in _read("/proc/self/cgroup").splitlines():
+        fields = line.split(":", 2)
+        if len(fields) != 3:
+            continue
+        _, controllers, relative = fields
+        if controllers and controller not in controllers.split(","):
+            continue
+        bases = [root] if not controllers else [root / controller, root / controllers]
+        for base in bases:
+            candidate = base / relative.lstrip("/")
+            # cgroup paths describe the running process, never user input. Do
+            # not traverse outside a known mount in unusual namespaces.
+            try:
+                candidate.relative_to(base)
+            except ValueError:
+                continue
+            while candidate != base and base in candidate.parents:
+                found.add(candidate)
+                candidate = candidate.parent
+            found.add(base)
+    return sorted(found)
+
+
+def _clean_file_cache(stats, *, legacy=False):
+    """Conservative clean, evictable file bytes in either cgroup layout.
+
+    Active file pages can also be reclaimed. Bound both file LRU lists by
+    file/cache minus shared memory, then subtract dirty, writeback and
+    unevictable pages. Some exclusions may overlap; subtracting twice is
+    deliberately conservative. v1 hierarchical usage needs total_* stats.
+    """
+    def value(name):
+        return stats.get("total_" + name, stats.get(name, 0)) if legacy else stats.get(name, 0)
+    file_bytes = max(0, value("cache" if legacy else "file") - value("shmem"))
+    file_lru = value("active_file") + value("inactive_file")
+    unavailable = (value("dirty" if legacy else "file_dirty")
+                   + value("writeback" if legacy else "file_writeback")
+                   + value("unevictable"))
+    return max(0, min(file_bytes, file_lru) - unavailable)
+
+
+def system_memory():
+    """Return total and currently available bytes without host identifiers."""
+    try:
+        import psutil
+        memory = psutil.virtual_memory()
+        total, available = int(memory.total), int(memory.available)
+    except (ImportError, OSError, AttributeError):
+        values = {}
+        for line in _read("/proc/meminfo").splitlines():
+            fields = line.split()
+            if len(fields) >= 2:
+                value = _positive_int(fields[1])
+                if value is not None:
+                    values[fields[0].rstrip(":")] = value * 1024
+        total = values.get("MemTotal", 0)
+        available = values.get("MemAvailable", values.get("MemFree", 0))
+        if not total and os.name == "nt":
+            class MemoryStatus(ctypes.Structure):
+                _fields_ = [("length", ctypes.c_ulong), ("load", ctypes.c_ulong)] + [
+                    (name, ctypes.c_ulonglong) for name in (
+                        "total_physical", "available_physical", "total_page",
+                        "available_page", "total_virtual", "available_virtual", "extended")]
+            status = MemoryStatus()
+            status.length = ctypes.sizeof(status)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                total, available = status.total_physical, status.available_physical
+        if not total and platform.system() == "Darwin":
+            try:
+                result = subprocess.run(["sysctl", "-n", "hw.memsize"],
+                                        capture_output=True, text=True, timeout=2, check=True)
+                total = int(result.stdout.strip())
+                # A deliberately conservative fallback when psutil is absent.
+                available = total // 2
+            except (OSError, ValueError, subprocess.SubprocessError):
+                pass
+    if not total or not available:
+        # Unknown RAM is not permission to allocate a large numerical problem.
+        return 0, 0
+    for directory in _cgroup_directories("memory"):
+        limit = _positive_int(_read(directory / "memory.max"))
+        current = _positive_int(_read(directory / "memory.current")) or 0
+        stat_name = "memory.stat"
+        legacy = limit is None
+        if limit is None:
+            limit = _positive_int(_read(directory / "memory.limit_in_bytes"))
+            current = _positive_int(_read(directory / "memory.usage_in_bytes")) or 0
+        if limit is None:
+            continue
+        stats = {}
+        for line in _read(directory / stat_name).splitlines():
+            fields = line.split()
+            if len(fields) == 2:
+                stats[fields[0]] = _positive_int(fields[1]) or 0
+        # Count clean cache from both file LRUs. A recent disk run can leave
+        # gigabytes on active_file without making those pages unevictable.
+        # Do not count tmpfs/shared memory or pending filesystem writes.
+        reclaimable = min(current, _clean_file_cache(stats, legacy=legacy))
+        total = min(total, limit)
+        available = min(available, max(0, limit - current + reclaimable))
+    return int(total), max(0, min(int(total), int(available)))
+
+
+def cpu_capacity():
+    count = max(1, os.cpu_count() or 1)
+    if hasattr(os, "sched_getaffinity"):
+        try:
+            count = min(count, len(os.sched_getaffinity(0)))
+        except OSError:
+            pass
+    quota = float(count)
+    for directory in _cgroup_directories("cpu"):
+        fields = _read(directory / "cpu.max").split()
+        if len(fields) == 2:
+            maximum, period = _positive_int(fields[0]), _positive_int(fields[1])
+        else:
+            maximum = _positive_int(_read(directory / "cpu.cfs_quota_us"))
+            period = _positive_int(_read(directory / "cpu.cfs_period_us"))
+        if maximum and period:
+            quota = min(quota, maximum / period)
+    return max(1, min(count, math.floor(quota))), quota
+
+
+@dataclass(frozen=True)
+class Resources:
+    total_ram: int
+    available_ram: int
+    disk_free: int
+    ram_budget: int
+    disk_budget: int
+    threads: int
+    cpu_capacity: float
+
+
+def budget_bytes(value):
+    if value == "auto" or value is None:
+        return None
+    try:
+        number = float(value)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Budget must be 'auto' or a positive number of GiB") from exc
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError("Budget must be 'auto' or a positive number of GiB")
+    return int(number * GIB)
+
+
+def ram_backed_work_directory(directory, *, mountinfo=Path("/proc/self/mountinfo")):
+    """Identify Linux tmpfs/ramfs without counting their capacity as disk.
+
+    Resolve symlinks and prefer the most specific visible mount, including
+    bind mounts. Mountinfo escapes whitespace and backslashes as octal bytes.
+    No path or mount metadata is added to the public benchmark report.
+    """
+    if platform.system() != "Linux":
+        return False
+    try:
+        directory = Path(directory).resolve()
+        lines = Path(mountinfo).read_text(encoding="utf-8", errors="surrogateescape").splitlines()
+    except OSError:
+        return False
+    filesystem, matched_parts = None, -1
+    for line in lines:
+        before, separator, after = line.partition(" - ")
+        fields, extra = before.split(), after.split()
+        if not separator or len(fields) < 5 or not extra:
+            continue
+        name = re.sub(r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), fields[4])
+        mount = Path(name)
+        if not mount.is_absolute() or not directory.is_relative_to(mount):
+            continue
+        if len(mount.parts) >= matched_parts:
+            filesystem, matched_parts = extra[0], len(mount.parts)
+    return filesystem in ("tmpfs", "ramfs")
+
+
+def detect_resources(directory, ram="auto", disk="auto", threads=None):
+    total, available = system_memory()
+    free = shutil.disk_usage(directory).free
+    ram_requested, disk_requested = budget_bytes(ram), budget_bytes(disk)
+    # Auto is deliberately cautious. An explicit ceiling may use more of
+    # currently available resources, but still leaves a fixed OS/controller
+    # reserve and never bypasses physical, cgroup or free-space limits.
+    if ram_requested is None:
+        ram_budget = max(0, min(int(total * .90), int(available * .80)))
+    else:
+        reserve = max(256 * MIB, min(2 * GIB, int(total * .10)))
+        ram_budget = max(0, min(ram_requested, total - reserve, available - reserve))
+    if disk_requested is None:
+        disk_budget = max(0, min(int(free * .80), free - 256 * MIB))
+    else:
+        disk_budget = max(0, min(disk_requested, free - 512 * MIB))
+    # tmpfs/ramfs file pages consume RAM and are not included in the disk
+    # worker's anonymous-RSS guard. Do not admit a disk fallback there even
+    # when its logical filesystem capacity exceeds the available RAM.
+    if ram_backed_work_directory(directory):
+        disk_budget = 0
+    cpu_count, capacity = cpu_capacity()
+    used_threads = cpu_count if threads is None else min(cpu_count, int(threads))
+    return Resources(total, available, free, ram_budget // MIB * MIB,
+                     disk_budget // MIB * MIB, max(1, used_threads), capacity)
+
+
+def fftw_plan_reserve(n, method):
+    """Empirical extra FFTW allowance; not a universal planner upper bound.
+
+    Controlled 10M/30M profiles found roughly one additional 8N allocation
+    with FFTW 3.3.10 ESTIMATE. Keep that allowance separate from our arrays.
+    Prime lengths and other builds can require more; live guards still apply.
+    """
+    return 0 if method == "lpsd" else 8 * n
+
+
+def required_ram(n, method, signal="white", fft_layout="out-of-place",
+                 window_storage="full", *, smoothing_runtime_reserve_bytes=0):
+    """Peak live arrays, bounded native scratch and interpreter overhead.
+
+    This models the complete-call paths used by worker.py, not the much
+    larger persistent-cache configuration from earlier reuse experiments.
+    Includes an empirical FFTW planning allowance in addition to known arrays.
+    The monitor and address-space guard remain active: this is not a proof of
+    an upper bound for every transform length or FFTW build.
+    """
+    per_sample = {"fftw": 32, "matched": 36, "lpsd": 8}[method]
+    if fft_layout == "in-place" and method != "lpsd":
+        per_sample -= 8
+    window_scratch = 0
+    if method != "lpsd" and window_storage == "fft_input_then_blocked":
+        per_sample -= 8
+        # Same scalar bound as BoundedWindow, without importing NumPy here:
+        # Kaiser has one block; the hybrid's Tukey has three extra temporary
+        # blocks for indices, reflection and ufunc/casting. No full-N window.
+        window_scratch = (8 if method == "fftw" else 32) * min(n, 262144)
+    source_peak = 72 if signal in ("pink", "brown", "mixed_tones") else 24
+    if signal == "white":
+        source_peak = 8
+    # The first case also includes NumPy/pandas/SciPy/native import overhead.
+    arrays = per_sample * n + fftw_plan_reserve(n, method) + window_scratch
+    if method == "lpsd":
+        # Minimum useful bounded scratch allowance. The worker resolves the
+        # real native plan before creating data, then verifies its exact pool
+        # and streaming-buffer bounds against the admitted available budget.
+        arrays += min(16 * n, max(128 * MIB, math.ceil(n / 3)))
+    elif method == "matched":
+        # estimate_once releases FFT/window/powers before bounded low LPSD.
+        low_peak = 8 * n + min(16 * n, max(128 * MIB, math.ceil(n / 3)))
+        arrays = max(arrays, low_peak)
+    return (max(arrays, source_peak * n) + 256 * MIB
+            + _smoothing_reserve(method, smoothing_runtime_reserve_bytes))
+
+
+def required_disk(n, method):
+    # Native disk mode stores only the input; its bounded scratch is RAM.
+    # FFTW workspace powers need 24N. The worker checks the exact factorization
+    # before creating data; odd factors can require another 4N+8 bytes.
+    return (8 if method == "lpsd" else 24) * n + 16 * MIB
+
+
+def choose_fft_layout(n, method, signal, requested, ram_budget, window_storage="auto", *,
+                      smoothing_runtime_reserve_bytes=0):
+    if method == "lpsd":
+        return "not_applicable"
+    if requested != "auto":
+        return requested
+    considered_window = "full" if window_storage == "auto" else window_storage
+    if required_ram(n, method, signal, "out-of-place", considered_window,
+                    smoothing_runtime_reserve_bytes=smoothing_runtime_reserve_bytes) <= ram_budget:
+        return "out-of-place"
+    return "in-place"
+
+
+def choose_window_storage(n, method, signal, requested, fft_layout, ram_budget, *,
+                          smoothing_runtime_reserve_bytes=0):
+    """Keep the fast reusable full window when it fits the chosen FFT layout.
+
+    Auto tries full/out-of-place, full/in-place, then bounded/in-place.
+    Explicit layout and window requests are retained, even if admission must
+    subsequently skip a RAM case or choose disk storage.
+    """
+    if method == "lpsd":
+        return "not_applicable"
+    if requested != "auto":
+        return requested
+    full_need = required_ram(n, method, signal, fft_layout, "full",
+                             smoothing_runtime_reserve_bytes=smoothing_runtime_reserve_bytes)
+    bounded_need = required_ram(n, method, signal, fft_layout, "fft_input_then_blocked",
+                                smoothing_runtime_reserve_bytes=smoothing_runtime_reserve_bytes)
+    if full_need <= ram_budget or full_need <= bounded_need:
+        return "full"
+    return "fft_input_then_blocked"
+
+
+def select_storage(n, method, signal, requested, resources, fft_layout="out-of-place",
+                   window_storage="full", *, smoothing_runtime_reserve_bytes=0):
+    reserve = _smoothing_reserve(method, smoothing_runtime_reserve_bytes)
+    ram_need = required_ram(n, method, signal, fft_layout, window_storage,
+                            smoothing_runtime_reserve_bytes=reserve)
+    if requested in ("auto", "ram") and ram_need <= resources.ram_budget:
+        return "ram", ram_need, 0, None
+    if requested == "ram":
+        return "ram", ram_need, 0, "memory_budget"
+    if signal != "white" and 72 * n + 256 * MIB + reserve > resources.ram_budget:
+        # Coloured Fourier synthesis itself needs RAM. Small historical
+        # signal cases can still use the disk estimator after synthesis.
+        return "disk", 72 * n + 256 * MIB + reserve, required_disk(n, method), "memory_budget"
+    disk_need = required_disk(n, method)
+    minimum_ram = 384 * MIB + reserve
+    if resources.ram_budget < minimum_ram:
+        return "disk", minimum_ram, disk_need, "memory_budget"
+    if disk_need > resources.disk_budget:
+        return "disk", minimum_ram, disk_need, "disk_budget"
+    # Current blocked FFT is a factorization, not a prime-length substitute.
+    # Large prime cases admitted to RAM can use FFTW normally. For disk, the
+    # worker's factor preflight makes the final decision before allocating.
+    return "disk", minimum_ram, disk_need, None
+
+
+class Deadline:
+    """Monotonic budget, also capped by the bootstrap's setup-inclusive end."""
+    def __init__(self, seconds, external_epoch=None, *, monotonic=time.monotonic,
+                 wallclock=time.time):
+        if not math.isfinite(seconds) or not 0 < seconds <= MAX_SECONDS:
+            raise ValueError("Total budget must be positive and at most 24 hours")
+        self._clock = monotonic
+        self.started = monotonic()
+        remaining = seconds
+        if external_epoch is not None:
+            end = float(external_epoch)
+            if not math.isfinite(end):
+                raise ValueError("Invalid bootstrap deadline")
+            remaining = min(remaining, max(0., end - wallclock()))
+        self.seconds = remaining
+        self.end = self.started + remaining
+
+    def remaining(self):
+        return max(0., self.end - self._clock())
+
+    def elapsed(self):
+        return max(0., self._clock() - self.started)
+
+
+def calibration_matches(case, row):
+    """Use the same execution profile for forecasts and small calibration.
+
+    Automatic/legacy native cases retain the previous scaling policy.
+    Explicit caps must match request AND admitted bytes: an automatically
+    reduced 256-MiB allowance is not a calibration for a 384-MiB case.
+    """
+    if (row.get("status") != "completed" or row.get("method") != case["method"]
+            or row.get("signal") != case["signal"]):
+        return False
+    if case["method"] != "lpsd":
+        # Retain historical full RAM-to-disk forecasts, but an explicitly
+        # packed disk transform must be calibrated from that same route.
+        algorithms = [value.get("disk_fft_algorithm", "full")
+                      if value.get("storage") == "disk" else "full"
+                      for value in (case, row)]
+        if algorithms[0] != algorithms[1] or algorithms[0] not in ("full", "packed-real"):
+            return False
+    if (case["method"] == "matched"
+            and row.get("smoothing_workers_limit") != case.get("smoothing_workers_limit")):
+        return False
+    if case["method"] in ("lpsd", "matched"):
+        policy, previous = (value.get("native_working_policy", "auto") for value in (case, row))
+        if policy == previous == "auto":
+            return True
+        if policy != "explicit_cap" or previous != "explicit_cap":
+            return False
+        for key, minimum, maximum in (("requested_native_working_mib", 64, MAX_NATIVE_WORKING_MIB),
+                                       ("native_working_limit_bytes", 64 * MIB, 2 ** 63 - 1)):
+            value = case.get(key)
+            if (type(value) is not int or not minimum <= value <= maximum
+                    or type(row.get(key)) is not int or row[key] != value):
+                return False
+    return True
+
+
+def predict_seconds(case, completed, safety_factor=4.0):
+    """Conservative whole-process forecast; never report this as a timing."""
+    matching = [row for row in completed if calibration_matches(case, row)]
+    if not matching:
+        # Small calibration cases get a bounded opportunity on an unknown
+        # machine. They are the only starts without measured scaling evidence.
+        return 180.0 if case["n"] <= 100_000 else None
+    estimates = []
+    for row in matching:
+        size_ratio = case["n"] / row["n"]
+        if case.get("point_factor") and row.get("point_factor"):
+            point_ratio = case["point_factor"] / row["point_factor"]
+        else:
+            point_ratio = case["target_points"] / row["target_points"]
+        size_cost = max(1., size_ratio ** 1.35)
+        point_cost = max(1., point_ratio ** 1.20)
+        storage_cost = 8. if row["storage"] == "ram" and case["storage"] == "disk" else 1.
+        # Process setup is included, which intentionally overestimates small
+        # cases and avoids optimistic extrapolation from raw FFT-only time.
+        estimates.append(max(1., row["process_wall_s"]) * size_cost * point_cost * storage_cost)
+    return max(15.0, min(estimates) * safety_factor)

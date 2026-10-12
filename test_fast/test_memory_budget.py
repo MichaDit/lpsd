@@ -41,3 +41,24 @@ def test_host_available_memory_still_caps_cgroup_estimate(monkeypatch):
     }
     monkeypatch.setattr(Path, 'read_text', lambda path: files[path.as_posix()])
     assert api._available_memory() == 2048
+
+
+@pytest.mark.parametrize("available", (0, 384 * 1024**2, 25 * 1024**3, None))
+def test_platform_available_memory_replaces_only_the_unknown_host_fallback(monkeypatch, available):
+    def unavailable(path, *args, **kwargs):
+        raise FileNotFoundError(str(path))
+
+    monkeypatch.setattr(Path, 'read_text', unavailable)
+    monkeypatch.setattr(api, 'host_available_memory', lambda: available)
+    assert api._available_memory() == (2 * 1024**3 if available is None else available)
+
+
+def test_available_workers_survives_restricted_affinity_query(monkeypatch):
+    def denied(*args):
+        raise OSError('Affinity query unavailable in this sandbox')
+
+    monkeypatch.setattr(api.os, 'sched_getaffinity', denied, raising=False)
+    monkeypatch.setattr(api.os, 'process_cpu_count', lambda: 3, raising=False)
+    monkeypatch.setattr(api.os, 'cpu_count', lambda: 24)
+    monkeypatch.setattr(Path, 'read_text', lambda path: 'max 100000')
+    assert api.available_workers() == 3

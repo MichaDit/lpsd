@@ -139,6 +139,11 @@ int window_sums(const double *window, long int length,
  * CPU family. Mode 3 is useful when long double is software binary128. */
 int native_long_double_mantissa_bits(void);
 
+/* Whether order-0 mode 1 can subtract the original residual directly in
+ * its SIMD dot, without a length-sized residual vector. This requires
+ * long double to have the same precision and exponent range as double. */
+int native_inline_mean_supported(void);
+
 /* NumPy/Cephes-based periodic Kaiser window, equivalent to
  * np.kaiser(length + 1, beta)[:-1]. The same approximation coefficients
  * are used; scalar libm exp can differ from NumPy by a few ulps.
@@ -190,6 +195,25 @@ LPSD_TARGET_CLONES int generate_coefficients(double *Cr, double *Ci, const doubl
  * original function remains available as the independent-phase reference. */
 LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, const double *window,
                                    long int length, double frequency_bin);
+
+/* Bounded-memory order-zero Kaiser auto-spectrum. No length-sized q array.
+ * Blocks must be multiples of128 in [128,1048576]; at most256 original
+ * segments are accepted. Projector/window arithmetic and segment positions
+ * are retained; dot products use block reductions. Status4 means unsupported.
+ */
+LPSD_TARGET_CLONES int fast_dft_kaiser_streaming(
+    double *Pr_r, double *Pr_i, long int *Navs,
+    const double *samples, long int nData, long int segLen,
+    double beta, double frequency_bin, double olap, int mode,
+    long int block_length, long int max_segments,
+    double *sum_window, double *sum_squares,
+    double *preparation_seconds, double *segments_seconds);
+
+/* Bounded probe of the same window/coefficient generator. first must be
+ * aligned to128 samples; only count output doubles are touched per vector. */
+LPSD_TARGET_CLONES int generate_kaiser_coefficients_range(
+    double *real, double *imag, long int length, long int first, long int count,
+    double beta, double frequency_bin, bool coefficients);
 
 #ifdef __cplusplus
 }

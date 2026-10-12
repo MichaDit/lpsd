@@ -295,9 +295,9 @@ def main(argv=None):
             "python": platform.python_version(),
             "numpy": np.__version__,
             "pandas": pd.__version__,
-            "lpsd_distribution": installed_version("lpsd"),
-            "lpsd_module_version": getattr(original_module, "__version__", None),
-            "lpsd_fast_module_version": getattr(fast_module, "__version__", None),
+            "installed_lpsd_distribution_version": installed_version("lpsd"),
+            "loaded_lpsd_module_version": getattr(original_module, "__version__", None),
+            "loaded_lpsd_fast_module_version": getattr(fast_module, "__version__", None),
             "platform": platform.platform(),
             "cpu_affinity_count": (
                 len(os.sched_getaffinity(0))
@@ -315,6 +315,7 @@ def main(argv=None):
             "RSS is a process-lifetime high-water mark, not a per-call allocation or memory-budget guarantee.",
             "Output fingerprints are reproducibility metadata, not a numerical correctness proof.",
             "Build sidecars are recorded when present and checked against binary SHA256; missing reports require separate compiler evidence.",
+            "Installed distribution metadata can describe a different checkout. The loaded original lpsd module also derives its version from that metadata; the loaded lpsd_fast module reports its source version. Use native source/binary hashes and the A/B checkout commit for implementation identity.",
         ],
     }
     if args.profile:
