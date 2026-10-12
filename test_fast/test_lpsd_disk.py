@@ -166,12 +166,12 @@ def test_invalid_memory_input_is_rejected_before_scratch_allocation(monkeypatch)
 def test_ram_streaming_passes_original_input_pointer_and_releases_failed_gate(monkeypatch):
     values = _signal(65539, "white")
     gates = []
-    original_gate = api._MemoryGate
+    original_gate = disk_module._FairMemoryGate
     class TrackingGate(original_gate):
         def __init__(self, *args):
             super().__init__(*args)
             gates.append(self)
-    monkeypatch.setattr(api, "_MemoryGate", TrackingGate)
+    monkeypatch.setattr(disk_module, "_FairMemoryGate", TrackingGate)
     with DiskLPSDSubset(len(values), FS, _plan(len(values)), workers=8, streaming="on") as method:
         function = method._streaming_fn
         guard = threading.Lock()
@@ -347,7 +347,7 @@ def test_nsd_only_recomputes_and_never_uses_optional_fma(tmp_path, monkeypatch, 
 
 def test_exception_returns_every_gate_and_scratch_reservation(tmp_path, monkeypatch):
     pools, gates = [], []
-    original_pool, original_gate = disk_module._ScratchPool, api._MemoryGate
+    original_pool, original_gate = disk_module._ScratchPool, disk_module._FairMemoryGate
 
     class TrackingPool(original_pool):
         def __init__(self, *args):
@@ -360,7 +360,7 @@ def test_exception_returns_every_gate_and_scratch_reservation(tmp_path, monkeypa
             gates.append(self)
 
     monkeypatch.setattr(disk_module, "_ScratchPool", TrackingPool)
-    monkeypatch.setattr(api, "_MemoryGate", TrackingGate)
+    monkeypatch.setattr(disk_module, "_FairMemoryGate", TrackingGate)
     values = _signal(257, "white")
     with _mapped_arrays(tmp_path, values) as (data, workspace):
         with DiskLPSDSubset(len(data), FS, _plan(len(data)), workers=8) as method:
@@ -488,7 +488,7 @@ def test_progress_callback_is_serialized_across_worker_threads():
 
 def _track_progress_reservations(monkeypatch):
     pools, gates = [], []
-    original_pool, original_gate = disk_module._ScratchPool, api._MemoryGate
+    original_pool, original_gate = disk_module._ScratchPool, disk_module._FairMemoryGate
 
     class TrackingPool(original_pool):
         def __init__(self, *args):
@@ -501,7 +501,7 @@ def _track_progress_reservations(monkeypatch):
             gates.append(self)
 
     monkeypatch.setattr(disk_module, "_ScratchPool", TrackingPool)
-    monkeypatch.setattr(api, "_MemoryGate", TrackingGate)
+    monkeypatch.setattr(disk_module, "_FairMemoryGate", TrackingGate)
     return pools, gates
 
 

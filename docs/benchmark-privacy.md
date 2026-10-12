@@ -80,6 +80,14 @@ them. `results.github-issue.md` is the exact proposed public body. Review it
 before manual publication or run locally first if you want that review step
 before opting into automatic upload.
 
+Synthetic dataset and FFT workspace files use a private directory under the
+original OS/user temporary directory by default. An explicit `--work-dir`
+selects their parent instead. The runner removes its owned case directories
+and default work directory; it does not remove an explicitly selected parent
+or unrelated files. The retained installation and report stay in the printed
+benchmark directory. Select local storage outside synchronized folders for
+large work files; their paths are not included in the public payload.
+
 The installation also retains a private environment, source tree and
 `bootstrap-local.json`. Build sidecars and terminal diagnostics may contain
 local compiler paths or other environment-specific details. **Do not attach

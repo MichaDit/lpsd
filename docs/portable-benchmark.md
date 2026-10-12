@@ -25,7 +25,7 @@ Windows, in Windows PowerShell 5.1 or PowerShell 7:
 & ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT'
 ```
 
-The command creates a fresh `lpsd-benchmark-*` directory under the current
+The command creates a fresh `lpsd-benchmark...` directory under the current
 directory. Set `LPSD_BENCHMARK_BASE_DIR` to another existing writable directory
 when desired. It downloads a private Python, scientific packages and, if no
 compatible compiler is available, a private C compiler. Administrator rights,
@@ -53,12 +53,14 @@ these arguments changes the run:
 | Goal | Arguments |
 |---|---|
 | Compare with a 32 GiB allocation ceiling | `--ram-gib 32` |
+| Compare with a 32 decimal GB allocation ceiling | `--ram-gib 29.8023223876953125` |
 | Small ARM machine, shorter run | `--ram-gib 0.75 --disk-gib 2 --threads 2 --max-hours 6` |
 | Fast installation and numerical smoke test | `--sizes 100000 --profile performance --threads 2 --max-hours 0.25` |
 | Baseline, double and quadruple output counts | `--point-factors 1 2 4` |
 | RAM and disk paths, when both fit | `--storage both` |
 | Explicit FFT buffer comparison | `--fft-layout in-place` or `--fft-layout out-of-place` |
 | Preserve local spectra for plotting | `--save-spectra` |
+| Put dataset files on a selected local drive | `--work-dir /path/on/local-drive/lpsd-work` |
 | Use an installed compatible compiler only | `--compiler system` |
 | Exercise the private compiler fallback | `--compiler zig` |
 
@@ -78,9 +80,11 @@ For PowerShell, pass additional arguments as an array:
 
 `--ram-gib` is a conservative **allocation/work budget**, clamped to detected
 physical memory, cgroup limits and currently available memory. It cannot make
-32 GiB available on a smaller machine. One GiB is 1,073,741,824 bytes, so a
-machine sold with 32 decimal GB has less than 32 GiB before OS reservations.
-The JSON records the admitted budget and measured process memory.
+32 GiB available on a smaller machine. One GiB is 1,073,741,824 bytes:
+32 GiB is 34,359,738,368 bytes, whereas 32 decimal GB is 32,000,000,000 bytes
+(29.8023223876953125 GiB). Neither flag reserves an exact physical partition.
+The JSON records the admitted budget after OS reservations and rounding to
+whole MiB, together with measured process memory.
 
 The runner estimates the complete working set before allocating a case,
 monitors workers, and uses an additional Linux address-space guard where
@@ -93,9 +97,26 @@ physical 32 GiB limit, provide that limit through the operating system or a
 container and record it separately. The program does not change OS memory or
 swap settings.
 
-`--disk-gib` limits the temporary dataset and FFT workspace files. They are
-created in `--work-dir` and removed after each case. The default private
-installation has a separate **2 GiB cap**, adjustable with
+`--disk-gib` limits the temporary dataset and FFT workspace files. By default,
+the runner creates its own temporary work directory under the original OS/user
+temporary directory, independently of the retained installation and results.
+Each case's files are removed when that case finishes; the owned temporary work
+directory is also removed when the runner exits, including handled deadlines,
+interrupts and Python exceptions. An explicit `--work-dir` takes precedence;
+only the case directories created by the runner are removed from that parent.
+
+For large datasets, select a local SSD or another local drive with sufficient
+free space through `--work-dir`. Avoid synchronized folders: their background
+copies can consume additional storage and distort I/O timings. On Linux and
+small ARM boards, `/tmp` may be a RAM filesystem. Detected `tmpfs` and `ramfs`
+work directories receive a zero disk-workspace budget, so disk fallbacks are
+skipped **before creating dataset files**; small RAM cases remain available.
+The disk fallback needs storage on a real drive, not another allocation of the
+same RAM. A custom RAM disk on another platform also needs a suitably chosen
+local-drive `--work-dir`. See the kernel's
+[tmpfs documentation](https://docs.kernel.org/filesystems/tmpfs.html).
+
+The default private installation has a separate **2 GiB cap**, adjustable with
 `--bootstrap-disk-gib`. The setup checks free space and archive expansion; an
 unavailable package or a setup budget that is too small stops installation
 with a local diagnostic. Installation consumes space before the runner derives
@@ -238,7 +259,9 @@ silently launch a large scientific source build or install OS packages.
 
 With that prepared environment, the Unix command works with small limits,
 for example `--ram-gib 0.75 --disk-gib 2 --max-hours 6 --threads 2`. The CLI
-skips large cases that cannot fit. Missing Termux `gh` leaves a browser-submittable
+skips large cases that cannot fit. Choose a local, non-synchronized filesystem
+for `--work-dir` when the OS temporary directory is RAM-backed or too small.
+Missing Termux `gh` leaves a browser-submittable
 issue draft. Android may terminate long-running or CPU-heavy processes; the
 Termux project documents additional Android 12+ limitations. Native Linux on
 the same ARM board is the more directly supported benchmark target.

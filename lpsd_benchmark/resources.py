@@ -10,6 +10,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import time
@@ -185,6 +186,35 @@ def budget_bytes(value):
     return int(number * GIB)
 
 
+def ram_backed_work_directory(directory, *, mountinfo=Path("/proc/self/mountinfo")):
+    """Identify Linux tmpfs/ramfs without counting their capacity as disk.
+
+    Resolve symlinks and prefer the most specific visible mount, including
+    bind mounts. Mountinfo escapes whitespace and backslashes as octal bytes.
+    No path or mount metadata is added to the public benchmark report.
+    """
+    if platform.system() != "Linux":
+        return False
+    try:
+        directory = Path(directory).resolve()
+        lines = Path(mountinfo).read_text(encoding="utf-8", errors="surrogateescape").splitlines()
+    except OSError:
+        return False
+    filesystem, matched_parts = None, -1
+    for line in lines:
+        before, separator, after = line.partition(" - ")
+        fields, extra = before.split(), after.split()
+        if not separator or len(fields) < 5 or not extra:
+            continue
+        name = re.sub(r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), fields[4])
+        mount = Path(name)
+        if not mount.is_absolute() or not directory.is_relative_to(mount):
+            continue
+        if len(mount.parts) >= matched_parts:
+            filesystem, matched_parts = extra[0], len(mount.parts)
+    return filesystem in ("tmpfs", "ramfs")
+
+
 def detect_resources(directory, ram="auto", disk="auto", threads=None):
     total, available = system_memory()
     free = shutil.disk_usage(directory).free
@@ -201,6 +231,11 @@ def detect_resources(directory, ram="auto", disk="auto", threads=None):
         disk_budget = max(0, min(int(free * .80), free - 256 * MIB))
     else:
         disk_budget = max(0, min(disk_requested, free - 512 * MIB))
+    # tmpfs/ramfs file pages consume RAM and are not included in the disk
+    # worker's anonymous-RSS guard. Do not admit a disk fallback there even
+    # when its logical filesystem capacity exceeds the available RAM.
+    if ram_backed_work_directory(directory):
+        disk_budget = 0
     cpu_count, capacity = cpu_capacity()
     used_threads = cpu_count if threads is None else min(cpu_count, int(threads))
     return Resources(total, available, free, ram_budget // MIB * MIB,

@@ -192,6 +192,20 @@ def test_isolated_environment_drops_foreign_indexes_and_python_paths(tmp_path, m
     assert result["LPSD_BENCHMARK_DEADLINE_EPOCH"] == "12345"
 
 
+def test_numerical_temp_uses_original_os_parent_without_changing_private_setup(tmp_path):
+    setup = tmp_path / "synchronized-checkout"
+    setup.mkdir()
+    original_temp = tmp_path / "local-system-temp"
+    original_temp.mkdir()
+    environment = bootstrap.child_environment(setup, 12345)
+    numerical = bootstrap.benchmark_environment(environment, original_temp)
+    for key in ("TMPDIR", "TMP", "TEMP"):
+        assert numerical[key] == str(original_temp)
+        assert environment[key] == str(setup / "temporary")
+    assert numerical["UV_CACHE_DIR"] == environment["UV_CACHE_DIR"] == str(setup / "cache")
+    assert numerical["LPSD_BENCHMARK_DEADLINE_EPOCH"] == "12345"
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX process group contract; Windows uses taskkill tree termination")
 def test_deadline_stops_subprocess_group(tmp_path):
     inherited = time.time() + 0.15

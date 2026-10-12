@@ -26,6 +26,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 """
 from __future__ import annotations
 
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import copy
 import ctypes as ct
@@ -116,29 +117,100 @@ class _PointProgress:
                              "workers, and is not a correction to subtract from call time."}
 
 
+class _FairMemoryGate:
+    """Local FIFO byte admission; an oversized mapped point runs alone.
+
+    A new short point cannot repeatedly pass an older large reservation.
+    This adapter needs that guarantee because its workers immediately take
+    another point after releasing resources. The public API's gate is not
+    changed. As before, the gate is a concurrency target, not an RSS limit.
+    """
+
+    def __init__(self, capacity):
+        self.capacity = int(capacity)
+        if self.capacity < 1:
+            raise ValueError("Memory gate capacity must be positive.")
+        self.used = 0
+        self.peak = 0
+        self.condition = threading.Condition()
+        self._waiters = deque()
+
+    def acquire(self, amount):
+        amount = min(int(amount), self.capacity)
+        if amount < 1:
+            raise ValueError("Memory gate reservation must be positive.")
+        ticket = object()
+        with self.condition:
+            self._waiters.append(ticket)
+            try:
+                while self._waiters[0] is not ticket or self.used + amount > self.capacity:
+                    self.condition.wait()
+            finally:
+                self._waiters.remove(ticket)
+                # The next FIFO request may already fit alongside this one;
+                # it need not wait for an unrelated release to be notified.
+                # Notify before committing the reservation: a failed wait
+                # or notification has not handed out any resource yet. The
+                # condition remains locked until after the state update.
+                self.condition.notify_all()
+            self.used += amount
+            self.peak = max(self.peak, self.used)
+            return amount
+
+    def release(self, amount):
+        with self.condition:
+            self.used -= int(amount)
+            self.condition.notify_all()
+
+
 class _ScratchPool:
-    """Allocate disjoint contiguous complex slots; coalesce returned ranges."""
+    """Allocate disjoint contiguous slots in FIFO order; coalesce releases.
+
+    Preserve arrival order even when a newer, smaller request already fits.
+    Otherwise an L=N waiter can lose the whole pool to every subsequent
+    short task on the worker that most recently released it.
+    """
 
     def __init__(self, slots):
+        self.capacity_slots = int(slots)
+        if self.capacity_slots < 1:
+            raise ValueError("Scratch pool capacity must be positive.")
         self._condition = threading.Condition()
-        self._free = [(0, int(slots))]
+        self._free = [(0, self.capacity_slots)]
+        self._waiters = deque()
         self.used_slots = 0
         self.peak_slots = 0
 
     def acquire(self, slots):
         slots = int(slots)
+        if not 1 <= slots <= self.capacity_slots:
+            raise ValueError("Scratch reservation must fit within the pool.")
+        ticket = object()
         with self._condition:
-            while True:
-                for j, (start, available) in enumerate(self._free):
-                    if slots <= available:
-                        if slots == available:
-                            del self._free[j]
-                        else:
-                            self._free[j] = (start + slots, available - slots)
-                        self.used_slots += slots
-                        self.peak_slots = max(self.peak_slots, self.used_slots)
-                        return start
-                self._condition.wait()
+            self._waiters.append(ticket)
+            choice = None
+            try:
+                while choice is None:
+                    if self._waiters[0] is ticket:
+                        for j, (start, available) in enumerate(self._free):
+                            if slots <= available:
+                                choice = (j, start, available)
+                                break
+                    if choice is None:
+                        self._condition.wait()
+            finally:
+                self._waiters.remove(ticket)
+                # Waiters cannot inspect the pool until this condition is
+                # unlocked, so notify before committing the chosen region.
+                self._condition.notify_all()
+            j, start, available = choice
+            if slots == available:
+                del self._free[j]
+            else:
+                self._free[j] = (start + slots, available - slots)
+            self.used_slots += slots
+            self.peak_slots = max(self.peak_slots, self.used_slots)
+            return start
 
     def release(self, start, slots):
         with self._condition:
@@ -223,9 +295,11 @@ class DiskLPSDSubset:
     ``plan_mask`` is an optional boolean mask applied uniformly, preserving
     the supplied plan's order. At most ``workers`` frequencies are evaluated
     concurrently, without persistent windows or coefficients. Each point
-    reserves ``24*L+8192`` nominal working bytes using the existing API gate,
-    then a disjoint L-complex-slot scratch region. As in that API, a point
-    larger than ``max_working_mb`` runs alone; this is not a hard RSS limit.
+    reserves ``24*L+8192`` nominal working bytes through a local FIFO gate,
+    then a disjoint L-complex-slot region through the FIFO scratch pool.
+    An explicitly mapped point larger than ``max_working_mb`` runs alone;
+    anonymous buffers must first pass the strict budget preflight. The gate
+    itself is not a hard RSS limit.
 
     Unlike the public API's optional single-worker FMA optimization, this
     adapter deliberately calls the ordinary selected kernel used by the
@@ -247,8 +321,10 @@ class DiskLPSDSubset:
     the streaming kernel. Other points use the original selected kernel.
     ``recommended_scratch_slots`` permits a smaller file than N slots; no
     file shorter than ``minimum_scratch_slots`` is accepted. Omitting the
-    workspace instead allocates that bounded pool anonymously for the call,
-    with no temporary files. Input, results and OS/runtime memory are extra.
+    workspace allocates ``recommended_ram_scratch_slots`` anonymously for
+    the call. That separate recommendation may exceed N when the working
+    budget can accommodate several long points concurrently. No temporary
+    files are created. Input, results and OS/runtime memory are extra.
 
     Optional ``progress(event)`` callbacks are serialized across workers and
     run only after a completed point has released both resource reservations.
@@ -348,14 +424,17 @@ class DiskLPSDSubset:
         lengths = sorted((int(length) for length, streamed in zip(self.plan[3], self._streaming_mask)
                           if not streamed), reverse=True)
         self.minimum_scratch_slots = max(lengths, default=1)
-        self.recommended_scratch_slots = min(self.n,
-            max(self.minimum_scratch_slots,
-                min(sum(lengths[:self.effective_workers]), self._working_capacity // 24)))
+        self.recommended_ram_scratch_slots = max(self.minimum_scratch_slots,
+            min(sum(lengths[:self.effective_workers]), self._working_capacity // 24))
+        # Existing caller-owned mappings retain the <=N contract. An
+        # anonymous pool need not serialize long points to fit that file
+        # layout when a larger pool is permitted by the explicit budget.
+        self.recommended_scratch_slots = min(self.n, self.recommended_ram_scratch_slots)
         self._streaming_working_bytes = 16 * self.streaming_block_samples + 32768
         self._streaming_workers_bound = min(self.effective_workers, sum(self._streaming_mask),
             max(1, self._working_capacity // self._streaming_working_bytes))
         streaming_bytes = self._streaming_workers_bound * self._streaming_working_bytes
-        bounded_scratch_bytes = 16 * self.recommended_scratch_slots
+        bounded_scratch_bytes = 16 * self.recommended_ram_scratch_slots
         validation_bytes = min(self.n, self.validation_chunk_size)
         self._ram_working_upper_bound = bounded_scratch_bytes + streaming_bytes + validation_bytes
         self._metadata = {
@@ -379,6 +458,8 @@ class DiskLPSDSubset:
             "maximum_point_scratch_bytes": 16 * max(lengths, default=0),
             "original_maximum_point_coefficient_bytes": max((16 * int(v) for v in self.plan[3]), default=0),
             "concurrency_budget_bytes": self._working_capacity,
+            "reservation_policy": "FIFO memory gate, then FIFO contiguous scratch pool; "
+                                  "new requests cannot overtake existing waiters.",
             "working_budget_note": "Stored-coefficient points reserve 24*L+8192 bytes; streaming "
                                    "points reserve their bounded block buffers. Actual stored q "
                                    "uses 16*L bytes from the shared mapped or anonymous pool. "
@@ -400,6 +481,8 @@ class DiskLPSDSubset:
             },
             "minimum_scratch_bytes": 16 * self.minimum_scratch_slots,
             "recommended_scratch_bytes": 16 * self.recommended_scratch_slots,
+            "recommended_mapped_scratch_bytes": 16 * self.recommended_scratch_slots,
+            "recommended_ram_scratch_bytes": bounded_scratch_bytes,
             "bounded_memory_model": {
                 "input_bytes": 8 * self.n,
                 "input_copy_bytes": 0,
@@ -416,8 +499,10 @@ class DiskLPSDSubset:
                 "ram_preflight": "workspace=None raises MemoryError before allocating scratch when "
                                  "the conservative scratch+streaming+validation bound exceeds the "
                                  "working budget. Explicit file mappings retain the documented soft gate.",
-                "scratch_formula": "16*min(N,max(max_nonstream_L,min(sum_largest_worker_L,capacity//24))) bytes; "
+                "scratch_formula": "16*max(max_nonstream_L,min(sum_largest_worker_L,capacity//24)) bytes; "
                                    "16 bytes if every point streams or the subset is empty.",
+                "mapped_scratch_formula": "min(N,recommended_ram_scratch_slots) complex128 slots; "
+                                          "the existing explicit-file recommendation stays capped at N.",
                 "streaming_formula": "At most min(workers,eligible_points,capacity//per_point) active "
                                      "streaming points; per_point=16*block_samples+32768 covers the "
                                      "two native block vectors and bounded native scalar/stack state.",
@@ -492,7 +577,7 @@ class DiskLPSDSubset:
         L*K is logical segment coverage, not measured storage traffic.
 
         With no workspace, ``values`` may be an aligned contiguous native
-        float64 ndarray. The call allocates ``16*recommended_scratch_slots``
+        float64 ndarray. The call allocates ``16*recommended_ram_scratch_slots``
         anonymous bytes plus bounded streaming buffers under the same gate.
         No input copy, full-length window, or persistent cache is created.
         """
@@ -516,7 +601,7 @@ class DiskLPSDSubset:
                         f"Bounded RAM buffers require {self._ram_working_upper_bound} bytes, exceeding "
                         f"the {self._working_capacity}-byte working budget. Raise max_working_mb, "
                         "reduce the dataset, or provide an explicitly file-backed workspace.")
-                workspace = np.empty(self.recommended_scratch_slots, dtype=np.complex128)
+                workspace = np.empty(self.recommended_ram_scratch_slots, dtype=np.complex128)
             input_region, scratch_region = self._validate(values, workspace, mapped=mapped)
             self._last_storage_metadata = {
                 "storage_mode": "mapped" if mapped else "bounded_memory",
@@ -534,7 +619,7 @@ class DiskLPSDSubset:
             density = np.empty(len(self.frequencies), dtype=np.complex64)
             rows = [None] * len(self.frequencies) if profile else []
             totals = {name: 0.0 for name in _STAGES}
-            gate = api._MemoryGate(self._working_capacity)
+            gate = _FairMemoryGate(self._working_capacity)
             scratch_pool = _ScratchPool(len(workspace))
             streaming_count_lock = threading.Lock()
             streaming_counts = [0, 0]

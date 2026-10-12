@@ -175,6 +175,29 @@ def resolve_point_plan(api, n, fs, base_points, factor, explicit_points, average
     }
 
 
+def _native_working_budget(case):
+    """Return the bounded-native allowance in MiB and available buffer bytes.
+
+    RAM cases retain the original float64 input and reserve interpreter and
+    worker overhead before assigning the remaining configured budget. The
+    hybrid releases its FFT buffers before this native phase. Disk cases
+    retain their separately configured working allowance and headroom model.
+
+    The adapter has a 64-MiB minimum capacity. Return no allowance when that
+    cannot fit, so preflight can skip before constructing it or the input.
+    This scalar calculation does not allocate numerical arrays.
+    """
+    headroom = case["ram_budget_bytes"] - 256 * MIB
+    if case["storage"] == "ram":
+        headroom -= 8 * case["n"] + case["requested_threads"] * 3 * MIB
+        working_mb = headroom / MIB
+    else:
+        working_mb = case["low_working_mb"]
+    if headroom < 64 * MIB:
+        return None, headroom
+    return working_mb, headroom
+
+
 def _address_guard(case):
     """Additional Linux guard on allocations plus explicitly allowed mappings.
 
@@ -246,10 +269,10 @@ def run(case, directory):
     result["actual_threads"] = backend.threads if backend else case["requested_threads"]
     bounded_options = None
     if method in ("lpsd", "matched"):
+        working_mb, headroom = _native_working_budget(case)
+        if working_mb is None:
+            return {**result, "status": "skipped", "reason": "memory_budget"}
         from benchmarks._lpsd_disk import DiskLPSDSubset
-        headroom = case["ram_budget_bytes"] - (8 * n if case["storage"] == "ram" else 0) - 256 * MIB
-        working_mb = (case["low_working_mb"] if case["storage"] == "disk" else
-                      max(64., min(2048., (headroom - case["requested_threads"] * 3 * MIB) / MIB)))
         bounded_options = dict(sample_rate=case["sample_rate_hz"], n_frequencies=case["target_points"],
                                n_averages=case["n_averages"], psll=200., workers=case["requested_threads"],
                                max_working_mb=working_mb, streaming="auto")
@@ -316,9 +339,8 @@ def run(case, directory):
         # The one-shot hybrid has no persistent cache and releases FFT buffers
         # before its bounded native subset. Admission checked the actual pool.
         in_place = case.get("fft_layout") == "in-place"
-        remaining_mb = result.get("native_working_mb", max(64., min(2048., (case["ram_budget_bytes"] - 256 * MIB - 8 * n) / MIB)))
         result.setdefault("native_working_mb", (case["low_working_mb"] if case["storage"] == "disk"
-                                               else remaining_mb if method == "matched" else 0.))
+                                               else 0.))
         result.setdefault("native_backend", "not_applicable")
         result["cache_bytes"] = 0
         wall, cpu = time.perf_counter(), time.process_time()
@@ -353,7 +375,7 @@ def run(case, directory):
             backend.forget_wisdom()
             frame = estimate_once(backend, values, outputs=("psd", "nsd"), **common,
                                   window_provider=provider, workers=case["requested_threads"],
-                                  max_working_mb=remaining_mb, total_cache_mb=0,
+                                  max_working_mb=bounded_options["max_working_mb"], total_cache_mb=0,
                                   max_kernel_cache_mb=0, window_cache_mb=0,
                                   smoothing_workers=min(4, case["requested_threads"]),
                                   weight_dtype="float32", operations_backend="native",

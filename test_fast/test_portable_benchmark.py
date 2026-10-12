@@ -181,6 +181,7 @@ def test_explicit_budgets_can_use_available_space_beyond_auto_but_keep_reserves(
     monkeypatch.setattr(resources, "system_memory", lambda: (32 * resources.GIB, 31 * resources.GIB))
     monkeypatch.setattr(resources, "cpu_capacity", lambda: (8, 8.))
     monkeypatch.setattr(resources.shutil, "disk_usage", lambda _: SimpleNamespace(free=25_760_000_000))
+    monkeypatch.setattr(resources, "ram_backed_work_directory", lambda _: False)
     automatic = resources.detect_resources(tmp_path)
     explicit = resources.detect_resources(tmp_path, ram="32", disk="24")
     assert explicit.ram_budget == 29 * resources.GIB
@@ -189,6 +190,50 @@ def test_explicit_budgets_can_use_available_space_beyond_auto_but_keep_reserves(
     assert explicit.disk_budget <= 25_760_000_000 - 512 * resources.MIB
     tiny = resources.detect_resources(tmp_path, ram="1e-20", disk="1e-20")
     assert tiny.ram_budget == tiny.disk_budget == 0
+
+
+@pytest.mark.parametrize("filesystem", ["tmpfs", "ramfs"])
+def test_ram_filesystem_cannot_be_used_as_disk_fallback(tmp_path, monkeypatch, filesystem):
+    mount = tmp_path / "memory files"
+    work = mount / "work"
+    work.mkdir(parents=True)
+    mountinfo = tmp_path / "mountinfo"
+    escaped = str(mount).replace("\\", "\\134").replace(" ", "\\040")
+    mountinfo.write_text(f"1 0 8:1 / / rw - ext4 /dev/root rw\n"
+                         f"2 1 0:2 / {escaped} rw - {filesystem} none rw\n")
+    monkeypatch.setattr(resources.platform, "system", lambda: "Linux")
+    original_detector = resources.ram_backed_work_directory
+    monkeypatch.setattr(resources, "ram_backed_work_directory",
+                        lambda directory: original_detector(directory, mountinfo=mountinfo))
+    monkeypatch.setattr(resources, "system_memory", lambda: (resources.GIB, 800 * resources.MIB))
+    monkeypatch.setattr(resources, "cpu_capacity", lambda: (2, 2.))
+    # A generous tmpfs size must not turn the disk fallback into a RAM overrun.
+    monkeypatch.setattr(resources.shutil, "disk_usage", lambda _: SimpleNamespace(free=64 * resources.GIB))
+    detected = resources.detect_resources(work, disk="32")
+    assert detected.disk_budget == 0
+    assert resources.select_storage(100_000, "matched", "white", "auto", detected)[0] == "ram"
+    assert resources.select_storage(1_000_000_000, "fftw", "white", "auto", detected)[3] == "disk_budget"
+
+
+def test_workdir_filesystem_uses_longest_mount_prefix_and_resolves_symlinks(tmp_path, monkeypatch):
+    memory = tmp_path / "ram"
+    disk = memory / "local-disk"
+    disk.mkdir(parents=True)
+    near_prefix = tmp_path / "ram-copy"
+    near_prefix.mkdir()
+    mountinfo = tmp_path / "mountinfo"
+    mountinfo.write_text(f"1 0 8:1 / / rw - ext4 /dev/root rw\n"
+                         f"2 1 0:2 / {memory} rw - tmpfs none rw\n"
+                         f"3 2 8:2 / {disk} rw - ext4 /dev/data rw\n")
+    monkeypatch.setattr(resources.platform, "system", lambda: "Linux")
+    assert resources.ram_backed_work_directory(memory, mountinfo=mountinfo)
+    assert not resources.ram_backed_work_directory(disk, mountinfo=mountinfo)
+    assert not resources.ram_backed_work_directory(near_prefix, mountinfo=mountinfo)
+    if os.name != "nt":
+        alias = tmp_path / "memory-alias"
+        alias.symlink_to(memory, target_is_directory=True)
+        assert resources.ram_backed_work_directory(alias, mountinfo=mountinfo)
+        assert not resources.ram_backed_work_directory(alias / "local-disk", mountinfo=mountinfo)
 
 
 def test_cgroup_active_clean_file_cache_does_not_force_100m_to_disk(tmp_path, monkeypatch):
@@ -431,17 +476,72 @@ def test_timeout_also_stops_grandchild(tmp_path):
             raise
 
 
-def test_expired_bootstrap_deadline_starts_no_numerical_case(tmp_path, monkeypatch):
+@pytest.mark.parametrize("explicit_workdir", [False, True])
+def test_expired_bootstrap_deadline_starts_no_numerical_case(tmp_path, monkeypatch, explicit_workdir):
     monkeypatch.setenv("LPSD_BENCHMARK_DEADLINE_EPOCH", str(time.time() - 1))
+    system_temp = tmp_path / "system-temp"
+    system_temp.mkdir()
+    monkeypatch.setattr(runner.tempfile, "tempdir", str(system_temp))
     def forbidden(*args, **kwargs):
         pytest.fail("An expired setup-inclusive deadline must not start a case")
     monkeypatch.setattr(runner, "execute_case", forbidden)
     output = tmp_path / "results.json"
+    additional = ["--work-dir", str(tmp_path / "work")] if explicit_workdir else []
     assert runner.main(["run", "--sizes", "1000", "--methods", "lpsd", "--profile", "performance",
-                        "--work-dir", str(tmp_path / "work"), "--output", str(output)]) == 0
+                        "--output", str(output), *additional]) == 0
     report = json.loads(output.read_text())
     assert report["state"] == "deadline"
     assert all(row["reason"] == "time_budget" for row in report["cases"])
+    assert list(system_temp.iterdir()) == []
+
+
+@pytest.mark.parametrize("outcome", ["completed", "invalid", "interrupted", "timeout"])
+def test_default_workdir_is_unique_local_temp_and_cleaned_on_exit(tmp_path, monkeypatch, outcome):
+    system_temp = tmp_path / "system-temp"
+    system_temp.mkdir()
+    checkout = tmp_path / "synchronized-checkout"
+    checkout.mkdir()
+    unrelated = system_temp / "other-application-file"
+    unrelated.write_text("keep")
+    monkeypatch.setattr(runner.tempfile, "tempdir", str(system_temp))
+    monkeypatch.chdir(checkout)
+    seen = []
+    def fake_run(args):
+        seen.append(args.work_dir)
+        assert args.work_dir.parent == system_temp
+        assert args.work_dir.is_dir()
+        (args.work_dir / "owned-partial-dataset").write_bytes(b"partial")
+        args.output.write_text("completed results stay local")
+        if outcome == "invalid":
+            raise ValueError("invalid configuration")
+        if outcome == "interrupted":
+            raise KeyboardInterrupt
+        if outcome == "timeout":
+            raise subprocess.TimeoutExpired("owned worker", 1.)
+        return 0
+    monkeypatch.setattr(runner, "run", fake_run)
+    if outcome in ("interrupted", "timeout"):
+        error = KeyboardInterrupt if outcome == "interrupted" else subprocess.TimeoutExpired
+        with pytest.raises(error):
+            runner.main(["run"])
+    else:
+        assert runner.main(["run"]) == (2 if outcome == "invalid" else 0)
+    assert len(seen) == 1 and not seen[0].exists()
+    assert unrelated.read_text() == "keep"
+    assert (checkout / "lpsd-benchmark-results.json").is_file()
+
+
+def test_explicit_workdir_is_preserved_and_takes_precedence(tmp_path, monkeypatch):
+    work = tmp_path / "chosen-local-volume"
+    work.mkdir()
+    sentinel = work / "user-owned-file"
+    sentinel.write_text("keep")
+    def fake_run(args):
+        assert args.work_dir == work
+        return 0
+    monkeypatch.setattr(runner, "run", fake_run)
+    assert runner.main(["run", "--work-dir", str(work)]) == 0
+    assert sentinel.read_text() == "keep"
 
 
 def test_help_does_not_need_numpy_in_controller():

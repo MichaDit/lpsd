@@ -546,7 +546,8 @@ def parser():
                             help="full adds the five historical signal presets at --quality-sizes")
     run_parser.add_argument("--quality-sizes", nargs="+", type=int, default=[100_000, 1_000_000, 1_000_003],
                             help="Selected dataset sizes receiving all six historical signal presets")
-    run_parser.add_argument("--work-dir", type=Path, default=Path.cwd() / "lpsd-benchmark-work")
+    run_parser.add_argument("--work-dir", type=Path,
+                            help="Dataset/workspace parent; default is a private directory in the OS temporary directory")
     run_parser.add_argument("--output", type=Path, default=Path.cwd() / "lpsd-benchmark-results.json")
     run_parser.add_argument("--fftw-library", type=Path)
     run_parser.add_argument("--threads-library", type=Path)
@@ -581,6 +582,13 @@ def main(argv=None):
     if args.upload_github and not args.accept_public_upload:
         cli.error("--upload-github requires --accept-public-upload: the issue is public and linked to your GitHub account")
     try:
+        if args.work_dir is None:
+            # Large dataset files must not inherit a checkout/results directory
+            # that may be synchronized to cloud storage. Own only this fresh
+            # temporary directory; explicit work parents remain user-owned.
+            with tempfile.TemporaryDirectory(prefix="lpsd-benchmark-work-") as directory:
+                args.work_dir = Path(directory)
+                return run(args)
         return run(args)
     except (OSError, ValueError):
         # Do not print exception text containing a personal filesystem path.

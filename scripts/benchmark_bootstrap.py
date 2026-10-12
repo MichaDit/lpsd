@@ -413,6 +413,19 @@ def child_environment(root, deadline):
     return environment
 
 
+def benchmark_environment(setup_environment, temporary_parent):
+    """Keep installer caches private, but put numerical scratch on OS temp.
+
+    The retained installation may live in a synchronized working directory.
+    The runner owns and removes its own unique child of this original temp
+    parent; a participant's explicit --work-dir still takes precedence.
+    """
+    environment = setup_environment.copy()
+    for name in ("TMPDIR", "TMP", "TEMP"):
+        environment[name] = str(temporary_parent)
+    return environment
+
+
 def run_checked(command, budget, *, cwd, environment, monitor_setup=True):
     budget.check(disk=monitor_setup)
     options = {"start_new_session": True} if os.name != "nt" else {
@@ -581,6 +594,9 @@ def main(arguments=None):
                     inherited_deadline=os.environ.get("LPSD_BENCHMARK_DEADLINE_EPOCH"))
     budget.check()
     budget.start_watchdog()
+    # Resolve the OS/user temp location before the private installer environment
+    # redirects all three temp variables into the retained setup directory.
+    numerical_temp_parent = Path(tempfile.gettempdir())
     environment = child_environment(root, budget.deadline_epoch)
     print("Private benchmark directory:", root, flush=True)
     try:
@@ -679,9 +695,10 @@ def main(arguments=None):
         (root / "bootstrap-local.json").write_text(json.dumps(provenance, indent=2) + "\n")
         command = [str(python), "-m", "lpsd_benchmark", "run", "--max-hours", str(options.max_hours),
                    "--ram-gib", str(options.ram_gib),
-                   "--work-dir", str(root / "work"), "--output", str(root / "results.json"), *remaining]
+                   "--output", str(root / "results.json"), *remaining]
         print("Starting the benchmark; remaining total budget %.1f seconds." % budget.remaining(), flush=True)
-        run_checked(command, budget, cwd=source, environment=environment, monitor_setup=False)
+        run_checked(command, budget, cwd=source,
+                    environment=benchmark_environment(environment, numerical_temp_parent), monitor_setup=False)
     finally:
         budget.finished.set()
     print("Finished. Local results:", root / "results.json", flush=True)
