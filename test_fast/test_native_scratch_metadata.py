@@ -170,15 +170,24 @@ def test_worker_records_actual_metadata_after_timing(tmp_path, monkeypatch, meth
         frame = estimator.compute(values)
         # This deliberately stale frame entry must not replace disk details.
         frame.attrs["lpsd_disk"] = source(state="scheduled", final_bytes=4096)
-        return frame, {"phases": {}, "lpsd" if kind == "lpsd" else "low_lpsd": estimator.metadata}
+        details = {"phases": {}, "lpsd" if kind == "lpsd" else "low_lpsd": estimator.metadata}
+        if kind == "matched":
+            assert args.smoothing_workers == 1
+            details["smoothing"] = {"workers": 1, "pool_capacity": 1, "task_ranges": 2,
+                                    "high_points": 4, "backend": "native"}
+        return frame, details
 
     def estimate_once(backend, values, **kwargs):
+        assert kwargs["smoothing_workers"] == 1
         estimator = Estimator()
         frame = estimator.compute(values)
         frame.attrs.clear()
         frame.attrs["matched_smoothing_once"] = {
             "low_frequency_preparation": estimator.metadata, "window_storage": "full",
-            "window_buffer_bytes": 0, "window_scratch_bytes": 0, "one_shot_window": True}
+            "window_buffer_bytes": 0, "window_scratch_bytes": 0, "one_shot_window": True,
+            "requested_smoothing_workers": 1, "smoothing_pool_capacity": 0,
+            "smoothing_task_ranges": 1, "smoothed_frequency_points": 4,
+            "smoothing_backend": "native"}
         return frame
 
     monkeypatch.setattr(disk, "disk_pipeline", disk_pipeline)
