@@ -2,10 +2,11 @@
 
 The completed first portable benchmark campaign is published below. A second
 campaign tested the merged fast.8 source, including the full regression suites.
-It is incomplete on two machines. Failed tests and interrupted work are retained.
+The instrument campaign is now recovered and complete; the Windows matrix remains
+incomplete. Failed tests and interrupted work are retained.
 
-Publication snapshot: **2026-10-12T11:06:42.790025+00:00**. Latest local collection:
-**2026-10-12T11:06:13.696356+00:00**. Reports contain synthetic fixed-presets only.
+Publication snapshot: **2026-10-12T17:17:50.266040+00:00**. Latest local collection:
+**2026-10-12T17:15:12.759945+00:00**. Reports contain synthetic fixed-presets only.
 Machine labels are generic; no hostnames, addresses, credentials, serials,
 personal paths, source spectra or arbitrary logs are published.
 
@@ -51,7 +52,7 @@ Source: [`b8c5002`](https://github.com/MichaDit/lpsd/commit/b8c500217f7c0ad996f5
 |---|---|---|
 | Windows x86-64 | 131 unique successful cases out of 132 | Outstanding doubled-point billion-sample LPSD case interrupted by host crash |
 | ARM64 SBC | 132 recorded: 108 completed, zero failed, 24 skipped | Benchmark complete; regression coverage comes from separate runs |
-| ARM64 instrument | 6 recorded at the last retained checkpoint | Fresh status unavailable after the control host restarted; final results not claimed |
+| ARM64 instrument | 132 recorded: 116 completed, three failed, 13 skipped | Benchmark complete; three memory-limit failures and two regression failures remain |
 
 The first Windows segment stopped after 130 successful cases because a campaign
 status-file replacement collided with a Windows reader handle. The wrapper was
@@ -62,11 +63,15 @@ The continuation retained the doubled-point billion-sample matched result before
 the restart. Its eight smaller supporting/calibration cases are excluded from
 the unique 132-case count. The unfinished LPSD timing is not reported as a result.
 
-The instrument used detached on-device supervisors; the host restart does not
-establish that those device processes stopped. Their subsequent liveness and
-completion have not been freshly verified because the ADB transport is offline.
-The final post-regression/cleanup release remains unverified. The retained
-checkpoint is historical evidence, not a current running/finished assertion.
+The instrument used detached on-device supervisors and completed independently
+of the control-host restart. A restored single ADB transport allowed the final
+benchmark and regression files to be collected. The post-regression supervisor
+reported cleanup and release at **2026-10-12T11:42:57Z**; release was
+freshly verified at **2026-10-12T17:15:12.748413+00:00**. The test supervisors were absent
+and no owned test-rootfs mounts remained. Three 30-million-sample disk cases
+again exceeded the 768 MiB memory limit: FFTW at both point factors and
+matched FFTW at baseline points. The export keeps its original `snapshot`
+filename for existing links but now contains the complete 132-case report.
 
 Representative fast.8 white-noise results at **N=100,000**, baseline points:
 
@@ -92,6 +97,7 @@ Representative fast.8 white-noise results at **N=100,000**, baseline points:
 | SBC matched-smoothing recheck | 106 | 0 | 0 | 0 | 0 |
 | SBC upstream | 18 | 0 | 0 | 0 | 0 |
 | Instrument first full fast run | 2076 | 27 | 0 | 6 | 2 |
+| Instrument full fast recheck, restored prerequisites | 2101 | 2 | 0 | 6 | 2 |
 | Instrument upstream | 18 | 0 | 0 | 0 | 0 |
 
 The SBC dependency-enabled full rerun first passed 2,078 tests and failed 25,
@@ -112,8 +118,11 @@ failures, a deadline test whose child PID file was not created in time, and
 an exceptional CSD comparison at input amplitude `1e155`. The latter observed
 **3.0936972401917152e-12**, exceeding the mandatory **2e-12** limit. Three compiler
 warnings also report smoothing loops that were not vectorized. These results
-are unresolved. A complete fast regression was queued after the benchmark with
-the restored Git prerequisite; its outcome is not yet verified.
+remain unresolved in this frozen source cohort. The complete fast regression
+after the benchmark, with the restored Git prerequisite, passed 2,101 tests,
+failed the same deadline and exceptional-CSD tests, skipped six and retained
+two expected failures. All 25 reference-prerequisite failures disappeared.
+A completed supervisor or released device does not mean every test passed.
 
 ### Conditions and interpretation
 
@@ -169,6 +178,7 @@ qualifies corrections for ZIP member names, Windows path assertions,
 archive-based frozen-reference metadata, slow-child deadline fixtures and
 extreme CSD projections. Its local and CI results are new source cohorts;
 they do not replace the failures, skips or interrupted cases in this
-publication snapshot. The physical instrument rerun and Windows doubled-point
-1B LPSD case remain unconfirmed. Original report bytes and manifest hashes
-are preserved.
+publication. The recovered records now confirm the fast.8 instrument rerun;
+they do not establish a new fast.9 instrument qualification. The Windows
+doubled-point 1B LPSD case remains unconfirmed. The instrument export and
+manifest hashes were updated to include its final recovered evidence.

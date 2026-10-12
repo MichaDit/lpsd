@@ -65,7 +65,14 @@
     "skipped": 0,
     "xfailed": 0
   },
-  "instrument_full_recheck": "queued_not_verified_after_host_restart",
+  "instrument_full_recheck": {
+    "tests": 2111,
+    "passed": 2101,
+    "failed": 2,
+    "errors": 0,
+    "skipped": 6,
+    "xfailed": 2
+  },
   "known_expected_failures": 2,
   "windows_failed_tests": [
     "test_fast/test_bootstrap.py::test_zip_traversal_never_writes_outside_destination[root\\escape]",
@@ -78,5 +85,14 @@
   "instrument_reference_prerequisite_failures": 25,
   "instrument_csd_observed_error": 3.0936972401917152e-12,
   "instrument_csd_required_limit": 2e-12,
-  "instrument_vectorization_warnings": 3
+  "instrument_vectorization_warnings": 3,
+  "instrument_reference_prerequisite_failures_resolved": 25,
+  "instrument_final_release": {
+    "state": "finished",
+    "released": true,
+    "release_utc": "2026-10-12T11:42:57Z",
+    "verified_utc": "2026-10-12T17:15:12.748413+00:00",
+    "test_supervisors_absent": true,
+    "owned_test_mounts_absent": true
+  }
 }

@@ -1,7 +1,7 @@
 {
   "schema": "lpsd-device-test-publication-v1",
-  "publication_utc": "2026-10-12T11:06:42.790025+00:00",
-  "collection_utc": "2026-10-12T11:06:13.696356+00:00",
+  "publication_utc": "2026-10-12T17:17:50.266040+00:00",
+  "collection_utc": "2026-10-12T17:15:12.759945+00:00",
   "synthetic_input_only": true,
   "reports": [
     {
@@ -79,16 +79,18 @@
     {
       "file": "fast8-arm64-instrument-snapshot.json",
       "platform": "ARM64 instrument",
-      "lifecycle": "last_checkpoint_status_unknown",
+      "lifecycle": "completed",
       "source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
-      "sha256": "00a68cf3ea6bd1c2d8b00b8de66948fc014f39b7795ba90d630feca0c4d10907",
-      "cases": 6,
+      "sha256": "a6ed84c98cfc9d2325fe45943bcf61e11899e57040876c4e6c12e72f72352c45",
+      "cases": 132,
       "statuses": {
-        "completed": 6
+        "completed": 116,
+        "failed": 3,
+        "skipped": 13
       }
     }
   ],
-  "regressions_sha256": "9cd83f7474d2f96fedeb842cad92385756200871b4681787b69465669da71a54",
+  "regressions_sha256": "db24bd8e5bec90c89c5fd7029b78890456cd2657ae3a737ee743363368b0d4e8",
   "fast8_windows_unique_matrix": {
     "recorded": 131,
     "expected": 132,
