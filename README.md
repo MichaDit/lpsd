@@ -7,7 +7,24 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.9`; this is not an official upstream release.
+Its package version is `1.0.6+fast.10`; this is not an official upstream release.
+
+Version **fast.10** corrects the segment mean and variance in `lpsd_fast`.
+The default `statistics="corrected"` includes every actual segment; an explicit
+`statistics="legacy"` retains historical reproducibility. The bounded RAM/disk
+and prepared adapters, including the matched estimator's native low-frequency
+subset, use the same selection. Deviation columns now report nominal standard
+errors under the independent-segment assumption; one segment gives `NaN` for
+its unidentifiable uncertainty. Overlap and time correlation are not silently
+treated as independent observations. See the [statistics contract](docs/statistics.md).
+
+The same update preserves individual result-validation failures, records
+FFTW threading/fallback causes, and exports the exact process-tree memory
+metric and value that triggered an abort. Thread-runtime discovery also checks
+the system OpenMP runtime. The private bootstrap rejects incomplete live
+process-tree memory measurements as well. See the
+[fast.10 changes and qualification](docs/fast10-validation.md) and
+[staged device rerun](docs/device-rerun-fast10.md).
 
 Version `fast.9` reduces phase-construction overhead in packed-real disk FFTs
 and adds an explicit direct logarithmic power reducer for the full disk FFT.
@@ -63,7 +80,9 @@ points with bounded streaming scratch. The disk FFT uses blocked contiguous
 transposition when its workspace exceeds available physical memory. These are
 separate execution choices; their actual storage mode, library versions and
 measured timings are recorded with each result. The native frequency plan,
-window, precision and inherited statistics are retained.
+window and output precision are retained. Current native computations select
+corrected or legacy segment statistics explicitly; historical reports retain
+their original legacy meaning.
 
 Version `fast.5` optimizes both FFTW comparison pipelines. It adds fused
 native preprocessing and power grouping, reusable projected coefficients
@@ -316,15 +335,20 @@ at runtime. The audit can apply an explicit relative limit and separate
 PSD/NSD absolute limits, while keeping all relative violations visible.
 No arbitrary-signal 1% guarantee is implied.
 
-**Inherited statistics:** all modes deliberately preserve two defects in the
-original mean/second-moment recurrence. In particular, `ps_std` and `psd_std`
-are not validated statistical uncertainty estimates. Their correction would
-be a separate estimator change. Read [the numerical notes](docs/numerics.md)
-before interpreting these columns or extremely small sidelobes.
+**Segment statistics:** `lpsd_fast` defaults to `statistics="corrected"` in
+fast.10. It includes the first segment and accumulates the full sample variance.
+`ps_std` and `psd_std` are nominal standard errors, without an overlap or
+colored-noise correction; they are `NaN` for a single segment. Complex CSD has
+a real RMS standard error. Use `statistics="legacy"` explicitly to reproduce
+the old mean/variance defects, and keep the mode fixed within every comparison.
+Read the [statistics contract](docs/statistics.md) and
+[numerical notes](docs/numerics.md) before interpreting uncertainties or tiny sidelobes.
 
 ## Original API
 
 Existing code can continue to use `from lpsd import lpsd, lcsd, lpsd_trad`.
+This is the **frozen upstream reference**, including its inherited statistical
+defects. Use `from lpsd_fast import lpsd, lcsd` for the corrected default.
 The `lpsd/` source files and the original 18-test suite are retained. Frequency
 planning, normalization and polynomial routines are shared by both paths.
 The original module also provides its Python backend; `lpsd_fast` requires
@@ -336,7 +360,7 @@ its C backend.
 python -m pip install -e '.[test,dev]'
 python -m pytest -o addopts='' test test_fast
 python benchmarks/bench_lpsd.py --backend fast --n 1000000 --workers 1 \
-  --repeats 1 --profile --output benchmark-results/profile.json
+  --statistics corrected --repeats 1 --profile --output benchmark-results/profile.json
 ```
 
 The tests compare against pinned original sources, check numerical behavior,

@@ -7,32 +7,32 @@ repository push permission, fork or pull request to report measurements.
 
 ## Start from a pinned revision
 
-The commands below use the **fast.9 source with the Linux memory-guard correction**,
-`09d5385f262988885478a4d47151fcd1dfd39e9c`. Its
-[native test/build qualification](https://github.com/MichaDit/lpsd/actions/runs/38284527956)
-and [portable platform qualification](https://github.com/MichaDit/lpsd/actions/runs/38284527904)
-belong to that exact source commit. The
-[Linux follow-up report](linux-memory-guard.md) records the additional fault,
-regression checks and source-bound validation. The
-[fast.9 performance results](performance-fast9.md) retain their original
-measurement revisions. Physical-device campaigns and interrupted runs have
-separate evidence; CI does not establish completion of those earlier campaigns.
+The commands below pin the **fast.10 implementation**,
+`e0426c4bad9d7c5fccd54de935eea2d1ea1b2519`. The
+[fast.10 qualification](fast10-validation.md) records the statistics correction,
+portable diagnostics, tests and performance comparisons. The
+[device rerun guide](device-rerun-fast10.md) keeps the existing device budgets
+and separates the small preflight from the previously problematic large cases.
 
-The wrapper and downloaded source use the same full commit. When testing
-another revision, change both occurrences of the pin in the download command.
-The earlier recovered R3 experiments and macOS qualification remain in the
-[historical evidence addendum](benchmark-final-evidence-20261012.md).
+Both the wrapper and the downloaded source use the same full commit. When
+testing another revision, change both occurrences in the download command.
+The publication's documentation follow-up does not change the implementation;
+the qualification manifest binds its code and tests by SHA-256.
+Historical [fast.9 performance results](performance-fast9.md),
+[physical-device reports](device-tests-20261012.md) and the
+[recovered evidence addendum](benchmark-final-evidence-20261012.md) keep their
+original revisions and estimator modes.
 
 Linux x86-64 / ARM64 and macOS, from a writable directory:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.sh | sh -s -- --revision 09d5385f262988885478a4d47151fcd1dfd39e9c
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.sh | sh -s -- --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519
 ```
 
 Windows, in Windows PowerShell 5.1 or PowerShell 7:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.ps1'))) -Revision '09d5385f262988885478a4d47151fcd1dfd39e9c'
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.ps1'))) -Revision 'e0426c4bad9d7c5fccd54de935eea2d1ea1b2519'
 ```
 
 The command creates a fresh `lpsd-benchmark...` directory under the current
@@ -47,12 +47,33 @@ distribution; inspect the script first if that does not match your workflow.
 For an already downloaded checkout, the equivalent commands are:
 
 ```sh
-sh scripts/run_benchmark.sh --revision 09d5385f262988885478a4d47151fcd1dfd39e9c
+sh scripts/run_benchmark.sh --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519
 ```
 
 ```powershell
-& ./scripts/run_benchmark.ps1 -Revision '09d5385f262988885478a4d47151fcd1dfd39e9c'
+& ./scripts/run_benchmark.ps1 -Revision 'e0426c4bad9d7c5fccd54de935eea2d1ea1b2519'
 ```
+
+## Select the statistics contract
+
+The default is `--statistics corrected`. Native LPSD averages every actual
+segment and accumulates its sample variance. Matched FFTW uses this mode for
+its native low-frequency subset; its FFT smoothing is unchanged. Pure FFTW
+has no native segment recurrence and records `statistics=not_applicable`.
+All cases also record the CLI's `requested_statistics`.
+
+Use `--statistics legacy` for direct comparisons with fast.1–fast.9 or the
+frozen `lpsd` reference. The two modes define different estimators: changing
+the mean can exceed a 1% numerical tolerance, especially with few segments.
+Comparison groups and native/matched timing calibrations keep the modes
+separate. Missing mode fields in old reports retain their historical legacy
+meaning; old reports do not become corrected evidence.
+
+The API's `ps_std` and `psd_std` use a nominal independent-segment SEM, are
+undefined (`NaN`) for one segment, and do not compensate for overlap or time
+correlation. The portable benchmark requests PSD and NSD only, so no variance
+work is performed inside those complete-call timers. See the
+[full statistics contract](statistics.md).
 
 ## Choose resource and time budgets
 
@@ -64,6 +85,8 @@ these arguments changes the run:
 
 | Goal | Arguments |
 |---|---|
+| Current corrected native estimator (default) | `--statistics corrected` |
+| Reproduce historical native statistics | `--statistics legacy` |
 | Compare with a 32 GiB allocation ceiling | `--ram-gib 32` |
 | Compare with a 32 decimal GB allocation ceiling | `--ram-gib 29.8023223876953125` |
 | Small ARM machine, shorter run | `--ram-gib 0.75 --disk-gib 2 --threads 2 --max-hours 6` |
@@ -84,13 +107,13 @@ these arguments changes the run:
 For example, the Unix command with a 32 GiB allocation ceiling is:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.sh | sh -s -- --revision 09d5385f262988885478a4d47151fcd1dfd39e9c --ram-gib 32 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.sh | sh -s -- --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519 --ram-gib 32 --point-factors 1 2
 ```
 
 For PowerShell, pass additional arguments as an array:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.ps1'))) -Revision '09d5385f262988885478a4d47151fcd1dfd39e9c' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.ps1'))) -Revision 'e0426c4bad9d7c5fccd54de935eea2d1ea1b2519' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
 ```
 
 ### What the limits mean
@@ -433,6 +456,33 @@ The loader can also use an installed FFTW library. Use `--fftw-library` and
 `--threads-library` to select explicit existing binaries. Results using
 different library hashes or thread counts should remain identifiable.
 
+### Failure, memory and thread diagnostics
+
+An `invalid_result` now retains all five checks: finite spectrum, nonnegative
+PSD, exact PSD-to-NSD relation, unchanged input and the expected frequency
+plan. The `validation` object contains bounded error counts and finite error
+maxima. Hashes identify the result without publishing its arrays.
+
+`fftw_threading` distinguishes the request from the selected backend's thread
+count. It records the selected sources/runtime and closed load, symbol and
+initialization failure categories. Discovery tries system pthread and OpenMP
+runtimes and compatible wheel companions before a one-thread fallback. A
+selected thread count is configuration, not a measurement of simultaneous
+CPU activity; the new discovery does not establish a speedup on an untested
+device.
+
+`memory_guard` records the actual RSS or anonymous/private metric compared to
+the budget, its last/peak sample, and the value and metric causing termination.
+It also records available process-tree coverage and source information. This
+can differ from `peak_rss_bytes`, which retains its separate RSS meaning.
+Incomplete live reads are not silently counted as zero. The setup guard also
+rejects incomplete process-tree reads; its pre-Python Linux probe caches only
+a verified target PID and revalidates it on subsequent samples. These remain
+sampled observations, with the existing budgets, intervals and deadlines.
+
+The same bounded diagnostic fields survive the public export; paths, raw
+exceptions and spectrum arrays do not. See the [export schema](benchmark-privacy.md).
+
 ## Platforms and dependency integrity
 
 The automatic path pins Python 3.12.14, uv 0.13.0, scientific wheel versions
@@ -675,7 +725,7 @@ does not claim that uncommitted source is a clean remote revision. Normal
 contributors should use the commit-pinned download route.
 
 ```sh
-sh scripts/run_benchmark.sh --revision 09d5385f262988885478a4d47151fcd1dfd39e9c --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
+sh scripts/run_benchmark.sh --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519 --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
 ```
 
 The bootstrap unit tests cover archive traversal/link rejection, checksum and
