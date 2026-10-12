@@ -7,22 +7,25 @@ repository push permission, fork or pull request to report measurements.
 
 ## Start from a pinned revision
 
-Use the **full 40-character commit from the benchmark release or reviewed PR**
-for `COMMIT` below. The wrapper and downloaded source must use the same commit.
-These are command templates; `COMMIT` is deliberately not a moving branch name.
-For a published benchmark campaign, its announcement should supply the complete
-command with that value already filled in.
+The commands below use the validated **fast.8 runtime**,
+`2e215275124d0ffa05e314d7eddf18ecab5a1ae1`. All eight
+[native test/build jobs](https://github.com/MichaDit/lpsd/actions/runs/38218181121)
+and all four [portable platform jobs](https://github.com/MichaDit/lpsd/actions/runs/38218181042)
+passed for this exact code tree. The wrapper and downloaded source use the
+same full commit. When testing another revision, change both occurrences of
+the pin in the download command. Measurements and limits are documented in
+the [platform follow-up](performance-platform-followup.md).
 
 Linux x86-64 / ARM64 and macOS, from a writable directory:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.sh | sh -s -- --revision COMMIT
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.sh | sh -s -- --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1
 ```
 
 Windows, in Windows PowerShell 5.1 or PowerShell 7:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT'
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.ps1'))) -Revision '2e215275124d0ffa05e314d7eddf18ecab5a1ae1'
 ```
 
 The command creates a fresh `lpsd-benchmark...` directory under the current
@@ -37,11 +40,11 @@ distribution; inspect the script first if that does not match your workflow.
 For an already downloaded checkout, the equivalent commands are:
 
 ```sh
-sh scripts/run_benchmark.sh --revision COMMIT
+sh scripts/run_benchmark.sh --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1
 ```
 
 ```powershell
-& ./scripts/run_benchmark.ps1 -Revision 'COMMIT'
+& ./scripts/run_benchmark.ps1 -Revision '2e215275124d0ffa05e314d7eddf18ecab5a1ae1'
 ```
 
 ## Choose resource and time budgets
@@ -73,13 +76,13 @@ these arguments changes the run:
 For example, the Unix command with a 32 GiB allocation ceiling is:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.sh | sh -s -- --revision COMMIT --ram-gib 32 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.sh | sh -s -- --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1 --ram-gib 32 --point-factors 1 2
 ```
 
 For PowerShell, pass additional arguments as an array:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/COMMIT/scripts/run_benchmark.ps1'))) -Revision 'COMMIT' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.ps1'))) -Revision '2e215275124d0ffa05e314d7eddf18ecab5a1ae1' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
 ```
 
 ### What the limits mean
@@ -617,7 +620,7 @@ does not claim that uncommitted source is a clean remote revision. Normal
 contributors should use the commit-pinned download route.
 
 ```sh
-sh scripts/run_benchmark.sh --revision COMMIT --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
+sh scripts/run_benchmark.sh --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1 --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
 ```
 
 The bootstrap unit tests cover archive traversal/link rejection, checksum and

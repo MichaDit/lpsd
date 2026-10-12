@@ -1,0 +1,3058 @@
+{
+  "head_sha": "2e215275124d0ffa05e314d7eddf18ecab5a1ae1",
+  "baseline_sha": "8bfbf2b0648e6b328df04be434c376dbc8de71a4",
+  "tested_pr_merge_sha": "89274daee27bee1c21f122201692b39d861df7a0",
+  "candidate_and_tested_tree_sha": "b68bdca9d60ad5ac4bb9df8248ebe7866524d3a3",
+  "tested_tree_matches_candidate": true,
+  "cohort": "primary pull_request; same-runner pairs, no pooling of different machines",
+  "native_run_id": 38218181121,
+  "portable_run_id": 38218181042,
+  "jobs": {
+    "native": [
+      {
+        "id": 114707745887,
+        "name": "Wheel / linux-x64",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707745972,
+        "name": "Numerical / linux-x64-gcc / Python 3.12",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746027,
+        "name": "Wheel / linux-arm64",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746080,
+        "name": "Wheel / macos-arm64",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746104,
+        "name": "Numerical / linux-x64-clang / Python 3.12",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746121,
+        "name": "Numerical / linux-x64-gcc / Python 3.10",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746205,
+        "name": "Numerical / macos-arm64-clang / Python 3.12",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746221,
+        "name": "Numerical / linux-arm64-gcc / Python 3.12",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "portable": [
+      {
+        "id": 114707745784,
+        "name": "Bootstrap / windows-x64",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746003,
+        "name": "Bootstrap / linux-x64",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746042,
+        "name": "Bootstrap / linux-arm64",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 114707746087,
+        "name": "Bootstrap / macos-arm64",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "native": [
+    {
+      "platform": "linux-arm64-gcc",
+      "artifact": "results-linux-arm64-gcc-python-3.12",
+      "artifact_id": 11732812594,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181121/artifacts/11732812594",
+      "path_in_artifact": "benchmark-results/revision-comparison.json",
+      "status": "completed",
+      "revisions": {
+        "baseline": {
+          "commit": "8bfbf2b0648e6b328df04be434c376dbc8de71a4",
+          "tracked_changes": false
+        },
+        "current": {
+          "commit": "89274daee27bee1c21f122201692b39d861df7a0",
+          "tracked_changes": false
+        }
+      },
+      "case_count": 8,
+      "expected_case_count": 8,
+      "cases": [
+        {
+          "n": 100000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 1,
+          "baseline_median_wall_s": 0.3969533520000823,
+          "current_median_wall_s": 0.39720036199992137,
+          "baseline_range_wall_s": [
+            0.39521278200004417,
+            0.39903626999989683
+          ],
+          "current_range_wall_s": [
+            0.3970618179998837,
+            0.39733911300004365
+          ],
+          "ratio_of_medians": 0.9993781224201425,
+          "wall_time_change_percent": 0.062226455223135524,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.39521278200004417,
+              0.3969533520000823,
+              0.39903626999989683
+            ],
+            "current": [
+              0.3970618179998837,
+              0.39720036199992137,
+              0.39733911300004365
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-auto-w1-p0-baseline.json",
+              "ab-n100000-auto-w1-p1-baseline.json",
+              "ab-n100000-auto-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-auto-w1-p0-current.json",
+              "ab-n100000-auto-w1-p1-current.json",
+              "ab-n100000-auto-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 4,
+          "baseline_median_wall_s": 0.1473751139999422,
+          "current_median_wall_s": 0.1470104719999199,
+          "baseline_range_wall_s": [
+            0.14467850500000168,
+            0.14790757900004792
+          ],
+          "current_range_wall_s": [
+            0.1461406599999009,
+            0.14953392400002485
+          ],
+          "ratio_of_medians": 1.0024803811256553,
+          "wall_time_change_percent": -0.24742440573951585,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.14790757900004792,
+              0.1473751139999422,
+              0.14467850500000168
+            ],
+            "current": [
+              0.1470104719999199,
+              0.14953392400002485,
+              0.1461406599999009
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-auto-w4-p0-baseline.json",
+              "ab-n100000-auto-w4-p1-baseline.json",
+              "ab-n100000-auto-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-auto-w4-p0-current.json",
+              "ab-n100000-auto-w4-p1-current.json",
+              "ab-n100000-auto-w4-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 1,
+          "baseline_median_wall_s": 0.17619469000010213,
+          "current_median_wall_s": 0.17438464600013504,
+          "baseline_range_wall_s": [
+            0.176163059999908,
+            0.1761972029999015
+          ],
+          "current_range_wall_s": [
+            0.17427262000001065,
+            0.17447246500000801
+          ],
+          "ratio_of_medians": 1.0103796064704325,
+          "wall_time_change_percent": -1.0272977011770545,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.1761972029999015,
+              0.17619469000010213,
+              0.176163059999908
+            ],
+            "current": [
+              0.17438464600013504,
+              0.17427262000001065,
+              0.17447246500000801
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-fast-w1-p0-baseline.json",
+              "ab-n100000-fast-w1-p1-baseline.json",
+              "ab-n100000-fast-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-fast-w1-p0-current.json",
+              "ab-n100000-fast-w1-p1-current.json",
+              "ab-n100000-fast-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 4,
+          "baseline_median_wall_s": 0.09282183800019084,
+          "current_median_wall_s": 0.0934034019999217,
+          "baseline_range_wall_s": [
+            0.09265036700003293,
+            0.0937062949999472
+          ],
+          "current_range_wall_s": [
+            0.08993261599994185,
+            0.09476531500013152
+          ],
+          "ratio_of_medians": 0.9937736315029366,
+          "wall_time_change_percent": 0.6265379055838904,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.0937062949999472,
+              0.09282183800019084,
+              0.09265036700003293
+            ],
+            "current": [
+              0.0934034019999217,
+              0.08993261599994185,
+              0.09476531500013152
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-fast-w4-p0-baseline.json",
+              "ab-n100000-fast-w4-p1-baseline.json",
+              "ab-n100000-fast-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-fast-w4-p0-current.json",
+              "ab-n100000-fast-w4-p1-current.json",
+              "ab-n100000-fast-w4-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 1,
+          "baseline_median_wall_s": 3.4754388049998397,
+          "current_median_wall_s": 3.464213672999904,
+          "baseline_range_wall_s": [
+            3.4734370910000507,
+            3.478124165999816
+          ],
+          "current_range_wall_s": [
+            3.4601549530000284,
+            3.467380705999858
+          ],
+          "ratio_of_medians": 1.0032403116722923,
+          "wall_time_change_percent": -0.3229845964713096,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              3.4754388049998397,
+              3.4734370910000507,
+              3.478124165999816
+            ],
+            "current": [
+              3.4601549530000284,
+              3.464213672999904,
+              3.467380705999858
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-auto-w1-p0-baseline.json",
+              "ab-n1000000-auto-w1-p1-baseline.json",
+              "ab-n1000000-auto-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-auto-w1-p0-current.json",
+              "ab-n1000000-auto-w1-p1-current.json",
+              "ab-n1000000-auto-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 4,
+          "baseline_median_wall_s": 0.9281399559999954,
+          "current_median_wall_s": 0.9208475939999516,
+          "baseline_range_wall_s": [
+            0.9271724850000282,
+            0.9321664930000679
+          ],
+          "current_range_wall_s": [
+            0.9198133350000717,
+            0.9264309749999029
+          ],
+          "ratio_of_medians": 1.0079191845073596,
+          "wall_time_change_percent": -0.7856963761663338,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.9281399559999954,
+              0.9271724850000282,
+              0.9321664930000679
+            ],
+            "current": [
+              0.9264309749999029,
+              0.9208475939999516,
+              0.9198133350000717
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-auto-w4-p0-baseline.json",
+              "ab-n1000000-auto-w4-p1-baseline.json",
+              "ab-n1000000-auto-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-auto-w4-p0-current.json",
+              "ab-n1000000-auto-w4-p1-current.json",
+              "ab-n1000000-auto-w4-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 1,
+          "baseline_median_wall_s": 1.7091891210000085,
+          "current_median_wall_s": 1.6948520539999663,
+          "baseline_range_wall_s": [
+            1.7063905590000559,
+            1.7122485250001773
+          ],
+          "current_range_wall_s": [
+            1.69029890600018,
+            1.6948684050000793
+          ],
+          "ratio_of_medians": 1.0084591849572981,
+          "wall_time_change_percent": -0.8388227390339287,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              1.7063905590000559,
+              1.7122485250001773,
+              1.7091891210000085
+            ],
+            "current": [
+              1.69029890600018,
+              1.6948520539999663,
+              1.6948684050000793
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-fast-w1-p0-baseline.json",
+              "ab-n1000000-fast-w1-p1-baseline.json",
+              "ab-n1000000-fast-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-fast-w1-p0-current.json",
+              "ab-n1000000-fast-w1-p1-current.json",
+              "ab-n1000000-fast-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 4,
+          "baseline_median_wall_s": 0.47423618400011947,
+          "current_median_wall_s": 0.47033343800012517,
+          "baseline_range_wall_s": [
+            0.47276638999983334,
+            0.47628085500014095
+          ],
+          "current_range_wall_s": [
+            0.4690306339998642,
+            0.4793704329999855
+          ],
+          "ratio_of_medians": 1.0082978280612769,
+          "wall_time_change_percent": -0.8229540747134001,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.47276638999983334,
+              0.47423618400011947,
+              0.47628085500014095
+            ],
+            "current": [
+              0.4793704329999855,
+              0.47033343800012517,
+              0.4690306339998642
+            ]
+          },
+          "native_sha256": {
+            "baseline": "f34d32067d607b10af9159a1f167d48a7486741704d86235ec2e3bd84ac66d83",
+            "current": "65ff5ea615104782369317c74f360a179d6bea7f54fa95a0b71d8dc5e80a5335"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-fast-w4-p0-baseline.json",
+              "ab-n1000000-fast-w4-p1-baseline.json",
+              "ab-n1000000-fast-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-fast-w4-p0-current.json",
+              "ab-n1000000-fast-w4-p1-current.json",
+              "ab-n1000000-fast-w4-p2-current.json"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "platform": "linux-x64-gcc",
+      "artifact": "results-linux-x64-gcc-python-3.12",
+      "artifact_id": 11733386322,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181121/artifacts/11733386322",
+      "path_in_artifact": "benchmark-results/revision-comparison.json",
+      "status": "completed",
+      "revisions": {
+        "baseline": {
+          "commit": "8bfbf2b0648e6b328df04be434c376dbc8de71a4",
+          "tracked_changes": false
+        },
+        "current": {
+          "commit": "89274daee27bee1c21f122201692b39d861df7a0",
+          "tracked_changes": false
+        }
+      },
+      "case_count": 8,
+      "expected_case_count": 8,
+      "cases": [
+        {
+          "n": 100000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 1,
+          "baseline_median_wall_s": 0.13034732200000576,
+          "current_median_wall_s": 0.1304240279999931,
+          "baseline_range_wall_s": [
+            0.12963649400001032,
+            0.13058577600000376
+          ],
+          "current_range_wall_s": [
+            0.12991594199999668,
+            0.13102954100000375
+          ],
+          "ratio_of_medians": 0.9994118721744484,
+          "wall_time_change_percent": 0.058847392344074656,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.12963649400001032,
+              0.13034732200000576,
+              0.13058577600000376
+            ],
+            "current": [
+              0.1304240279999931,
+              0.13102954100000375,
+              0.12991594199999668
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-auto-w1-p0-baseline.json",
+              "ab-n100000-auto-w1-p1-baseline.json",
+              "ab-n100000-auto-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-auto-w1-p0-current.json",
+              "ab-n100000-auto-w1-p1-current.json",
+              "ab-n100000-auto-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 4,
+          "baseline_median_wall_s": 0.08524375700000064,
+          "current_median_wall_s": 0.08518788000000654,
+          "baseline_range_wall_s": [
+            0.08496128199999475,
+            0.08635770000000775
+          ],
+          "current_range_wall_s": [
+            0.08473004699999365,
+            0.08556250000000887
+          ],
+          "ratio_of_medians": 1.0006559266411383,
+          "wall_time_change_percent": -0.06554966834004805,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.08496128199999475,
+              0.08635770000000775,
+              0.08524375700000064
+            ],
+            "current": [
+              0.08518788000000654,
+              0.08556250000000887,
+              0.08473004699999365
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-auto-w4-p0-baseline.json",
+              "ab-n100000-auto-w4-p1-baseline.json",
+              "ab-n100000-auto-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-auto-w4-p0-current.json",
+              "ab-n100000-auto-w4-p1-current.json",
+              "ab-n100000-auto-w4-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 1,
+          "baseline_median_wall_s": 0.07038495999998418,
+          "current_median_wall_s": 0.07003522200000134,
+          "baseline_range_wall_s": [
+            0.06971822099998803,
+            0.07069301799998584
+          ],
+          "current_range_wall_s": [
+            0.06950735800000984,
+            0.07041926100001206
+          ],
+          "ratio_of_medians": 1.0049937444330914,
+          "wall_time_change_percent": -0.49689308622596906,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.06971822099998803,
+              0.07069301799998584,
+              0.07038495999998418
+            ],
+            "current": [
+              0.07003522200000134,
+              0.06950735800000984,
+              0.07041926100001206
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-fast-w1-p0-baseline.json",
+              "ab-n100000-fast-w1-p1-baseline.json",
+              "ab-n100000-fast-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-fast-w1-p0-current.json",
+              "ab-n100000-fast-w1-p1-current.json",
+              "ab-n100000-fast-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 4,
+          "baseline_median_wall_s": 0.0670701660000077,
+          "current_median_wall_s": 0.06760303599997997,
+          "baseline_range_wall_s": [
+            0.06664287199998853,
+            0.06760395800000651
+          ],
+          "current_range_wall_s": [
+            0.06635314300001482,
+            0.0685619109999891
+          ],
+          "ratio_of_medians": 0.9921176616983234,
+          "wall_time_change_percent": 0.7944963189329135,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.06760395800000651,
+              0.06664287199998853,
+              0.0670701660000077
+            ],
+            "current": [
+              0.0685619109999891,
+              0.06760303599997997,
+              0.06635314300001482
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-fast-w4-p0-baseline.json",
+              "ab-n100000-fast-w4-p1-baseline.json",
+              "ab-n100000-fast-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-fast-w4-p0-current.json",
+              "ab-n100000-fast-w4-p1-current.json",
+              "ab-n100000-fast-w4-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 1,
+          "baseline_median_wall_s": 1.0224995579999927,
+          "current_median_wall_s": 1.0194947580000076,
+          "baseline_range_wall_s": [
+            1.0194676180000215,
+            1.0296118889999946
+          ],
+          "current_range_wall_s": [
+            1.0174533290000056,
+            1.0200394709999898
+          ],
+          "ratio_of_medians": 1.0029473422755795,
+          "wall_time_change_percent": -0.2938680976901864,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              1.0296118889999946,
+              1.0194676180000215,
+              1.0224995579999927
+            ],
+            "current": [
+              1.0200394709999898,
+              1.0194947580000076,
+              1.0174533290000056
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-auto-w1-p0-baseline.json",
+              "ab-n1000000-auto-w1-p1-baseline.json",
+              "ab-n1000000-auto-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-auto-w1-p0-current.json",
+              "ab-n1000000-auto-w1-p1-current.json",
+              "ab-n1000000-auto-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 4,
+          "baseline_median_wall_s": 0.4646179560000121,
+          "current_median_wall_s": 0.46585560500000156,
+          "baseline_range_wall_s": [
+            0.4618153300000074,
+            0.4657726370000148
+          ],
+          "current_range_wall_s": [
+            0.464563480999999,
+            0.46891621899999336
+          ],
+          "ratio_of_medians": 0.9973432776450345,
+          "wall_time_change_percent": 0.2663799330195227,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.4618153300000074,
+              0.4657726370000148,
+              0.4646179560000121
+            ],
+            "current": [
+              0.46585560500000156,
+              0.464563480999999,
+              0.46891621899999336
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-auto-w4-p0-baseline.json",
+              "ab-n1000000-auto-w4-p1-baseline.json",
+              "ab-n1000000-auto-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-auto-w4-p0-current.json",
+              "ab-n1000000-auto-w4-p1-current.json",
+              "ab-n1000000-auto-w4-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 1,
+          "baseline_median_wall_s": 0.507109708999991,
+          "current_median_wall_s": 0.5101300910000077,
+          "baseline_range_wall_s": [
+            0.5026189749999901,
+            0.5142805450000196
+          ],
+          "current_range_wall_s": [
+            0.5042823219999946,
+            0.5110213140000042
+          ],
+          "ratio_of_medians": 0.9940791926347731,
+          "wall_time_change_percent": 0.5956072120908207,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.5142805450000196,
+              0.5026189749999901,
+              0.507109708999991
+            ],
+            "current": [
+              0.5101300910000077,
+              0.5110213140000042,
+              0.5042823219999946
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-fast-w1-p0-baseline.json",
+              "ab-n1000000-fast-w1-p1-baseline.json",
+              "ab-n1000000-fast-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-fast-w1-p0-current.json",
+              "ab-n1000000-fast-w1-p1-current.json",
+              "ab-n1000000-fast-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 4,
+          "baseline_median_wall_s": 0.27638448500002255,
+          "current_median_wall_s": 0.27723166999999194,
+          "baseline_range_wall_s": [
+            0.2750559729999793,
+            0.2792602680000016
+          ],
+          "current_range_wall_s": [
+            0.2760072110000067,
+            0.278828242000003
+          ],
+          "ratio_of_medians": 0.996944126188868,
+          "wall_time_change_percent": 0.3065240800218305,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.27638448500002255,
+              0.2750559729999793,
+              0.2792602680000016
+            ],
+            "current": [
+              0.278828242000003,
+              0.2760072110000067,
+              0.27723166999999194
+            ]
+          },
+          "native_sha256": {
+            "baseline": "27b3617df72257318f85d3bdc71e37dc110be902f1fd81aa29597b2e295982c0",
+            "current": "5367b7c36ad5c1d542de8c421fb777c90190b2b0fa1930efba4a67d0dc5a22b7"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-fast-w4-p0-baseline.json",
+              "ab-n1000000-fast-w4-p1-baseline.json",
+              "ab-n1000000-fast-w4-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-fast-w4-p0-current.json",
+              "ab-n1000000-fast-w4-p1-current.json",
+              "ab-n1000000-fast-w4-p2-current.json"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "platform": "macos-arm64-clang",
+      "artifact": "results-macos-arm64-clang-python-3.12",
+      "artifact_id": 11732642844,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181121/artifacts/11732642844",
+      "path_in_artifact": "benchmark-results/revision-comparison.json",
+      "status": "completed",
+      "revisions": {
+        "baseline": {
+          "commit": "8bfbf2b0648e6b328df04be434c376dbc8de71a4",
+          "tracked_changes": false
+        },
+        "current": {
+          "commit": "89274daee27bee1c21f122201692b39d861df7a0",
+          "tracked_changes": false
+        }
+      },
+      "case_count": 8,
+      "expected_case_count": 8,
+      "cases": [
+        {
+          "n": 100000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 1,
+          "baseline_median_wall_s": 0.37910133299999416,
+          "current_median_wall_s": 0.3993797910000012,
+          "baseline_range_wall_s": [
+            0.37611208300000953,
+            0.40007020799998827
+          ],
+          "current_range_wall_s": [
+            0.3938398340000049,
+            0.4149799170000108
+          ],
+          "ratio_of_medians": 0.9492251274176089,
+          "wall_time_change_percent": 5.349086440697737,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.37611208300000953,
+              0.40007020799998827,
+              0.37910133299999416
+            ],
+            "current": [
+              0.4149799170000108,
+              0.3993797910000012,
+              0.3938398340000049
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-auto-w1-p0-baseline.json",
+              "ab-n100000-auto-w1-p1-baseline.json",
+              "ab-n100000-auto-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-auto-w1-p0-current.json",
+              "ab-n100000-auto-w1-p1-current.json",
+              "ab-n100000-auto-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 3,
+          "baseline_median_wall_s": 0.13904412499999808,
+          "current_median_wall_s": 0.14140912499999558,
+          "baseline_range_wall_s": [
+            0.11865408299999558,
+            0.1682674999999847
+          ],
+          "current_range_wall_s": [
+            0.10836062499998889,
+            0.1777395830000046
+          ],
+          "ratio_of_medians": 0.9832754781560413,
+          "wall_time_change_percent": 1.7008989052917922,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.13904412499999808,
+              0.11865408299999558,
+              0.1682674999999847
+            ],
+            "current": [
+              0.14140912499999558,
+              0.1777395830000046,
+              0.10836062499998889
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-auto-w3-p0-baseline.json",
+              "ab-n100000-auto-w3-p1-baseline.json",
+              "ab-n100000-auto-w3-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-auto-w3-p0-current.json",
+              "ab-n100000-auto-w3-p1-current.json",
+              "ab-n100000-auto-w3-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 1,
+          "baseline_median_wall_s": 0.10190966700000104,
+          "current_median_wall_s": 0.1150950420000072,
+          "baseline_range_wall_s": [
+            0.08346808399997485,
+            0.11445983300001217
+          ],
+          "current_range_wall_s": [
+            0.0853245000000129,
+            0.11676758300001211
+          ],
+          "ratio_of_medians": 0.8854392442030184,
+          "wall_time_change_percent": 12.93829661910879,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.08346808399997485,
+              0.11445983300001217,
+              0.10190966700000104
+            ],
+            "current": [
+              0.11676758300001211,
+              0.1150950420000072,
+              0.0853245000000129
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-fast-w1-p0-baseline.json",
+              "ab-n100000-fast-w1-p1-baseline.json",
+              "ab-n100000-fast-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-fast-w1-p0-current.json",
+              "ab-n100000-fast-w1-p1-current.json",
+              "ab-n100000-fast-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 100000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 3,
+          "baseline_median_wall_s": 0.06299229100000048,
+          "current_median_wall_s": 0.06001862499999788,
+          "baseline_range_wall_s": [
+            0.03546300000002134,
+            0.06851137500001414
+          ],
+          "current_range_wall_s": [
+            0.03571504200002096,
+            0.07437720800001557
+          ],
+          "ratio_of_medians": 1.0495457201827383,
+          "wall_time_change_percent": -4.72068240858643,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.03546300000002134,
+              0.06851137500001414,
+              0.06299229100000048
+            ],
+            "current": [
+              0.07437720800001557,
+              0.06001862499999788,
+              0.03571504200002096
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 469,
+          "raw_reports": {
+            "baseline": [
+              "ab-n100000-fast-w3-p0-baseline.json",
+              "ab-n100000-fast-w3-p1-baseline.json",
+              "ab-n100000-fast-w3-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n100000-fast-w3-p0-current.json",
+              "ab-n100000-fast-w3-p1-current.json",
+              "ab-n100000-fast-w3-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 1,
+          "baseline_median_wall_s": 4.458334292000018,
+          "current_median_wall_s": 4.483215374999986,
+          "baseline_range_wall_s": [
+            4.256392792000014,
+            4.957040540999998
+          ],
+          "current_range_wall_s": [
+            3.879336292000005,
+            5.0819609170000035
+          ],
+          "ratio_of_medians": 0.994450170041191,
+          "wall_time_change_percent": 0.5580802463515333,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              4.458334292000018,
+              4.256392792000014,
+              4.957040540999998
+            ],
+            "current": [
+              4.483215374999986,
+              3.879336292000005,
+              5.0819609170000035
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-auto-w1-p0-baseline.json",
+              "ab-n1000000-auto-w1-p1-baseline.json",
+              "ab-n1000000-auto-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-auto-w1-p0-current.json",
+              "ab-n1000000-auto-w1-p1-current.json",
+              "ab-n1000000-auto-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "auto",
+          "outputs": "all",
+          "workers": 3,
+          "baseline_median_wall_s": 1.963398916000017,
+          "current_median_wall_s": 1.9112847920000036,
+          "baseline_range_wall_s": [
+            1.8882761250000044,
+            2.0795003329999986
+          ],
+          "current_range_wall_s": [
+            1.751346209000019,
+            2.064510332999987
+          ],
+          "ratio_of_medians": 1.0272665404015904,
+          "wall_time_change_percent": -2.6542809805652823,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              1.8882761250000044,
+              2.0795003329999986,
+              1.963398916000017
+            ],
+            "current": [
+              1.751346209000019,
+              1.9112847920000036,
+              2.064510332999987
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-auto-w3-p0-baseline.json",
+              "ab-n1000000-auto-w3-p1-baseline.json",
+              "ab-n1000000-auto-w3-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-auto-w3-p0-current.json",
+              "ab-n1000000-auto-w3-p1-current.json",
+              "ab-n1000000-auto-w3-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 1,
+          "baseline_median_wall_s": 1.3807342080000353,
+          "current_median_wall_s": 1.1508849169999849,
+          "baseline_range_wall_s": [
+            1.0484514159999776,
+            1.382396416000006
+          ],
+          "current_range_wall_s": [
+            1.0449400830000286,
+            1.1742839170000252
+          ],
+          "ratio_of_medians": 1.199715269185384,
+          "wall_time_change_percent": -16.646889000670328,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              1.382396416000006,
+              1.0484514159999776,
+              1.3807342080000353
+            ],
+            "current": [
+              1.1742839170000252,
+              1.0449400830000286,
+              1.1508849169999849
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-fast-w1-p0-baseline.json",
+              "ab-n1000000-fast-w1-p1-baseline.json",
+              "ab-n1000000-fast-w1-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-fast-w1-p0-current.json",
+              "ab-n1000000-fast-w1-p1-current.json",
+              "ab-n1000000-fast-w1-p2-current.json"
+            ]
+          }
+        },
+        {
+          "n": 1000000,
+          "kernel": "fast",
+          "outputs": [
+            "psd",
+            "nsd"
+          ],
+          "workers": 3,
+          "baseline_median_wall_s": 0.4398274170000036,
+          "current_median_wall_s": 0.47425658299999895,
+          "baseline_range_wall_s": [
+            0.30960291700000653,
+            0.5470387500000129
+          ],
+          "current_range_wall_s": [
+            0.30145241700000724,
+            0.4797418339999808
+          ],
+          "ratio_of_medians": 0.927403925988318,
+          "wall_time_change_percent": 7.827880816260047,
+          "outputs_identical": true,
+          "comparison_status": "identical_output_fingerprints",
+          "raw_wall_s": {
+            "baseline": [
+              0.4398274170000036,
+              0.5470387500000129,
+              0.30960291700000653
+            ],
+            "current": [
+              0.47425658299999895,
+              0.4797418339999808,
+              0.30145241700000724
+            ]
+          },
+          "native_sha256": {
+            "baseline": "a500463266568ef1644e05869bdf9d9387408ecac5d3d4d9ddce9beefcac058e",
+            "current": "d908a52ae03073fd008060e2368ef707a408e7ed52c8a1bc69ee2e9606832226"
+          },
+          "actual_points": 577,
+          "raw_reports": {
+            "baseline": [
+              "ab-n1000000-fast-w3-p0-baseline.json",
+              "ab-n1000000-fast-w3-p1-baseline.json",
+              "ab-n1000000-fast-w3-p2-baseline.json"
+            ],
+            "current": [
+              "ab-n1000000-fast-w3-p0-current.json",
+              "ab-n1000000-fast-w3-p1-current.json",
+              "ab-n1000000-fast-w3-p2-current.json"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "portable": [
+    {
+      "platform": "linux-arm64",
+      "artifact": "portable-smoke-linux-arm64",
+      "artifact_id": 11733456036,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181042/artifacts/11733456036",
+      "path_in_artifact": "lpsd-benchmark.vRrFAHGP/disk-algorithm-pairs.json",
+      "status": "completed",
+      "system": "Linux",
+      "machine": "aarch64",
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "fftw_version": "fftw-3.3.10",
+      "actual_fftw_threads": 2,
+      "admitted_native_workers": 2,
+      "case_count": 8,
+      "error_type": null,
+      "cases": [
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.012295795999989423,
+            "packed-real": 0.012087847000003649
+          },
+          "median_cpu_s": {
+            "full": 0.012948600000000088,
+            "packed-real": 0.01240442400000008
+          },
+          "ratio_of_wall_medians": 1.0172031462663047,
+          "raw_wall_s": {
+            "full": [
+              0.012590173000006644,
+              0.011796998999983543,
+              0.012295795999989423
+            ],
+            "packed-real": [
+              0.015048543999995445,
+              0.011585024999988036,
+              0.012087847000003649
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.011796998999983543,
+              0.012590173000006644
+            ],
+            "packed-real": [
+              0.011585024999988036,
+              0.015048543999995445
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.014840641999995796,
+            "packed-real": 0.014940940000002456
+          },
+          "median_cpu_s": {
+            "full": 0.015507168000000071,
+            "packed-real": 0.01523902399999999
+          },
+          "ratio_of_wall_medians": 0.9932870354872824,
+          "raw_wall_s": {
+            "full": [
+              0.014840641999995796,
+              0.014788472000020647,
+              0.015164586999986795
+            ],
+            "packed-real": [
+              0.014947940000013205,
+              0.01448901699998828,
+              0.014940940000002456
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.014788472000020647,
+              0.015164586999986795
+            ],
+            "packed-real": [
+              0.01448901699998828,
+              0.014947940000013205
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.07697642700000529,
+            "packed-real": 0.0791281099999992
+          },
+          "median_cpu_s": {
+            "full": 0.11837968799999987,
+            "packed-real": 0.12054485599999998
+          },
+          "ratio_of_wall_medians": 0.9728076027597028,
+          "raw_wall_s": {
+            "full": [
+              0.07840557699998385,
+              0.07697642700000529,
+              0.07666520200001514
+            ],
+            "packed-real": [
+              0.08016272899999421,
+              0.0791281099999992,
+              0.07513247299999648
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.07666520200001514,
+              0.07840557699998385
+            ],
+            "packed-real": [
+              0.07513247299999648,
+              0.08016272899999421
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.13000403000000915,
+            "packed-real": 0.1310577300000091
+          },
+          "median_cpu_s": {
+            "full": 0.2165717599999999,
+            "packed-real": 0.21738515199999986
+          },
+          "ratio_of_wall_medians": 0.9919600316593317,
+          "raw_wall_s": {
+            "full": [
+              0.13438353300000472,
+              0.12980646499997306,
+              0.13000403000000915
+            ],
+            "packed-real": [
+              0.13263018099999613,
+              0.1310577300000091,
+              0.13057476500000575
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.12980646499997306,
+              0.13438353300000472
+            ],
+            "packed-real": [
+              0.13057476500000575,
+              0.13263018099999613
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.06725341200001367,
+            "packed-real": 0.0632436870000106
+          },
+          "median_cpu_s": {
+            "full": 0.07660164799999958,
+            "packed-real": 0.06732675200000005
+          },
+          "ratio_of_wall_medians": 1.0634011897504079,
+          "raw_wall_s": {
+            "full": [
+              0.06830448100001263,
+              0.06583391000000915,
+              0.06725341200001367
+            ],
+            "packed-real": [
+              0.0632436870000106,
+              0.06208255900000381,
+              0.06363926600002401
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.06583391000000915,
+              0.06830448100001263
+            ],
+            "packed-real": [
+              0.06208255900000381,
+              0.06363926600002401
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.06950573599999643,
+            "packed-real": 0.06738636000000042
+          },
+          "median_cpu_s": {
+            "full": 0.07898094400000044,
+            "packed-real": 0.07157103199999959
+          },
+          "ratio_of_wall_medians": 1.031451112658348,
+          "raw_wall_s": {
+            "full": [
+              0.06921736900000042,
+              0.06950573599999643,
+              0.07106610700000715
+            ],
+            "packed-real": [
+              0.06742490500002418,
+              0.06585758200000669,
+              0.06738636000000042
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.06921736900000042,
+              0.07106610700000715
+            ],
+            "packed-real": [
+              0.06585758200000669,
+              0.06742490500002418
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.3964144390000115,
+            "packed-real": 0.39535204200001317
+          },
+          "median_cpu_s": {
+            "full": 0.7140149520000003,
+            "packed-real": 0.7070191039999996
+          },
+          "ratio_of_wall_medians": 1.0026872176873651,
+          "raw_wall_s": {
+            "full": [
+              0.39778815599999007,
+              0.3955540560000088,
+              0.3964144390000115
+            ],
+            "packed-real": [
+              0.39535204200001317,
+              0.3952619920000018,
+              0.3990275410000095
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.3955540560000088,
+              0.39778815599999007
+            ],
+            "packed-real": [
+              0.3952619920000018,
+              0.3990275410000095
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.6721606129999884,
+            "packed-real": 0.6705834509999988
+          },
+          "median_cpu_s": {
+            "full": 1.256833632000001,
+            "packed-real": 1.249109343999999
+          },
+          "ratio_of_wall_medians": 1.0023519250253456,
+          "raw_wall_s": {
+            "full": [
+              0.6721606129999884,
+              0.6733589860000109,
+              0.6711342270000102
+            ],
+            "packed-real": [
+              0.6703193560000216,
+              0.6705834509999988,
+              0.6712258940000027
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.6711342270000102,
+              0.6733589860000109
+            ],
+            "packed-real": [
+              0.6703193560000216,
+              0.6712258940000027
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "platform": "linux-x64",
+      "artifact": "portable-smoke-linux-x64",
+      "artifact_id": 11733161837,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181042/artifacts/11733161837",
+      "path_in_artifact": "lpsd-benchmark.dsoWpufe/disk-algorithm-pairs.json",
+      "status": "completed",
+      "system": "Linux",
+      "machine": "x86_64",
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "fftw_version": "fftw-3.3.10-sse2-avx",
+      "actual_fftw_threads": 2,
+      "admitted_native_workers": 2,
+      "case_count": 8,
+      "error_type": null,
+      "cases": [
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.012079923000015924,
+            "packed-real": 0.012620187999999644
+          },
+          "median_cpu_s": {
+            "full": 0.012271720000000097,
+            "packed-real": 0.012468729999999928
+          },
+          "ratio_of_wall_medians": 0.9571904158651413,
+          "raw_wall_s": {
+            "full": [
+              0.012382749000011017,
+              0.011708096999996087,
+              0.012079923000015924
+            ],
+            "packed-real": [
+              0.013946778000018867,
+              0.011528523999999152,
+              0.012620187999999644
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.011708096999996087,
+              0.012382749000011017
+            ],
+            "packed-real": [
+              0.011528523999999152,
+              0.013946778000018867
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.013931835999983377,
+            "packed-real": 0.01427101400000197
+          },
+          "median_cpu_s": {
+            "full": 0.01411798799999997,
+            "packed-real": 0.01434510599999994
+          },
+          "ratio_of_wall_medians": 0.9762330833661473,
+          "raw_wall_s": {
+            "full": [
+              0.013931835999983377,
+              0.013573288999992883,
+              0.014751280000012912
+            ],
+            "packed-real": [
+              0.01427101400000197,
+              0.013536243999993758,
+              0.015127663000015446
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.013573288999992883,
+              0.014751280000012912
+            ],
+            "packed-real": [
+              0.013536243999993758,
+              0.015127663000015446
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.0796633829999962,
+            "packed-real": 0.08168061700001772
+          },
+          "median_cpu_s": {
+            "full": 0.11256110999999991,
+            "packed-real": 0.11439504600000006
+          },
+          "ratio_of_wall_medians": 0.97530339419423,
+          "raw_wall_s": {
+            "full": [
+              0.07849717900000996,
+              0.0800249130000168,
+              0.0796633829999962
+            ],
+            "packed-real": [
+              0.0852496619999954,
+              0.08168061700001772,
+              0.07252475100000311
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.07849717900000996,
+              0.0800249130000168
+            ],
+            "packed-real": [
+              0.07252475100000311,
+              0.0852496619999954
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.11605225400001018,
+            "packed-real": 0.11997124399999848
+          },
+          "median_cpu_s": {
+            "full": 0.18403353199999994,
+            "packed-real": 0.18775821400000003
+          },
+          "ratio_of_wall_medians": 0.9673339221189675,
+          "raw_wall_s": {
+            "full": [
+              0.11605225400001018,
+              0.11073494900000469,
+              0.11788457700001231
+            ],
+            "packed-real": [
+              0.11997124399999848,
+              0.11201652200000467,
+              0.1200095099999885
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.11073494900000469,
+              0.11788457700001231
+            ],
+            "packed-real": [
+              0.11201652200000467,
+              0.1200095099999885
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.06076232399999526,
+            "packed-real": 0.06169353100000308
+          },
+          "median_cpu_s": {
+            "full": 0.06475340999999979,
+            "packed-real": 0.0632412389999999
+          },
+          "ratio_of_wall_medians": 0.9849059214975429,
+          "raw_wall_s": {
+            "full": [
+              0.06633044599999494,
+              0.06076232399999526,
+              0.05969484400000624
+            ],
+            "packed-real": [
+              0.06379926599998953,
+              0.060994584000013674,
+              0.06169353100000308
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.05969484400000624,
+              0.06633044599999494
+            ],
+            "packed-real": [
+              0.060994584000013674,
+              0.06379926599998953
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.06343243800000664,
+            "packed-real": 0.0648822779999989
+          },
+          "median_cpu_s": {
+            "full": 0.06744520899999973,
+            "packed-real": 0.06635621199999964
+          },
+          "ratio_of_wall_medians": 0.9776542987594812,
+          "raw_wall_s": {
+            "full": [
+              0.06343243800000664,
+              0.06300105299999359,
+              0.06448643699999934
+            ],
+            "packed-real": [
+              0.0648822779999989,
+              0.06332239599998957,
+              0.06542417500000397
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.06300105299999359,
+              0.06448643699999934
+            ],
+            "packed-real": [
+              0.06332239599998957,
+              0.06542417500000397
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.3353435289999993,
+            "packed-real": 0.33671341299998403
+          },
+          "median_cpu_s": {
+            "full": 0.5862197739999999,
+            "packed-real": 0.5842974499999993
+          },
+          "ratio_of_wall_medians": 0.9959316025228113,
+          "raw_wall_s": {
+            "full": [
+              0.3380299979999961,
+              0.3353435289999993,
+              0.3311362860000031
+            ],
+            "packed-real": [
+              0.3343256130000043,
+              0.33671341299998403,
+              0.33773041699998885
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.3311362860000031,
+              0.3380299979999961
+            ],
+            "packed-real": [
+              0.3343256130000043,
+              0.33773041699998885
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.5642451289999997,
+            "packed-real": 0.561727167999976
+          },
+          "median_cpu_s": {
+            "full": 1.0392415989999986,
+            "packed-real": 1.0306325010000013
+          },
+          "ratio_of_wall_medians": 1.0044825337698884,
+          "raw_wall_s": {
+            "full": [
+              0.5632154569999841,
+              0.5642451289999997,
+              0.5657904600000165
+            ],
+            "packed-real": [
+              0.5861917260000098,
+              0.561727167999976,
+              0.5473003040000037
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.5632154569999841,
+              0.5657904600000165
+            ],
+            "packed-real": [
+              0.5473003040000037,
+              0.5861917260000098
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "platform": "macos-arm64",
+      "artifact": "portable-smoke-macos-arm64",
+      "artifact_id": 11732732070,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181042/artifacts/11732732070",
+      "path_in_artifact": "lpsd-benchmark.8iMyHjsR/disk-algorithm-pairs.json",
+      "status": "completed",
+      "system": "Darwin",
+      "machine": "arm64",
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "fftw_version": "fftw-3.3.10",
+      "actual_fftw_threads": 2,
+      "admitted_native_workers": 2,
+      "case_count": 8,
+      "error_type": null,
+      "cases": [
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.009697584000008419,
+            "packed-real": 0.009955458000007411
+          },
+          "median_cpu_s": {
+            "full": 0.007295999999999969,
+            "packed-real": 0.007655999999999996
+          },
+          "ratio_of_wall_medians": 0.9740972238546132,
+          "raw_wall_s": {
+            "full": [
+              0.010692583999997396,
+              0.009697584000008419,
+              0.00925225000000296
+            ],
+            "packed-real": [
+              0.015426292000000785,
+              0.009955458000007411,
+              0.009669083000005685
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.00925225000000296,
+              0.010692583999997396
+            ],
+            "packed-real": [
+              0.009669083000005685,
+              0.015426292000000785
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.011278167000000394,
+            "packed-real": 0.012305625000010423
+          },
+          "median_cpu_s": {
+            "full": 0.009272999999999865,
+            "packed-real": 0.010330999999999979
+          },
+          "ratio_of_wall_medians": 0.9165050129506499,
+          "raw_wall_s": {
+            "full": [
+              0.012712374999978238,
+              0.010959583999976985,
+              0.011278167000000394
+            ],
+            "packed-real": [
+              0.01225495799999976,
+              0.012305625000010423,
+              0.014561041000007435
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.010959583999976985,
+              0.012712374999978238
+            ],
+            "packed-real": [
+              0.01225495799999976,
+              0.014561041000007435
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.060740334000001894,
+            "packed-real": 0.06950683299999127
+          },
+          "median_cpu_s": {
+            "full": 0.08807300000000007,
+            "packed-real": 0.09993000000000007
+          },
+          "ratio_of_wall_medians": 0.8738757238444387,
+          "raw_wall_s": {
+            "full": [
+              0.06524212499999749,
+              0.060740334000001894,
+              0.05671095799999648
+            ],
+            "packed-real": [
+              0.06950683299999127,
+              0.07426545799998507,
+              0.055293417000001455
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.05671095799999648,
+              0.06524212499999749
+            ],
+            "packed-real": [
+              0.055293417000001455,
+              0.07426545799998507
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.08308158299999491,
+            "packed-real": 0.10023554099998933
+          },
+          "median_cpu_s": {
+            "full": 0.13290200000000008,
+            "packed-real": 0.14990900000000007
+          },
+          "ratio_of_wall_medians": 0.8288635165844394,
+          "raw_wall_s": {
+            "full": [
+              0.10270516699998211,
+              0.08308158299999491,
+              0.08150966700000595
+            ],
+            "packed-real": [
+              0.10023554099998933,
+              0.10114745800001401,
+              0.08324708300000339
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.08150966700000595,
+              0.10270516699998211
+            ],
+            "packed-real": [
+              0.08324708300000339,
+              0.10114745800001401
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.04763624999998228,
+            "packed-real": 0.05030879200000982
+          },
+          "median_cpu_s": {
+            "full": 0.04400800000000027,
+            "packed-real": 0.04621399999999998
+          },
+          "ratio_of_wall_medians": 0.9468772376799067,
+          "raw_wall_s": {
+            "full": [
+              0.04763624999998228,
+              0.04870054200000595,
+              0.04749770800000874
+            ],
+            "packed-real": [
+              0.06083341699999778,
+              0.04833379200002241,
+              0.05030879200000982
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.04749770800000874,
+              0.04870054200000595
+            ],
+            "packed-real": [
+              0.04833379200002241,
+              0.06083341699999778
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.055871958000011546,
+            "packed-real": 0.04986016699999141
+          },
+          "median_cpu_s": {
+            "full": 0.050521999999999956,
+            "packed-real": 0.046260999999999886
+          },
+          "ratio_of_wall_medians": 1.1205730217474237,
+          "raw_wall_s": {
+            "full": [
+              0.0523729579999781,
+              0.055871958000011546,
+              0.05710762499998623
+            ],
+            "packed-real": [
+              0.049738084000011895,
+              0.05499399999999355,
+              0.04986016699999141
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.0523729579999781,
+              0.05710762499998623
+            ],
+            "packed-real": [
+              0.049738084000011895,
+              0.05499399999999355
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.3400058750000028,
+            "packed-real": 0.3369091659999981
+          },
+          "median_cpu_s": {
+            "full": 0.5972870000000006,
+            "packed-real": 0.5894769999999996
+          },
+          "ratio_of_wall_medians": 1.0091915249346606,
+          "raw_wall_s": {
+            "full": [
+              0.3400058750000028,
+              0.3604496250000011,
+              0.33730454199999826
+            ],
+            "packed-real": [
+              0.3154170420000071,
+              0.3369091659999981,
+              0.33813958299998603
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.33730454199999826,
+              0.3604496250000011
+            ],
+            "packed-real": [
+              0.3154170420000071,
+              0.33813958299998603
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.5923834170000077,
+            "packed-real": 0.5343185829999868
+          },
+          "median_cpu_s": {
+            "full": 1.0005690000000005,
+            "packed-real": 0.9727009999999989
+          },
+          "ratio_of_wall_medians": 1.1086708114735782,
+          "raw_wall_s": {
+            "full": [
+              0.5326824590000001,
+              0.6132716669999922,
+              0.5923834170000077
+            ],
+            "packed-real": [
+              0.5031177079999907,
+              0.5343185829999868,
+              0.5677875420000191
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.5326824590000001,
+              0.6132716669999922
+            ],
+            "packed-real": [
+              0.5031177079999907,
+              0.5677875420000191
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "platform": "windows-x64",
+      "artifact": "portable-smoke-windows-x64",
+      "artifact_id": 11732597764,
+      "source_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181042/artifacts/11732597764",
+      "path_in_artifact": "lpsd-benchmark-cad7da3a64ea/disk-algorithm-pairs.json",
+      "status": "completed",
+      "system": "Windows",
+      "machine": "AMD64",
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "fftw_version": "fftw-3.3.5-sse2-avx",
+      "actual_fftw_threads": 2,
+      "admitted_native_workers": 2,
+      "case_count": 8,
+      "error_type": null,
+      "cases": [
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.01979769999996961,
+            "packed-real": 0.025189399999987927
+          },
+          "median_cpu_s": {
+            "full": 0.015625,
+            "packed-real": 0.03125
+          },
+          "ratio_of_wall_medians": 0.7859536154088267,
+          "raw_wall_s": {
+            "full": [
+              0.020080600000028426,
+              0.019276800000000094,
+              0.01979769999996961
+            ],
+            "packed-real": [
+              0.025189399999987927,
+              0.027501699999959328,
+              0.020470499999987624
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.019276800000000094,
+              0.020080600000028426
+            ],
+            "packed-real": [
+              0.020470499999987624,
+              0.027501699999959328
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.02387509999999793,
+            "packed-real": 0.025480600000037157
+          },
+          "median_cpu_s": {
+            "full": 0.03125,
+            "packed-real": 0.03125
+          },
+          "ratio_of_wall_medians": 0.9369912796387492,
+          "raw_wall_s": {
+            "full": [
+              0.024516800000014882,
+              0.02387509999999793,
+              0.02377910000001293
+            ],
+            "packed-real": [
+              0.025554900000031466,
+              0.025480600000037157,
+              0.025144300000022213
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.02377910000001293,
+              0.024516800000014882
+            ],
+            "packed-real": [
+              0.025144300000022213,
+              0.025554900000031466
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 469,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.09339060000002064,
+            "packed-real": 0.0892278000000033
+          },
+          "median_cpu_s": {
+            "full": 0.140625,
+            "packed-real": 0.109375
+          },
+          "ratio_of_wall_medians": 1.0466536214051807,
+          "raw_wall_s": {
+            "full": [
+              0.09867290000005369,
+              0.09143269999998438,
+              0.09339060000002064
+            ],
+            "packed-real": [
+              0.0892278000000033,
+              0.08998120000001109,
+              0.08777740000004997
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.09143269999998438,
+              0.09867290000005369
+            ],
+            "packed-real": [
+              0.08777740000004997,
+              0.08998120000001109
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 100000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 938,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.14287830000000667,
+            "packed-real": 0.1497577000000092
+          },
+          "median_cpu_s": {
+            "full": 0.203125,
+            "packed-real": 0.21875
+          },
+          "ratio_of_wall_medians": 0.9540631299759404,
+          "raw_wall_s": {
+            "full": [
+              0.14287830000000667,
+              0.15484880000002477,
+              0.14165559999997868
+            ],
+            "packed-real": [
+              0.14855319999998073,
+              0.1497577000000092,
+              0.14979429999999638
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.14165559999997868,
+              0.15484880000002477
+            ],
+            "packed-real": [
+              0.14855319999998073,
+              0.14979429999999638
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.1049099999999612,
+            "packed-real": 0.10553919999995287
+          },
+          "median_cpu_s": {
+            "full": 0.125,
+            "packed-real": 0.109375
+          },
+          "ratio_of_wall_medians": 0.9940382341348811,
+          "raw_wall_s": {
+            "full": [
+              0.11299300000001722,
+              0.1049099999999612,
+              0.10411069999997835
+            ],
+            "packed-real": [
+              0.10483060000001387,
+              0.11525850000003857,
+              0.10553919999995287
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.10411069999997835,
+              0.11299300000001722
+            ],
+            "packed-real": [
+              0.10483060000001387,
+              0.11525850000003857
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "fftw",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.11390829999999141,
+            "packed-real": 0.11151169999999411
+          },
+          "median_cpu_s": {
+            "full": 0.125,
+            "packed-real": 0.109375
+          },
+          "ratio_of_wall_medians": 1.0214919151981132,
+          "raw_wall_s": {
+            "full": [
+              0.11981900000000678,
+              0.11000520000004599,
+              0.11390829999999141
+            ],
+            "packed-real": [
+              0.11151949999998578,
+              0.11151169999999411,
+              0.10966960000001791
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.11000520000004599,
+              0.11981900000000678
+            ],
+            "packed-real": [
+              0.10966960000001791,
+              0.11151949999998578
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 1,
+          "actual_points": 577,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.42263900000000376,
+            "packed-real": 0.40949040000003833
+          },
+          "median_cpu_s": {
+            "full": 0.75,
+            "packed-real": 0.6875
+          },
+          "ratio_of_wall_medians": 1.032109666062902,
+          "raw_wall_s": {
+            "full": [
+              0.42263900000000376,
+              0.44880299999999806,
+              0.4129138999999782
+            ],
+            "packed-real": [
+              0.4002859000000285,
+              0.40949040000003833,
+              0.46924669999998514
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.4129138999999782,
+              0.44880299999999806
+            ],
+            "packed-real": [
+              0.4002859000000285,
+              0.46924669999998514
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        },
+        {
+          "n": 1000000,
+          "method": "matched",
+          "signal": "white",
+          "point_factor": 2,
+          "actual_points": 1154,
+          "status": "completed",
+          "median_wall_s": {
+            "full": 0.6460276000000249,
+            "packed-real": 0.6597744000000034
+          },
+          "median_cpu_s": {
+            "full": 1.125,
+            "packed-real": 1.1875
+          },
+          "ratio_of_wall_medians": 0.9791643931623014,
+          "raw_wall_s": {
+            "full": [
+              0.6460276000000249,
+              0.6485658999999941,
+              0.6154913999999962
+            ],
+            "packed-real": [
+              0.6736268000000223,
+              0.6597744000000034,
+              0.628866099999982
+            ]
+          },
+          "ranges_wall_s": {
+            "full": [
+              0.6154913999999962,
+              0.6485658999999941
+            ],
+            "packed-real": [
+              0.628866099999982,
+              0.6736268000000223
+            ]
+          },
+          "identical_frequency_grid": true,
+          "user_1percent_passed": true,
+          "strict_3ppm_passed": true,
+          "output_bit_identical": true,
+          "maximum_relative_error": {
+            "psd": 0.0,
+            "nsd": 0.0
+          }
+        }
+      ]
+    }
+  ],
+  "test_suites": [
+    {
+      "artifact": "results-linux-arm64-gcc-python-3.12",
+      "suite": "fast.xml",
+      "tests": 2111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "passed": 2105
+    },
+    {
+      "artifact": "results-linux-arm64-gcc-python-3.12",
+      "suite": "upstream.xml",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 18
+    },
+    {
+      "artifact": "results-linux-x64-gcc-python-3.12",
+      "suite": "disk.xml",
+      "tests": 204,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 204
+    },
+    {
+      "artifact": "results-linux-x64-gcc-python-3.12",
+      "suite": "fast.xml",
+      "tests": 2111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 6,
+      "passed": 2105
+    },
+    {
+      "artifact": "results-linux-x64-gcc-python-3.12",
+      "suite": "fftw.xml",
+      "tests": 210,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 210
+    },
+    {
+      "artifact": "results-linux-x64-gcc-python-3.12",
+      "suite": "upstream.xml",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 18
+    },
+    {
+      "artifact": "results-macos-arm64-clang-python-3.12",
+      "suite": "fast.xml",
+      "tests": 2111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 383,
+      "passed": 1728
+    },
+    {
+      "artifact": "results-macos-arm64-clang-python-3.12",
+      "suite": "upstream.xml",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 18
+    }
+  ],
+  "windows_checks": {
+    "job_id": 114707745784,
+    "job_url": "https://github.com/MichaDit/lpsd/actions/runs/38218181042/job/114707745784",
+    "watchdog": "passed: disappearance, access, storage, disk, deadline and missing-root checks",
+    "native_memory_query": "passed without fallback",
+    "portable_methods": "all three methods completed, two actual point counts, ordinary and bounded-window mode",
+    "disk_algorithm_comparison": "eight cases completed: full and packed-real, FFTW and matched, N100k and N1M, both point counts, three alternating pairs"
+  },
+  "interpretation": [
+    "All eight native and all four portable jobs completed successfully at the final head, including the real Windows bootstrap watchdog and memory query.",
+    "At N1M the final Linux native medians differ by less than 1% in every configuration. No material Linux regression is evident in these small screens.",
+    "The final macOS native auto comparison is noisy: 0.994x with one worker and 1.027x with three. Earlier separate 2afaac cohorts observed 1.164x and 1.088x with one worker, but the final cohort does not establish a stable percentage gain. The unchanged fast control also has wide scatter.",
+    "At N1M the packed FFT is consistently modestly faster for simple FFT on Linux ARM64 (1.063x and 1.031x). Other platform/method cases are mixed or close to measurement scatter. Retain explicit algorithm selection; do not advertise a universal small-N gain.",
+    "Windows N1M full/packed medians differ by about -2% to +3%; all ranges overlap. The clear Windows result is repaired execution and verified numerical agreement."
+  ],
+  "scope": [
+    "Native comparison uses three alternating revision pairs per configuration, shared Python and compiler, verified loaded build reports.",
+    "Disk comparison uses three alternating full/packed-real pairs with the same FFTW binary, input, grid, and two threads.",
+    "Native timings cover complete API calls; disk timings include preparation, plans, diagnostics, PSD+NSD and cleanup. Imports, input creation and output hashes are excluded.",
+    "Returned spectra are float32; identical returned output hashes are distinct from the separate strict raw-FFT numerical tests.",
+    "CI files fit in RAM at these sizes. These timings do not measure out-of-RAM storage performance or promise cross-machine speedups.",
+    "Previous head 2afaac and its secondary push cohort are preserved separately."
+  ],
+  "all_requested_comparisons_completed": true,
+  "validation_counts": {
+    "native_cases": 24,
+    "native_pairs": 72,
+    "disk_cases": 32,
+    "disk_pairs": 96,
+    "all_native_returned_outputs_identical": true,
+    "all_disk_returned_outputs_identical": true,
+    "all_disk_grids_identical": true,
+    "all_disk_1percent_and_3ppm_passed": true
+  }
+}

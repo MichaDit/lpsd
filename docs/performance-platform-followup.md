@@ -7,6 +7,14 @@ measurements on native CI runners. The
 [recovered large-input report](performance-memory-points.md) preserves the
 older matrix and experimental cohorts separately.
 
+Validated fast.8 runtime: **`2e215275124d0ffa05e314d7eddf18ecab5a1ae1`**.
+All eight [native test/build jobs](https://github.com/MichaDit/lpsd/actions/runs/38218181121)
+and all four [portable platform jobs](https://github.com/MichaDit/lpsd/actions/runs/38218181042)
+passed. The final documentation/evidence update changes no executable code.
+[Full platform tables, ranges and sources](platform-comparison-20261012.md)
+and [machine-readable evidence](../benchmarks/results/platform-comparison-20261012.json)
+retain every measured configuration, repetition and artifact identity.
+
 ## Changes selected from the profiles
 
 | Area | Change | Scope |
@@ -16,6 +24,7 @@ older matrix and experimental cohorts separately.
 | Even-length disk FFT | Optional original-N real-input packing into an N/2 complex FFT | `--disk-fft-algorithm packed-real`; full complex FFT remains the default |
 | Native file-cache headroom | Optional cap on the existing working allowance | `--native-working-mib 384` is an explicit profile, not an automatic speed recommendation |
 | Windows bootstrap | Tolerate a child path disappearing while a temporary directory is traversed | Permission, I/O, root-directory and resource-budget errors still fail |
+| Windows disk cleanup | Run optional allocator trimming only on Linux; share the helper with tuning | Fixes the first real Windows matched-disk call and preserves the conservative RAM fallback if the OS query fails |
 | Disk diagnostics and cleanup | Handle zero spectral energy; use an exclusively owned workspace subdirectory | Zero/constant signals complete and pre-existing caller files survive success and partial setup failures |
 | Disk power output | Reject independently mapped aliases and hardlinks to the transform workspace | Prevents an external power destination from corrupting unread transform data |
 
@@ -52,7 +61,7 @@ in the recovered screen, with 0.101458% maximum relative PSD error and
 0.050739% NSD error at very small nulls. Its existing optional RAM adapter
 remains separate; this revision does not turn it into an automatic route.
 
-## Validation before native CI
+## Validation
 
 On the integration Linux x86-64 host, the complete `test_fast` plus upstream
 `test` run passed **2,112 tests**, with five unavailable-platform/optional
@@ -64,6 +73,17 @@ The inline residual arithmetic additionally passed a forced FP64-long-double
 x86 build with 648 projection comparisons and complete PSD/CSD output checks.
 That surrogate verifies arithmetic, not Apple hardware speed. Native Apple
 execution is evaluated separately below.
+
+The final Linux x64 and ARM64 CI suites each report **2,105 optimized tests
+plus 18 upstream tests passed**, with six skipped/expected-failure entries.
+The FFTW and disk subset gates overlap that optimized suite. macOS reports
+1,728 optimized plus 18 upstream tests passed; its 383 skipped/expected-failure
+entries mostly reflect the unavailable optional system FFTW library. The
+portable macOS environment supplies FFTW and executes the disk comparisons.
+Windows completes the real watchdog cases, the OS memory query without a
+fallback, all three ordinary/bounded-window methods and both disk algorithms.
+The two documented inherited numerical/statistical expected failures remain;
+this work does not redefine the upstream uncertainty estimator.
 
 ## Native revision comparisons
 
@@ -81,8 +101,67 @@ shared-runner observations are reported by configuration and never pooled
 across different CPUs. Three repetitions and their ranges identify obvious
 variation; they do not establish a universal performance guarantee.
 
-**Candidate measurements are pending the new CI run.** No native platform
-speedup is claimed from a forced ABI build or an earlier runner's timing.
+All **24 native configurations and 72 baseline/current pairs** completed
+with identical returned outputs. At N=1M, all Linux x64/ARM64 native median
+changes are below 1%; these screens show no material regression.
+
+The final macOS `auto` case with one worker has medians 4.458334 → 4.483215 s
+and ranges 4.256393–4.957041 → 3.879336–5.081961 s. With three workers it is
+1.963399 → 1.911285 s, again with overlapping ranges. The new inline residual
+path is confirmed active. Two earlier separate runs observed one-worker
+reductions of 14.06% and 8.08%, but the final cohort does not replicate a clear
+percentage gain. The unchanged `fast` control also varies substantially.
+These cohorts are not pooled. The removed residual storage and numerical
+identity are established; a stable general macOS speedup is not.
+
+## Complete 100-million-sample disk comparison
+
+The [complete local paired report](../benchmarks/results/packed-real-disk-100m-20261012.json)
+records four configurations and three alternating pairs each: **24 complete
+PSD+NSD calls**. The six recorded source hashes match candidate
+`2afaac85462542276b04c85ed5f9788a65f780b5`. The later Windows cleanup fix
+does not change these successful Linux calculations. This cohort uses Linux
+x86-64, system FFTW 3.3.10, eight FFTW/native workers, four smoothing workers,
+128 MiB FFT scratch and 384 MiB native working allowance. The host has an
+8-GiB cgroup ceiling and eight CPU equivalents. The test's files fit within
+that memory ceiling; this is a file-backed comparison, **not an out-of-RAM
+or one-billion-sample measurement**.
+
+| Method / actual points | Full median wall [s] | Packed median wall [s] | Ratio of medians | Full → packed median CPU [s] |
+|---|---:|---:|---:|---:|
+| Simple FFTW / 704 | 24.506037 | 10.330516 | 2.372× | 25.651442 → 11.002871 |
+| Simple FFTW / 1408 | 23.452197 | 10.371538 | 2.261× | 22.806063 → 11.131750 |
+| Matched / 704 | 43.441363 | 23.875725 | 1.819× | 93.045462 → 80.253379 |
+| Matched / 1408 | 53.618029 | 32.849665 | 1.632× | 148.064119 → 130.607350 |
+
+The observed wall-time ranges were 23.232–25.626 versus 10.255–13.840 s,
+22.629–24.080 versus 10.296–13.406 s, 42.635–68.562 versus 23.490–40.181 s,
+and 50.268–55.209 versus 31.249–36.456 s, in table order. Every range is
+preserved with its individual sample. The first matched/base pair was
+noticeably slower for both algorithms; it remains in the report. No cache
+flush or exclusive host-I/O control was imposed. The three-pair medians show
+a useful gain in this configuration, not a guarantee for other storage,
+lengths or machines. CPU savings differ from elapsed-time savings.
+
+All **12,672 PSD and 12,672 NSD point pairs** are bit-identical, as are the
+frequency grids. The original plans use J=1000 for 704 points and J=2130 for
+1408 points. The report records the common input hash; successful completion
+also requires the final input rehash to agree. Raw spectra are not included,
+so the archived equality evidence comes from the source-hashed harness's
+full `tobytes()` comparison, not a later reconstruction from rounded values.
+
+The scope includes fresh FFTW plans, original-N window/preprocessing, FFT,
+ordered powers, Parseval diagnostics, smoothing/native low frequencies where
+applicable, both outputs and workspace cleanup. Input creation, hashing,
+imports and library loading are outside each call. The complete command was:
+
+```sh
+python benchmarks/bench_disk_algorithms.py --sizes 100000000 --threads 8 --fft-memory-mib 128 --native-working-mib 384 --repeats 3 --point-factors 1 2 --max-seconds 900 --work-dir /path/on/local-drive --output packed-100m-pairs.json
+```
+
+The native cap is the same on both sides and is not independently evaluated
+by this experiment. No claim is made for the packed-real route at 1B or on
+a 32-GB host.
 
 ## Full versus packed-real comparisons
 
@@ -102,8 +181,24 @@ pass/fail condition. Input hashes are checked again after both algorithms.
 Small file-backed CI cases mainly exercise algorithm and platform behavior;
 they do not measure a billion-sample transform that exceeds RAM.
 
-**Four-platform paired measurements are pending the new CI run.** The small
-local development smoke is not used as a performance claim.
+All **32 disk configurations and 96 full/packed pairs** completed. PSD and
+NSD outputs are bit-identical, frequency grids agree and both the 1% and
+stricter 3-ppm checks pass. N=1M ratios of full/packed wall-time medians are:
+
+| Platform | Simple / 577 points | Simple / 1154 | Matched / 577 | Matched / 1154 |
+|---|---:|---:|---:|---:|
+| Linux x86-64 | 0.985× | 0.978× | 0.996× | 1.004× |
+| Linux ARM64 | 1.063× | 1.031× | 1.003× | 1.002× |
+| macOS ARM64 | 0.947× | 1.121× | 1.009× | 1.109× |
+| Windows x64 | 0.994× | 1.021× | 1.032× | 0.979× |
+
+A ratio below one means packed is slower in that small case. ARM64's simple
+FFT shows a modest repeatable benefit; other small-case results are mixed or
+close to the observed scatter. Windows ranges all overlap. macOS varies
+between runs. The [complete table](platform-comparison-20261012.md) includes
+every range and N100k result in its linked JSON. These results support the
+explicit option and the separate large-case experiment, not an automatic
+switch for every length and platform.
 
 For an existing built checkout, reproduce a comparison with:
 

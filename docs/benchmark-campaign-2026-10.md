@@ -45,6 +45,13 @@ Packed Real numerical experiment provides no performance measurement.
 
 ## Run the campaign
 
+The currently qualified fast.8 runtime is
+**`2e215275124d0ffa05e314d7eddf18ecab5a1ae1`**. The
+[portable guide](portable-benchmark.md#start-from-a-pinned-revision) now supplies
+complete launch commands with that pin. Its
+[final platform validation and new 100M comparison](performance-platform-followup.md)
+are separate from the historical E/G table above.
+
 Use the [portable benchmark instructions](portable-benchmark.md) for the
 platform-specific launcher and pinned dependencies. Select the full
 40-character commit from the published release or reviewed PR, and use that
