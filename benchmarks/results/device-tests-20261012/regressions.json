@@ -1,0 +1,82 @@
+{
+  "schema": "lpsd-device-regression-summary-v1",
+  "source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+  "windows_fast": {
+    "tests": 2307,
+    "passed": 2297,
+    "failed": 2,
+    "errors": 0,
+    "skipped": 6,
+    "xfailed": 2
+  },
+  "windows_upstream": {
+    "tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xfailed": 0
+  },
+  "board_initial_fast": {
+    "tests": 2111,
+    "passed": 1735,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 374,
+    "xfailed": 2
+  },
+  "board_upstream": {
+    "tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xfailed": 0
+  },
+  "board_reference_recheck": {
+    "tests": 106,
+    "passed": 106,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xfailed": 0
+  },
+  "board_dependency_enabled_fast": {
+    "tests": 2111,
+    "passed": 2078,
+    "failed": 25,
+    "errors": 0,
+    "skipped": 6,
+    "xfailed": 2
+  },
+  "instrument_initial_fast": {
+    "tests": 2111,
+    "passed": 2076,
+    "failed": 27,
+    "errors": 0,
+    "skipped": 6,
+    "xfailed": 2
+  },
+  "instrument_upstream": {
+    "tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xfailed": 0
+  },
+  "instrument_full_recheck": "queued_not_verified_after_host_restart",
+  "known_expected_failures": 2,
+  "windows_failed_tests": [
+    "test_fast/test_bootstrap.py::test_zip_traversal_never_writes_outside_destination[root\\escape]",
+    "test_fast/test_smoothing_controls.py::test_linux_address_guard_does_not_grow_for_explicit_smoothing"
+  ],
+  "instrument_remaining_failed_tests": [
+    "test_fast/test_bootstrap.py::test_deadline_stops_subprocess_group",
+    "test_fast/test_csd_batches.py::test_csd_batches_preserve_native_exceptional_arithmetic[1e+155-2049]"
+  ],
+  "instrument_reference_prerequisite_failures": 25,
+  "instrument_csd_observed_error": 3.0936972401917152e-12,
+  "instrument_csd_required_limit": 2e-12,
+  "instrument_vectorization_warnings": 3
+}

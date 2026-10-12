@@ -1,0 +1,108 @@
+{
+  "schema": "lpsd-device-test-publication-v1",
+  "publication_utc": "2026-10-12T11:06:42.790025+00:00",
+  "collection_utc": "2026-10-12T11:06:13.696356+00:00",
+  "synthetic_input_only": true,
+  "reports": [
+    {
+      "file": "legacy-windows.json",
+      "platform": "Windows x86-64",
+      "lifecycle": "completed",
+      "source_commit": "6246f0c6061b5f72dba8e235e640fb0b71281a20",
+      "sha256": "0376a7c67ab69d97cbaf726fbf30f579f4b6a72e0b30875b4c36e9ecb7f13898",
+      "cases": 132,
+      "statuses": {
+        "completed": 127,
+        "skipped": 4,
+        "failed": 1
+      }
+    },
+    {
+      "file": "legacy-arm64-board.json",
+      "platform": "ARM64 SBC",
+      "lifecycle": "completed",
+      "source_commit": "6246f0c6061b5f72dba8e235e640fb0b71281a20",
+      "sha256": "b5dc4b337b59b3c12567e187a05a49502d14d025848115e7935e75e9803a6f69",
+      "cases": 132,
+      "statuses": {
+        "completed": 108,
+        "skipped": 24
+      }
+    },
+    {
+      "file": "legacy-arm64-instrument.json",
+      "platform": "ARM64 instrument",
+      "lifecycle": "completed",
+      "source_commit": "6246f0c6061b5f72dba8e235e640fb0b71281a20",
+      "sha256": "5f26d3a3f3af64f65526f76f9215e0f5ab2141bef84333fe1dae40d28c1905e2",
+      "cases": 132,
+      "statuses": {
+        "completed": 116,
+        "failed": 3,
+        "skipped": 13
+      }
+    },
+    {
+      "file": "fast8-windows-initial.json",
+      "platform": "Windows x86-64",
+      "lifecycle": "interrupted_status_writer",
+      "source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+      "sha256": "c9c0ccbf1d906b5f0cc424a2bfe9403278165ac9799603309c9d6e6d95ad583e",
+      "cases": 130,
+      "statuses": {
+        "completed": 130
+      }
+    },
+    {
+      "file": "fast8-windows-continuation.json",
+      "platform": "Windows x86-64",
+      "lifecycle": "interrupted_host_crash",
+      "source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+      "sha256": "eb05e6bf04af354c5c9cc9ca31776705cdbe61422b977dfe7a0256d3250faef8",
+      "cases": 9,
+      "statuses": {
+        "completed": 9
+      }
+    },
+    {
+      "file": "fast8-arm64-board.json",
+      "platform": "ARM64 SBC",
+      "lifecycle": "completed",
+      "source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+      "sha256": "6a97e073ab4b6f2088afc01ab0eed3a4635502995db98802b87d680c43377b8f",
+      "cases": 132,
+      "statuses": {
+        "completed": 108,
+        "skipped": 24
+      }
+    },
+    {
+      "file": "fast8-arm64-instrument-snapshot.json",
+      "platform": "ARM64 instrument",
+      "lifecycle": "last_checkpoint_status_unknown",
+      "source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+      "sha256": "00a68cf3ea6bd1c2d8b00b8de66948fc014f39b7795ba90d630feca0c4d10907",
+      "cases": 6,
+      "statuses": {
+        "completed": 6
+      }
+    }
+  ],
+  "regressions_sha256": "9cd83f7474d2f96fedeb842cad92385756200871b4681787b69465669da71a54",
+  "fast8_windows_unique_matrix": {
+    "recorded": 131,
+    "expected": 132,
+    "statuses": {
+      "completed": 131
+    },
+    "supporting_continuation_cases": 8,
+    "unverified_remaining": [
+      {
+        "n": 1000000000,
+        "method": "lpsd",
+        "signal": "white",
+        "point_factor": 2.0
+      }
+    ]
+  }
+}
