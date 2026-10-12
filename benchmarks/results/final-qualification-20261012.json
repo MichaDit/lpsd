@@ -1,0 +1,285 @@
+{
+  "schema": "lpsd-final-qualification-summary-v1",
+  "evidence_date": "2026-10-12",
+  "scope": "Public scalar evidence only. Experimental E/R3 results and integrated fast.9 validation are separate cohorts. No raw spectra, logs, private paths, machine identities or inferred timings are included.",
+  "historical_evidence": {
+    "repository_path": "benchmarks/results/recovered-campaign-20261012.json",
+    "sha256": "9916baef0e752f5a54aee1380501bf793a10930b2dae5e6338b12e0188fd02f2",
+    "scope": "The completed E132 matrix and earlier optimization evidence remain in this existing summary; they are not repeated or pooled here."
+  },
+  "cohorts": {
+    "E": {
+      "commit": "7d0f52b9096cbe2f74064d86f2fe6b9fa69320c9",
+      "version": "1.0.6+fast.7",
+      "source_manifest_reference": "recovered-campaign-20261012.json#/computation_origins/column_screen_E",
+      "native_binary_sha256": "c3ed285831e8dd93577aa9043aca1ba0f91524bc3c03c31fe87531fa473a7688",
+      "fftw_version": "3.3.10",
+      "fftw_sha256": "b5cc02c4d360b5b20111cb0a251f8368af8c9ce3145357f5ba54c51ac4ca9b35",
+      "fftw_threads_sha256": "fd4b9672b1c7b297c87681f8bcaad414c3b18f3aed5edbf5fa7f665482eb0c7c"
+    },
+    "R3_external": {
+      "base_cohort": "E",
+      "scope": "Separately frozen additive helper and ordinary direct-log API; not the integrated fast.9 binary.",
+      "source_manifest_sha256": "82e650a3194bbf5849eb3a26980b04dfabda028e8792f2bdf87ca54c35a6a6ae",
+      "freeze_sha256": "a6b7f10ce69700f7d2446d8d216e9e39b79c09ff01b78eb86cbc08d3ffab34cc",
+      "c_source_sha256": "4c59f90d1d50c8aa62ffbead5e2702fb84835e354a7c34597d870efb6ebc12ec",
+      "python_api_sha256": "ddc74e130428cac00f067ff4022840e80ab093ee4f3e5282fb8f3fc6a7a41f62",
+      "helper_binary_sha256": "db482ee6863ea4f11b87c33916c87e73a6ed46c652ad0eb7d553985805102734",
+      "native_abi": 3
+    },
+    "fast9_local": {
+      "commit": "e6aa1603d01ef81b9cfb6cc03643029768712bd0",
+      "pull_request": 3,
+      "version": "1.0.6+fast.9",
+      "source_freeze_sha256": "4e8296b84c3d2d29a2a185614e8d29ac6f707c3bce055bab6ea78de3a96e0ec0",
+      "verified_source_file_count": 20,
+      "c_source_sha256": "c299e08981ea546c79d096508a3f288e0bfb5b001784021e71506ed960a8ae50",
+      "python_wrapper_sha256": "7703b716d6cb2aa88fde214da1125f11a3aa4d363ba6117d160ff47fffa2b220",
+      "native_binary_sha256": "1e54f69911076a24cabf3637a21b3e9566f16f4c6b20c9ab891354fbd158779a",
+      "fast_build_manifest_sha256": "809efaa3f3261e6d84aff060e998094240f9d6abc43c87adaabb5903c4d59b40",
+      "reference_binary_sha256": "338912a25267a08737a78bfe47eeda64cc124b954b1baffd71a904dce30d95fc",
+      "reference_build_manifest_sha256": "060f8c198d43332570bc1f0a4e050b2631fff24d2107126dc1f2b746c22b671e",
+      "fftw_libraries_match_E": true,
+      "fresh_build": true,
+      "scope": "Actual local validation of this exact commit; later source fixes require separate evidence."
+    }
+  },
+  "common_definitions": {
+    "time_unit": "seconds",
+    "size_unit": "bytes",
+    "frequency_unit": "Hz",
+    "sample_rate_hz": 50,
+    "window": "kaiser",
+    "psll_db": 200,
+    "desired_averages": 100,
+    "input_dtype": "float64",
+    "output_dtype": "float32",
+    "psd_nsd_gate": {
+      "rtol": 3e-06,
+      "atol": 0
+    },
+    "parseval_gate": {
+      "rtol": 1e-10,
+      "atol": 0
+    },
+    "reported_large_call_timer": "Joint PSD and NSD, fresh required setup, computation, output construction and owned-resource cleanup. Added input generation and pre/post checks are separate.",
+    "memory": "Sampled owned-tree RssAnon, process RSS, virtual mappings and shared cgroup usage are distinct. RSS can count aliased file pages more than once.",
+    "io": "Process counter deltas; not exclusive device or shared-cgroup totals."
+  },
+  "column_policy_followup": {
+    "cohort": "E",
+    "status": "completed",
+    "source_artifact": "paired_disk1b_columns_E_policy_followup.json",
+    "source_sha256": "67964f63b22497c8b4bd82a45671635da7eb3e24d6dbe0c87e9368525a37b2dd",
+    "harness_sha256": "32c48f10df4c1541672f78008812be78339b520f0fd89bc5337f964dc79cea80",
+    "independent_review_sha256": "589a83b446434b65cdcfab5d7b2b57b3d3480d467317852b8a2cc1058c658a8b",
+    "independent_review_checks": 70,
+    "independent_review_failures": 0,
+    "n": 1000000000,
+    "requested_j": 1000,
+    "actual_points": 744,
+    "signal": "white",
+    "fftw_threads": 8,
+    "fft_memory_mib": 128,
+    "planner": "estimate",
+    "actual_sequence": [
+      "strided_default",
+      "auto"
+    ],
+    "observations_per_policy": 1,
+    "same_factor_comparison": false,
+    "input_identical": true,
+    "source_identity_unchanged": true,
+    "frequency_bitexact": true,
+    "psd_bitexact": true,
+    "nsd_bitexact": true,
+    "different_psd_points": 0,
+    "different_nsd_points": 0,
+    "all_children_exit_zero_reaped": true,
+    "owned_cleanup_complete": true,
+    "genuine_anonymous_guard_bytes": 6710886400,
+    "shared_cgroup_limit_bytes": 8589934592,
+    "cases": [
+      {
+        "policy": "strided_default",
+        "factor_a": 31250,
+        "factor_b": 32000,
+        "column_strategy": "strided",
+        "wall_s": 784.941853812,
+        "cpu_s": 265.535434706,
+        "whole_child_wall_s": 796.6051967500098,
+        "read_bytes": 102966054912,
+        "write_bytes": 210385133568,
+        "sampled_peak_anonymous_bytes": 189034496,
+        "process_high_water_rss_bytes": 10180112384,
+        "parseval_relative_error": 1.5778795068414844e-16
+      },
+      {
+        "policy": "auto",
+        "factor_a": 10000,
+        "factor_b": 100000,
+        "column_strategy": "transpose",
+        "wall_s": 1276.722081807,
+        "cpu_s": 334.02689696,
+        "whole_child_wall_s": 1287.9863350299856,
+        "read_bytes": 132546170880,
+        "write_bytes": 148881145856,
+        "sampled_peak_anonymous_bytes": 188350464,
+        "process_high_water_rss_bytes": 9285771264,
+        "parseval_relative_error": 0
+      }
+    ],
+    "call_callbacks_included": true,
+    "aggregate_counter_endpoints_saved": false,
+    "notes": "One ordered comparison of two factor-and-I/O policies, not a same-factor reversed repetition. Strided used more process write bytes in this pair. Aggregate deltas are stored; fine progress-event deltas were independently rechecked. No pooled median, universal default change or peak-width claim follows."
+  },
+  "R3_small_numerical_gate": {
+    "cohort": "R3_external",
+    "status": "passed",
+    "source_artifact": "numeric_gate_run1.json",
+    "source_sha256": "3b18225111d31bec582714fa4f8681127beb65979c3bf323d3285869b43be355",
+    "actual_child_sha256": "2b8633223d81ed439c6121d0ac4401470ff1e0947ed6aa1da1418816b19a7b71",
+    "independent_review_sha256": "9dca7e3487d9591a955a35a128cb36e41376688aa68f8b7e439779586ffd00ad",
+    "independent_review_checks": 1080,
+    "independent_review_failures": 0,
+    "small_cases": 30,
+    "unique_configurations": 24,
+    "complete_calls": 48,
+    "signals": [
+      "white",
+      "pink",
+      "brown",
+      "mixed_tones",
+      "offbin_tone",
+      "dc_nanovolt"
+    ],
+    "grids": [
+      {
+        "n": 100000,
+        "point_factor": 1,
+        "requested_j": 1000,
+        "actual_points": 469
+      },
+      {
+        "n": 100000,
+        "point_factor": 2,
+        "requested_j": 2425,
+        "actual_points": 938
+      },
+      {
+        "n": 1000000,
+        "point_factor": 1,
+        "requested_j": 1000,
+        "actual_points": 577
+      },
+      {
+        "n": 1000000,
+        "point_factor": 2,
+        "requested_j": 2240,
+        "actual_points": 1154
+      }
+    ],
+    "paired_psd_values": 18828,
+    "paired_nsd_values": 18828,
+    "psd_bitexact": true,
+    "nsd_bitexact": true,
+    "maximum_psd_relative_error": 0,
+    "maximum_nsd_relative_error": 0,
+    "maximum_parseval_relative_error": 1.1693803047441206e-15,
+    "original_grid_cuts_counts_preserved": true,
+    "full_complex_matrix_and_prepared_window_identities": true,
+    "original_complex64_sqrt_preserved": true,
+    "input_and_source_identities_preserved": true,
+    "child_exit_zero_reaped_cleanup_complete": true,
+    "runtime_admitted": false,
+    "notes": "Instrumented correctness corpus only. Observed bit identity does not replace the unchanged 3 ppm relative, zero absolute gate or prove all signals, lengths and platforms. Gate timings are not published as performance results."
+  },
+  "last_billion_sample_attempt": {
+    "reference_cohort": "E",
+    "planned_candidate_cohort": "R3_external",
+    "source_artifact": "result_E_R3_run1.json",
+    "source_sha256": "f05ae10b8b8f7088a4c84ac72cb66c8566cf13849d7210d4b1bd48eb468355ad",
+    "pair_source_manifest_sha256": "cc41047e67ce28238563d7201a3d673f13961e7ed7eaa2725fec7e37f410dfbe",
+    "independent_review_sha256": "97af713c41591bf1fd96139fa7e07fb1446c173e34e19588aedffc9c390576f9",
+    "independent_metadata_checks": 40,
+    "independent_metadata_check_failures": 0,
+    "raw_status": "failed",
+    "failure_stage": "disk_preflight_before_direct_child",
+    "n": 1000000000,
+    "requested_j": 1000,
+    "actual_reference_points": 744,
+    "signal": "white",
+    "actual_jobs": [
+      "prepare",
+      "E"
+    ],
+    "completed_compute_calls": 1,
+    "direct_child_started": false,
+    "direct_wall_s": null,
+    "direct_cpu_s": null,
+    "paired_runtime_ratio": null,
+    "paired_spectral_comparison_available": false,
+    "runtime_admitted": false,
+    "reference_observation": {
+      "status": "completed",
+      "wall_s": 1153.282266022,
+      "cpu_s": 322.839616948,
+      "whole_child_wall_s": 1165.2825771880016,
+      "read_bytes": 131914235904,
+      "write_bytes": 197803352064,
+      "parseval_relative_error": 0
+    },
+    "disk_preflight": {
+      "free_bytes": 18082508800,
+      "required_free_bytes": 18147483648,
+      "deficit_bytes": 64974848,
+      "unchanged_reserve_bytes": 2147483648
+    },
+    "all_started_children_exit_zero_reaped": true,
+    "owned_cleanup_complete": true,
+    "retry_performed": false,
+    "notes": "E is an unpaired completed observation. Direct was never started, so no large candidate timing, accuracy comparison or speed ratio exists. The metadata review binds recorded child checks without rerunning spectrum arithmetic. Free-space loss is not causally attributed."
+  },
+  "fast9_local_validation": {
+    "cohort": "fast9_local",
+    "source_artifact": "local-validation.json",
+    "source_sha256": "dcd7da5b67d0c9187d80149af59fa5e5b6fa5c44aadca34aaa2c9075748092c9",
+    "status": "passed",
+    "os": "Linux",
+    "architecture": "x86_64",
+    "python": "3.12.14",
+    "regression": {
+      "passed": 2215,
+      "optimized_passed": 2197,
+      "upstream_passed": 18,
+      "skipped": 5,
+      "expected_failures": 2,
+      "failures": 0,
+      "errors": 0,
+      "junit_total": 2222
+    },
+    "first_test_invocation": "pre_collection_missing_test_dependency",
+    "successful_full_suite_after_dependency_install": true,
+    "direct_smoke": {
+      "status": "passed",
+      "source_sha256": "fb32a9b5039db3a1dc0f33b451887cd6bb71e0ce409ea5e013adcf2763eff49e",
+      "native_abi": 3,
+      "rtol": 3e-06,
+      "atol": 0,
+      "tiny_nonzero_power": true,
+      "zero_energy_parseval": true,
+      "ownership_cleanup": true,
+      "reported_worker_cases": 4
+    },
+    "default_disk_power_reduction": "materialized",
+    "direct_log_requires_explicit_opt_in": true,
+    "new_large_trial_executed": false,
+    "actual_32gb_run": false,
+    "platform_ci": {
+      "results_included": false,
+      "status": "separate_workflow_evidence_required",
+      "pull_request": 3
+    },
+    "notes": "Fresh local build and correctness results apply to the pinned commit only. No cross-platform success or performance result is inferred from this local validation."
+  }
+}
