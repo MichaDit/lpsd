@@ -258,6 +258,10 @@ def sanitize(report):
             value = integer(row.get(key))
             if value is not None:
                 result[key] = value
+        fallback_samples = integer(row.get("live_memory_rss_fallback_samples"))
+        live_samples = integer(row.get("live_memory_samples"))
+        if fallback_samples is not None and live_samples is not None and fallback_samples <= live_samples:
+            result["live_memory_rss_fallback_samples"] = fallback_samples
         if isinstance(row.get("live_memory_observed"), bool):
             result["live_memory_observed"] = row["live_memory_observed"]
         if row.get("native_backend") in ("bounded", "legacy", "not_applicable"):

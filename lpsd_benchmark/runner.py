@@ -272,8 +272,16 @@ def _memory_usage(pid):
             if not proc.is_running():
                 continue
             info = proc.memory_info()
-            rss += info.rss
-            if os.name == "nt":
+            resident = info.rss
+            if type(resident) is not int or resident < 0:
+                return 0, 0
+            rss += resident
+            if sys.platform == "darwin":
+                # Older psutil USS queries need a privileged task port and can
+                # hang on headless macOS. Do not issue that optional query in
+                # the synchronous watchdog; preserve the complete RSS instead.
+                value = None
+            elif os.name == "nt":
                 value = getattr(info, "private", None)
                 if value is None:
                     value = getattr(info, "pagefile", None)
@@ -359,6 +367,7 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                      else lambda: _memory_usage(process.pid))
     status, reason, peak_rss = None, "", 0
     live_samples, missing_samples, rss_observed = 0, 0, False
+    rss_fallback_samples = 0
     missing_since = wall
     try:
         while process.poll() is None:
@@ -374,16 +383,22 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
             if rss_available:
                 peak_rss = max(peak_rss, rss)
                 rss_observed = rss_observed or rss > 0
+            rss_fallback = (case["storage"] == "disk" and sys.platform == "darwin"
+                            and rss_available and rss > 0 and anonymous is None)
             if case["storage"] == "disk":
-                available = rss_available and anonymous_available and (rss > 0 or anonymous > 0)
+                available = ((rss_available and anonymous_available and (rss > 0 or anonymous > 0))
+                             or rss_fallback)
             else:
                 available = rss_available and rss > 0
             if available:
                 live_samples += 1
                 missing_since = None
+                rss_fallback_samples += int(rss_fallback)
                 # On Linux disk paths, use anonymous resident bytes: the same
                 # file pages can be counted twice by overlapping mmap views.
-                measured = anonymous if case["storage"] == "disk" else rss
+                # Only macOS may substitute known RSS when USS is unavailable.
+                # RSS includes shared/file pages, so this is a stricter bound.
+                measured = anonymous if case["storage"] == "disk" and not rss_fallback else rss
                 if measured > case["ram_budget_bytes"]:
                     status, reason = "failed", "memory_limit"
                     terminate_tree(process)
@@ -446,7 +461,8 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
         result["rss_measurement"] = "sampled" if rss_observed else "unavailable"
     result.update(process_wall_s=elapsed, peak_rss_bytes=peak_rss, time_limit_s=timeout,
                   live_memory_observed=live_samples > 0, live_memory_samples=live_samples,
-                  live_memory_missing_samples=missing_samples)
+                  live_memory_missing_samples=missing_samples,
+                  live_memory_rss_fallback_samples=rss_fallback_samples)
     return result
 
 
