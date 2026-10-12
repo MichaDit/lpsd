@@ -15,7 +15,10 @@ issue report. It compares the original output count with an actual doubling
 of that count, limits the complete run to at most 24 hours, and admits only
 cases that fit the detected RAM and temporary-disk budgets. Contributors need
 no repository push access. See the [one-command benchmark](docs/portable-benchmark.md)
-and [public-report data policy](docs/benchmark-privacy.md).
+and [public-report data policy](docs/benchmark-privacy.md). The
+[October 2026 campaign](docs/benchmark-campaign-2026-10.md) provides
+commit-pinned commands that work before this PR is merged, including
+32-GB budgets and optional issue submission without repository write access.
 
 For large inputs, the benchmark can reuse the real FFT buffer in place, release
 FFT storage before the matched estimator's native phase, and compute long LPSD
