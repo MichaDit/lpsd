@@ -1,117 +1,196 @@
 # LPSD / FFTW benchmark campaign — October 2026
 
-Help compare native **LPSD/LNSD**, direct **FFTW**, and **FFTW matched to LNSD smoothness and peak width** on your hardware. The benchmark generates synthetic signals, records complete PSD + NSD calculation times and numerical checks, and keeps results local by default. You can optionally share a sanitized report through a GitHub issue; **no repository push permission, fork, or pull request is needed to contribute measurements**.
+The recovered campaign contains **132 completed cases out of 132**, including
+one billion samples and genuinely doubled output point counts. The
+[performance and memory report](performance-memory-points.md) explains the
+results; the [compact evidence JSON](../benchmarks/results/recovered-campaign-20261012.json)
+records exact measurements, historical source revisions and artifact SHA256
+identities. The historical measurements use E/G (`1.0.6+fast.7`). This document
+also describes the explicit controls in the `1.0.6+fast.8` development line;
+those controls do not turn the older observations into measurements of the
+new revision.
 
-This campaign uses commit [`6246f0c6061b5f72dba8e235e640fb0b71281a20`](https://github.com/MichaDit/lpsd/commit/6246f0c6061b5f72dba8e235e640fb0b71281a20) from **[draft PR #1](https://github.com/MichaDit/lpsd/pull/1)**. The PR remains unmerged. The commands below download that exact commit and work before the PR is merged.
+The campaign compares native **LPSD/LNSD**, direct **FFTW**, and **FFTW matched
+to LNSD smoothness and peak width**. It generates synthetic signals and keeps
+results local by default. Participants can optionally share a sanitized
+GitHub issue without repository push permission, a fork or a pull request.
 
-## Run with one command
+## Read the completed results
 
-Start in a writable directory. On the supported desktop/Linux routes, the command downloads private, pinned dependencies and builds the native implementation. It needs no administrator rights, Git installation, or preinstalled Python. The installation and results stay in the printed `lpsd-benchmark...` directory.
+All entries below are from the recovered Linux x86-64 environment with eight
+CPU equivalents and an 8 GiB cgroup ceiling. They are not measurements on all
+supported platforms or a physical 32 GB machine.
 
-**Linux x86-64 / ARM64 and macOS:**
+| Experiment | Completed observation | What it establishes |
+|---|---|---|
+| Main matrix | 132/132 cases; 42 white-noise cases across seven lengths | Complete joint PSD + NSD timings, numerical checks and actual point counts; one observation per case |
+| Fresh native 1B E→G pair | 5233.983 s → 1570.826 s wall; identical spectra | Smaller retained native pool and lower I/O pressure; the 3.332× wall ratio is not an isolated causal speedup |
+| Matched smoothing, four → eight workers | Complete-call median reductions of 14.25–18.19% at 30M/100M | A useful explicit configuration on this machine, with numerical identity; no universal worker default |
+| Prime length 1,000,003 | White-noise medians: direct FFTW 218.224 → 123.357 ms; matched 325.038 → 262.702 ms | A qualified Bluestein candidate for this length and build |
+| 1B disk columns, same factors | Auto 1094.373 s → strided 847.729 s; exact spectra | One complete ordered pair, 22.537% less wall time, but 3.529× as many process write bytes |
+
+The native main matrix includes an anomalously faster doubled-point 1B case.
+The separate E/G 100M counterpair also shows order-dependent variation. The
+report retains these observations and their CPU/I/O evidence; it does not
+conclude that more output points are intrinsically faster or attribute the
+entire E/G wall ratio to releasing one buffer pool.
+
+The historical strict numerical harness used `rtol=3e-6, atol=0`. Its failed
+pure-tone gates for some Bluestein and Packed Real cases remain recorded as
+failed. Reassessment against the campaign's approved **less-than-1%**
+tolerance qualifies the stored errors: maxima are 0.101458% PSD / 0.050739%
+NSD for Bluestein and 0.151066% PSD / 0.075562% NSD for Packed Real, with very
+small absolute errors. These are distinct acceptance criteria. The original
+Packed Real numerical experiment provides no performance measurement.
+
+## Run the campaign
+
+Use the [portable benchmark instructions](portable-benchmark.md) for the
+platform-specific launcher and pinned dependencies. Select the full
+40-character commit from the published release or reviewed PR, and use that
+same revision for both launcher and source. A revision identifies a
+reproducible campaign more precisely than the package version alone.
+
+In an already prepared checkout of the selected revision, using its prepared
+Python environment, the local campaign command is:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --point-factors 1 2
+python -m lpsd_benchmark run --point-factors 1 2 --save-spectra --output results.json
 ```
 
-**Windows PowerShell 5.1 or PowerShell 7:**
+The same Python arguments work in PowerShell. With the portable PowerShell
+launcher, pass them in `-BenchmarkArgs`; the shell launcher accepts them as
+ordinary arguments. Bootstrap installation and platform requirements are
+maintained in the portable guide so that this announcement does not pin a
+new feature to an older runtime.
 
-```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--point-factors','1','2')
-```
-
-The wrapper and source use the same full commit. Review the [pinned instructions and scripts](https://github.com/MichaDit/lpsd/blob/6246f0c6061b5f72dba8e235e640fb0b71281a20/docs/portable-benchmark.md) before executing downloaded code if desired.
-
-## What the campaign measures
-
-| Method | Estimator |
+| Method argument | Estimator |
 |---|---|
 | `lpsd` | Native bounded LPSD, with LNSD derived from PSD |
 | `fftw` | FFTW periodogram with logarithmic aggregation |
 | `matched` | FFTW with frequency-dependent smoothing and low-frequency LPSD to approximate LNSD smoothness and peak width |
 
-The default sizes are **100,000; 1,000,000; 1,000,003; 10,000,000; 30,000,000; 100,000,000; and 1,000,000,000 samples**. The full profile checks six signal presets at the three smaller sizes and white noise at the larger sizes. Cases run serially, using the same frequency plan, float64 synthetic input, and float32 PSD/NSD outputs.
+The default lengths are **100,000; 1,000,000; 1,000,003; 10,000,000;
+30,000,000; 100,000,000; and 1,000,000,000**. The full profile checks six
+signal presets at the three smaller lengths and white noise at the four
+larger lengths. Cases run serially, using the same frequency plan, float64
+synthetic input and float32 PSD/NSD outputs. `--profile performance` selects
+white noise only.
 
-`--point-factors 1 2` requests the baseline and **twice the actual number of returned frequency points**. It resolves the native planner parameter `J` separately and records achieved counts; a planner plateau remains visible. Simply changing `J` from 1,000 to 2,000 does not ensure twice as many outputs. To add a further useful comparison, replace the argument with `--point-factors 1 2 4`.
+`--point-factors 1 2` resolves the planner parameter J separately to obtain
+baseline and **twice the actual returned frequency count**. The main
+campaign's pairs were 469/938, 577/1154, 577/1154, 651/1302, 678/1356,
+704/1408 and 744/1488, in the length order above. `--points 1000 2000`
+requests raw J values and does not promise that doubling. Reports retain
+achieved counts and any planner plateau.
 
-Each `compute_wall_s` / `compute_cpu_s` pair describes **one complete call producing both PSD and NSD**, including planning and working arrays. `input_setup_s` includes input generation and its initial checksum. `process_wall_s` covers the full worker lifetime, including imports, setup, computation, and final checks. Integrity outcomes are recorded as flags, hashes, and quality metrics; there is no separate final-check timer. The matrix takes one observation per case; repeat a campaign to assess variation. Forecasts, skips, and timeouts are labelled separately from completed measurements. The report also identifies the actual FFTW version and binary hash.
+Each `compute_wall_s` / `compute_cpu_s` pair describes **one complete call
+producing both PSD and NSD**, including planning and working arrays.
+`input_setup_s` covers input generation and the initial checksum;
+`process_wall_s` covers the entire worker lifetime, including imports,
+setup and final checks. CPU time can exceed wall time when threads run in
+parallel. Forecasts, skips and timeouts are separate from completed timings.
 
-## Choose a 32 GB or smaller budget
+## Compare explicit controls
 
-The default derives RAM, disk, and thread limits from the machine. An explicit RAM setting is an **allocation/work ceiling**, reduced when physical memory, cgroup limits, available memory, or the OS reserve require it.
+Run configurations serially, retain separate reports and repeat in both
+orders when assessing speed. Keep the signal, length, output count, source,
+FFTW build, storage and resource limits comparable.
 
-| Requested ceiling | Argument | Bytes before reserves |
-|---|---|---:|
-| **32 decimal GB** | `--ram-gib 29.8023223876953125` | 32,000,000,000 |
-| **32 GiB** | `--ram-gib 32` | 34,359,738,368 |
-| Small ARM system | `--ram-gib 0.75 --disk-gib 2 --threads 2 --max-hours 6` | Budgets are checked on that device |
-
-**32-decimal-GB campaign, including local spectra for plotting — Linux/macOS:**
-
-```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --ram-gib 29.8023223876953125 --point-factors 1 2 --save-spectra
-```
-
-**The same 32-decimal-GB campaign — Windows:**
-
-```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--ram-gib','29.8023223876953125','--point-factors','1','2','--save-spectra')
-```
-
-For **32 GiB**, replace the value after `--ram-gib` with `32`. The admitted budget and measured process memory in your report describe the actual experiment. These commands configure new measurements; this announcement contains no measured 32-GB performance claim.
-
-### Memory, disk, and time handling
-
-With automatic settings, RAM admission tries a **full window with separate FFT input/output**, then a **full window with an in-place FFT**, then **an in-place FFT with a bounded window**. The last mode regenerates window coefficients in blocks of at most 262,144 samples and avoids one separate 8N-byte window allocation—8 decimal GB at one billion samples. The original samples, frequency plan, and normalization are preserved. This window mode is for one complete computation per prepared object; reusable estimators retain their full-window default.
-
-The buffer estimates include an empirical FFTW planning allowance. **They are admission estimates, not guaranteed peak RSS.** The selected FFT layout, window mode, estimates, and measured memory are recorded. If RAM admission fails, the runner considers a bounded disk path; cases that cannot fit are skipped.
-
-Temporary datasets use a private directory under the original OS/user temporary directory. For large cases, choose a local SSD or another local drive with `--work-dir /path/on/local-drive/lpsd-work`. Avoid synchronized folders, whose background copies can consume space and alter timings. Detected Linux `tmpfs`/`ramfs` workdirs disable the disk fallback before dataset files are created; RAM cases remain available. The private installation has a separate default **2 GiB setup cap**.
-
-Once the downloaded wrapper starts, the maximum is **24 hours for bootstrap setup plus the benchmark**; `--max-hours` can shorten it. The initial wrapper request has a separate 60-second client timeout and precedes this setup/run budget. Installation, compilation, optional login, data generation, computation, and checks consume that budget. Larger cases are admitted using conservative forecasts from smaller completed cases, and owned worker processes have timeouts. Completed results are checkpointed. Long-running cases print the elapsed process time and effective process limit once per minute; these are not completed compute timings. The deadline cannot keep a suspended or powered-off device running.
-
-## Platform coverage
-
-| Environment | Route |
+| Comparison | Arguments added to the campaign command |
 |---|---|
-| Linux x86-64 / ARM64, glibc 2.28+ | Automatic private installation; both architectures have portable CI coverage |
-| Raspberry Pi / Rockchip RK3399 | Use a compatible **64-bit Linux** installation and suitable RAM/disk limits; board-specific performance still needs device measurements |
-| macOS Apple Silicon, 14+ | Native ARM64 automatic route with portable CI coverage |
-| macOS Intel, 13+ | Automatic route based on the pinned package tags; not covered by this campaign's four portable CI jobs |
-| Windows x64 | Automatic private installation with portable CI coverage |
-| Windows 11 ARM64 | Deliberate x64 emulation for this dependency set; host and process architectures are reported separately |
-| Android / Termux ARM64 | **Experimental prepared-environment route:** existing compatible Python, NumPy, pandas, SciPy, psutil, Clang, and FFTW are required |
+| Smoothing default at an eight-thread ceiling | `--threads 8` |
+| Explicit eight-worker matched smoother | `--threads 8 --smoothing-workers 8` |
+| Cap native LPSD working memory, including matched low frequencies | `--native-working-mib 384` |
+| Full disk FFT reference | `--storage disk --disk-fft-algorithm full` |
+| Packed Real disk FFT comparison | `--storage disk --disk-fft-algorithm packed-real` |
+| Explicit RAM window comparison | `--storage ram --window-storage full` or `--storage ram --window-storage fft_input_then_blocked` |
 
-Termux does not use the desktop Linux wheels or automatically build the scientific stack. Follow the [pinned Termux instructions](https://github.com/MichaDit/lpsd/blob/6246f0c6061b5f72dba8e235e640fb0b71281a20/docs/portable-benchmark.md#android--termux); stock Android and 32-bit systems are outside this automatic route. Android may terminate long-running processes.
+Smoothing retains its default of **min(4, admitted threads)**. An explicit
+request is capped by CPU affinity, quota and `--threads`. Each admitted
+worker above that default adds an empirical 9 MiB runtime/address reserve
+inside the existing allocation budget: eight instead of four reserves
+36 MiB. This may change storage or layout admission and is not a measured
+RSS increment.
 
-For this commit, the [native test/build workflow](https://github.com/MichaDit/lpsd/actions/runs/38197747608) and [portable bootstrap workflow](https://github.com/MichaDit/lpsd/actions/runs/38197747490) passed all 12 jobs. The portable jobs cover Linux x64, Linux ARM64, macOS ARM64, and Windows x64, including numerical smoke runs with the bounded window. CI does not constitute a billion-sample run on every platform.
+The optional native cap only reduces the existing native working allowance;
+it does not increase the overall budget or give the released space to a
+larger FFT. An explicit 384 MiB setting is therefore a separate configuration,
+not a claim that 384 MiB is fastest. The recovered G384-v2 gate has 233 small
+cases and 685 streaming comparisons, but no completed billion-sample timing
+comparison. Reports record the requested, admitted and applied byte limits.
 
-## Share a result without repository push access
+Packed Real is an explicit disk choice. The historical prototype retained
+24N bytes of large files, so halving its internal FFT length did not halve
+the complete file footprint. Current integration and platform follow-up
+results must be assessed using their own revision and measurements.
 
-Read the [pinned privacy notice](https://github.com/MichaDit/lpsd/blob/6246f0c6061b5f72dba8e235e640fb0b71281a20/docs/benchmark-privacy.md) first. To opt into a public GitHub issue, add **both** `--upload-github --accept-public-upload`.
+## Resource limits and a 32 GB experiment
 
-**Automatic submission with an existing GitHub CLI login — Linux/macOS:**
+| Goal | Arguments |
+|---|---|
+| 32 decimal GB requested ceiling | `--ram-gib 29.8023223876953125` |
+| 32 GiB requested ceiling | `--ram-gib 32` |
+| Smaller ARM device | `--ram-gib 0.75 --disk-gib 2 --threads 2 --max-hours 6` |
+| Select a local dataset drive | `--work-dir /path/on/local-drive/lpsd-work` |
+
+GB is 10⁹ bytes and GiB is 2³⁰ bytes. The requested RAM ceiling is bounded
+by physical/cgroup limits, available memory and the OS reserve. A physical
+32 decimal GB machine therefore cannot provide a 32 GB working budget.
+The [memory report](performance-memory-points.md) gives the exact conservative
+1B admission estimates; they are models, not measured 32 GB timings or
+promises of peak RSS.
+
+Automatic RAM admission considers a full window with separate FFT buffers,
+then in-place FFT, then in-place FFT with a bounded window. The bounded
+window avoids a separate 8N-byte vector: 8 decimal GB at one billion samples.
+If RAM admission fails, a bounded disk route is considered. Cases exceeding
+resource or time limits are skipped. Detected Linux `tmpfs`/`ramfs` workdirs
+disable disk fallback before dataset creation. A local drive avoids
+synchronization traffic during measurements.
+
+The portable wrapper allows at most 24 hours for setup plus the run;
+`--max-hours` shortens this. The initial wrapper download has a separate
+client timeout. Compilation, optional login, generation, computation and
+checks consume the setup/run budget. Completed cases are checkpointed,
+larger cases use conservative forecasts, and owned workers have timeouts.
+Each separate invocation has its own budget.
+
+Linux x86-64/ARM64, macOS and Windows routes, Windows ARM64's x64 process,
+and the experimental prepared Termux route are described in the
+[platform guide](portable-benchmark.md). CI smoke tests establish portability
+and numerical behavior for their tested cases. They do not establish
+billion-sample performance on each platform, Raspberry Pi, RK3399 or Android.
+
+## Share a result
+
+Read the [privacy notice](benchmark-privacy.md) before publishing. A run
+uploads only when **both** `--upload-github --accept-public-upload` are
+selected. `--github-login` on the bootstrap explicitly requests an
+interactive login using the participant's GitHub account. Without successful
+submission, calculations and prepared public bodies remain local.
+
+To prepare an existing report for inspection without publishing:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.sh | sh -s -- --revision 6246f0c6061b5f72dba8e235e640fb0b71281a20 --point-factors 1 2 --upload-github --accept-public-upload
+python -m lpsd_benchmark submit results.public.json
 ```
 
-**Windows:**
+To publish that selected report using an authenticated GitHub CLI, add
+`--accept-public-upload`. `--save-spectra` keeps spectra only in the local
+report and also writes the compact `results.public.json`; automatic upload
+uses that public file. Select it explicitly for later manual submission if
+the local spectra report exceeds the 16 MiB reader limit.
 
-```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/6246f0c6061b5f72dba8e235e640fb0b71281a20/scripts/run_benchmark.ps1'))) -Revision '6246f0c6061b5f72dba8e235e640fb0b71281a20' -BenchmarkArgs @('--point-factors','1','2','--upload-github','--accept-public-upload')
-```
+Large public payloads are compressed and may be split into one issue and
+numbered comments, with digest markers and a transfer receipt. The
+[portable guide](portable-benchmark.md) describes reconstruction and handling
+an uncertain response before any manual retry. The uploader does not
+silently discard cases or switch to another selected input file.
 
-The bootstrap reuses an installed `gh`, or obtains a pinned private copy when available. To explicitly request a new browser/device login, also add `--github-login`—as another shell argument, or as `'--github-login'` in the PowerShell array. You complete that authorization using your own GitHub account. Login time counts against the deadline.
-
-If authentication or connectivity is unavailable, results and prepared public bodies remain local. You can review `results.github-issue.md` and paste it into [a new GitHub issue](https://github.com/MichaDit/lpsd/issues/new). To prepare public content after a local-only run, use the retained private Python from the retained source directory with `-m lpsd_benchmark submit /path/to/results.json`; this command alone does not publish.
-
-When `--save-spectra` is selected, every checkpoint also writes a compact **`results.public.json`** containing the exact allowlisted report without spectra. Automatic submission uses this file. Select it explicitly for later manual submission if the larger local spectra report exceeds the unchanged 16 MiB reader limit. The uploader does not silently substitute a different input file.
-
-Large reports are compressed and, when necessary, divided into **one issue and numbered comments on that same issue**, with at most 16 parts of 60,000 bytes each. No cases are silently omitted. Every part identifies the same complete-payload SHA256; the documented offline procedure reconstructs the exact public JSON. The uploader prepares all public bodies and comment requests before its noninteractive authentication check and any result upload. An explicitly requested `--github-login` is a separate earlier bootstrap step; it can run before the measurements and report preparation.
-
-A multipart receipt records confirmed and uncertain parts. If a response is lost, inspect the existing issue and its digest/index markers before manually adding any missing parts. Repeating the same local multipart submission does not automatically recreate, retry, or continue it. A completed local calculation does not depend on successful publication.
-
-**A public issue is associated with your GitHub account.** The allowlisted payload excludes hostnames, usernames, paths, network identifiers, tokens, logs, raw signals, and saved spectra. This reduces disclosed data; it does not make the issue anonymous or provide a blanket GDPR/DSGVO guarantee. GitHub also processes account and connection data. The privacy notice explains the remaining collection-operator responsibilities. Publish only the prepared report, not the installation directory or terminal logs.
-
-The benchmark issue form is included in PR #1 and will appear after it reaches the repository's default branch. **Ordinary issues and the explicit CLI submission work now.** Code changes remain subject to PR review; participants can contribute measurements without receiving repository write permission.
+A public issue is associated with the participant's GitHub account. The
+allowlist omits hostnames, usernames, absolute paths, network identifiers,
+tokens, logs, raw signals and saved spectra; this does not make the issue
+anonymous. Publish the prepared report rather than installation directories
+or terminal logs. Numerical work and optional report publication remain
+separate, and participants need no repository write permission.

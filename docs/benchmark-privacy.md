@@ -50,6 +50,7 @@ format checks. Unknown fields and arbitrary text are not carried through.
 | Requested and achieved point counts, storage/FFT layout, thread counts | Describe the work actually performed |
 | Explicit smoothing request, admitted limit, executor capacity, task-range/point counts and closed backend/policy enums | Identify the selected matched-FFTW execution configuration without claiming measured active-thread counts |
 | Smoothing runtime-reserve bytes and a closed empirical model identifier | Explain extra headroom charged inside the existing allocation budget; not measured RSS |
+| Optional native working request in MiB, automatic/admitted/applied byte limits and closed policy | Distinguish requested and actually used native allowances; keep explicit-cap forecast profiles separate without collecting paths or free-form text |
 | Wall/CPU times, available phases, input setup, process memory and numeric working-set metadata | Compare completed work and resource use |
 | Native scratch-pool initial/final/peak byte capacities, a replacement Boolean and actual plan indices | Describe observed buffer lifecycle without including policy text or claiming RSS savings |
 | Closed status/reason categories, forecasts and timeouts | Preserve incomplete or infeasible cases without disclosing exception text |

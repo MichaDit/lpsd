@@ -21,6 +21,7 @@ MIB = 1024 ** 2
 GIB = 1024 ** 3
 SMOOTHING_RESERVE_MODEL = "incremental_9mib_above_cap4_v1"
 SMOOTHING_EXTRA_WORKER_BYTES = 9 * MIB
+MAX_NATIVE_WORKING_MIB = (2 ** 63 - 1) // MIB
 
 
 def smoothing_controls(method, thread_limit, requested=None):
@@ -55,6 +56,66 @@ def _smoothing_reserve(method, reserve_bytes):
     if type(reserve_bytes) is not int or reserve_bytes < 0:
         raise ValueError("smoothing runtime reserve must be nonnegative integer bytes")
     return reserve_bytes if method == "matched" else 0
+
+
+def native_working_request(requested):
+    """Validate an optional cap before importing any numerical dependency."""
+    if requested is not None and (type(requested) is not int
+                                  or not 64 <= requested <= MAX_NATIVE_WORKING_MIB):
+        raise ValueError(f"native-working-mib must be an integer from 64 to {MAX_NATIVE_WORKING_MIB}")
+    return requested
+
+
+def native_working_budget(case):
+    """Return MiB allowance, existing headroom, and closed cap provenance.
+
+    No request preserves the original RAM/disk budget calculation. An
+    explicit request only lowers that allowance; freed bytes are not spent
+    on FFT buffers, extra threads, or relaxed storage/admission estimates.
+    The adapter's 64-MiB minimum must fit before it can be constructed.
+    """
+    requested = native_working_request(case.get("requested_native_working_mib"))
+    method = case.get("method", "lpsd")
+    smoothing = smoothing_controls(method, case["requested_threads"],
+                                   case.get("requested_smoothing_workers"))
+    fields = {"requested_native_working_mib": requested if method != "fftw" else None,
+              "native_working_policy": ("not_applicable" if method == "fftw" else
+                                        "auto" if requested is None else "explicit_cap")}
+    if method == "fftw":
+        return None, None, fields
+    ram = case["ram_budget_bytes"]
+    if type(ram) is not int or not 0 <= ram <= 2 ** 63 - 1:
+        raise ValueError("RAM budget must be nonnegative integer bytes below 2**63")
+    headroom = ram - 256 * MIB - smoothing["smoothing_runtime_reserve_bytes"]
+    if case["storage"] == "ram":
+        headroom -= 8 * case["n"] + case["requested_threads"] * 3 * MIB
+        automatic_mb = headroom / MIB
+        automatic = max(0, int(automatic_mb * MIB))
+    elif case["storage"] == "disk":
+        automatic_mb = case["low_working_mb"]
+        if (type(automatic_mb) not in (int, float) or not math.isfinite(automatic_mb)
+                or not 0 < automatic_mb <= MAX_NATIVE_WORKING_MIB):
+            raise ValueError("Native automatic disk budget must be positive finite MiB")
+        # Match the unchanged adapter conversion, including old private cases
+        # that supplied less than its documented minimum.
+        automatic = max(64 * MIB, int(automatic_mb * MIB))
+    else:
+        raise ValueError("Native storage must be ram or disk")
+    limit = automatic
+    working_mb = automatic_mb
+    if requested is not None:
+        limit = max(0, min(automatic, headroom, requested * MIB))
+        working_mb = limit / MIB
+        # A very large integer headroom need not be exactly representable in
+        # binary64. Never round the cap upwards when passing MiB to C/Python.
+        if int(working_mb * MIB) > limit:
+            working_mb = math.nextafter(working_mb, 0.0)
+        limit = int(working_mb * MIB)
+    fields.update(native_working_auto_limit_bytes=automatic,
+                  native_working_limit_bytes=limit)
+    if headroom < 64 * MIB or limit < 64 * MIB:
+        working_mb = None
+    return working_mb, headroom, fields
 
 
 def _read(path):
@@ -416,13 +477,45 @@ class Deadline:
         return max(0., self._clock() - self.started)
 
 
+def calibration_matches(case, row):
+    """Use the same execution profile for forecasts and small calibration.
+
+    Automatic/legacy native cases retain the previous scaling policy.
+    Explicit caps must match request AND admitted bytes: an automatically
+    reduced 256-MiB allowance is not a calibration for a 384-MiB case.
+    """
+    if (row.get("status") != "completed" or row.get("method") != case["method"]
+            or row.get("signal") != case["signal"]):
+        return False
+    if case["method"] != "lpsd":
+        # Retain historical full RAM-to-disk forecasts, but an explicitly
+        # packed disk transform must be calibrated from that same route.
+        algorithms = [value.get("disk_fft_algorithm", "full")
+                      if value.get("storage") == "disk" else "full"
+                      for value in (case, row)]
+        if algorithms[0] != algorithms[1] or algorithms[0] not in ("full", "packed-real"):
+            return False
+    if (case["method"] == "matched"
+            and row.get("smoothing_workers_limit") != case.get("smoothing_workers_limit")):
+        return False
+    if case["method"] in ("lpsd", "matched"):
+        policy, previous = (value.get("native_working_policy", "auto") for value in (case, row))
+        if policy == previous == "auto":
+            return True
+        if policy != "explicit_cap" or previous != "explicit_cap":
+            return False
+        for key, minimum, maximum in (("requested_native_working_mib", 64, MAX_NATIVE_WORKING_MIB),
+                                       ("native_working_limit_bytes", 64 * MIB, 2 ** 63 - 1)):
+            value = case.get(key)
+            if (type(value) is not int or not minimum <= value <= maximum
+                    or type(row.get(key)) is not int or row[key] != value):
+                return False
+    return True
+
+
 def predict_seconds(case, completed, safety_factor=4.0):
     """Conservative whole-process forecast; never report this as a timing."""
-    matching = [row for row in completed if row.get("status") == "completed"
-                and row.get("method") == case["method"]
-                and row.get("signal") == case["signal"]
-                and (case["method"] != "matched"
-                     or row.get("smoothing_workers_limit") == case.get("smoothing_workers_limit"))]
+    matching = [row for row in completed if calibration_matches(case, row)]
     if not matching:
         # Small calibration cases get a bounded opportunity on an unknown
         # machine. They are the only starts without measured scaling evidence.

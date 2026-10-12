@@ -91,6 +91,27 @@ def _smoothing_fields(source, *, settings=False):
     return result
 
 
+def _native_working_fields(source, *, settings=False):
+    """Optional cap provenance with integer units and no free-form values."""
+    result = {}
+    if not isinstance(source, dict):
+        return result
+    requested = integer(source.get("requested_native_working_mib"), 64,
+                        (2 ** 63 - 1) // (1024 ** 2))
+    if requested is not None:
+        result["requested_native_working_mib"] = requested
+    policy = source.get("native_working_policy")
+    if isinstance(policy, str) and policy in ("auto", "explicit_cap", "not_applicable"):
+        result["native_working_policy"] = policy
+    if not settings:
+        for key in ("native_working_auto_limit_bytes", "native_working_limit_bytes",
+                    "native_working_applied_bytes"):
+            value = integer(source.get(key), 64 * 1024 ** 2 if key.endswith("applied_bytes") else 0)
+            if value is not None:
+                result[key] = value
+    return result
+
+
 def sanitize(report):
     """Construct a new report from a closed schema, never delete-list redact.
 
@@ -120,12 +141,14 @@ def sanitize(report):
         },
         "settings": {
             **_smoothing_fields(settings, settings=True),
+            **_native_working_fields(settings, settings=True),
             **_numbers(settings, ("max_seconds", "bootstrap_remaining_seconds", "ram_budget_mib",
                                   "disk_budget_mib", "threads", "sample_rate_hz", "seed",
                                   "n_averages", "psll_db", "prediction_safety_factor", "base_points")),
             "storage": _enum(settings.get("storage"), ("auto", "ram", "disk", "both"), "auto"),
             "fft_layout": _enum(settings.get("fft_layout"), ("auto", "out-of-place", "in-place"), "auto"),
             "window_storage": _enum(settings.get("window_storage"), ("auto", "full", "fft_input_then_blocked"), "auto"),
+            "disk_fft_algorithm": _enum(settings.get("disk_fft_algorithm"), ("full", "packed-real"), "full"),
             "timing_scope": "complete_call_psd_and_nsd",
             "input_dtype": "float64",
             "output_dtype": "float32",
@@ -162,11 +185,13 @@ def sanitize(report):
             continue
         result = {
             **_smoothing_fields(row),
+            **_native_working_fields(row),
             "n": row["n"], "target_points": row["target_points"],
             "method": row["method"], "signal": row["signal"],
             "storage": _enum(row.get("storage"), ("ram", "disk"), "ram"),
             "fft_layout": _enum(row.get("fft_layout"), ("out-of-place", "in-place", "blocked", "not_applicable"), "not_applicable"),
             "window_storage": _enum(row.get("window_storage"), ("full", "fft_input_then_blocked", "blocked", "not_applicable"), "not_applicable"),
+            "disk_fft_algorithm": _enum(row.get("disk_fft_algorithm"), ("full", "packed-real", "not_applicable"), "not_applicable"),
             "status": _enum(row.get("status"), STATES, "failed"),
             "reason": _enum(row.get("reason", ""), REASONS, "worker_failed"),
             "case_role": _enum(row.get("case_role"), ("calibration", "comparison"), "comparison"),
@@ -182,6 +207,11 @@ def sanitize(report):
                              "input_setup_s", "peak_rss_bytes", "sample_iterations",
                              "minimum_frequency_hz", "maximum_frequency_hz")),
         }
+        if row.get("disk_fft_effective_algorithm") in ("full", "packed-real"):
+            result["disk_fft_effective_algorithm"] = row["disk_fft_effective_algorithm"]
+        inner = integer(row.get("disk_fft_inner_samples"), 2, 2_147_483_647)
+        if inner is not None:
+            result["disk_fft_inner_samples"] = inner
         # Pool capacities are observed allocations, not resident-memory
         # measurements. Keep integer bytes and only actual retirement indices.
         for key in ("native_scratch_initial_bytes", "native_scratch_final_bytes", "native_scratch_peak_bytes"):

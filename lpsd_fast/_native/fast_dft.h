@@ -139,6 +139,11 @@ int window_sums(const double *window, long int length,
  * CPU family. Mode 3 is useful when long double is software binary128. */
 int native_long_double_mantissa_bits(void);
 
+/* Whether order-0 mode 1 can subtract the original residual directly in
+ * its SIMD dot, without a length-sized residual vector. This requires
+ * long double to have the same precision and exponent range as double. */
+int native_inline_mean_supported(void);
+
 /* NumPy/Cephes-based periodic Kaiser window, equivalent to
  * np.kaiser(length + 1, beta)[:-1]. The same approximation coefficients
  * are used; scalar libm exp can differ from NumPy by a few ulps.

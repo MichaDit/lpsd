@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from . import __version__
+from ._resources import host_available_memory
 from .planning import _asdrms, _kaiser_alpha, _kaiser_rov, _ltf_plan
 from ._windows import COSINE_WINDOWS, COSINE_WINDOW_NAMES
 
@@ -76,8 +77,8 @@ def available_workers():
     """Respect process affinity and a Linux cgroup v2 CPU quota."""
     try:
         count = len(os.sched_getaffinity(0))
-    except AttributeError:
-        count = os.cpu_count() or 1
+    except (AttributeError, OSError):
+        count = getattr(os, 'process_cpu_count', os.cpu_count)() or 1
     try:
         quota, period = Path('/sys/fs/cgroup/cpu.max').read_text().split()
         if quota != 'max':
@@ -115,6 +116,10 @@ def _available_memory():
                 candidates.append(int(line.split()[1]) * 1024)
     except (OSError, ValueError):
         pass
+    if not candidates:
+        available = host_available_memory()
+        if available is not None:
+            candidates.append(available)
     return min(candidates) if candidates else 2 * 1024**3
 
 
@@ -166,6 +171,8 @@ def _native():
             _LIB.generate_coefficients_blocked.restype = ct.c_int
             _LIB.native_long_double_mantissa_bits.argtypes = []
             _LIB.native_long_double_mantissa_bits.restype = ct.c_int
+            _LIB.native_inline_mean_supported.argtypes = []
+            _LIB.native_inline_mean_supported.restype = ct.c_int
         return _LIB.fast_dft
 
 
@@ -313,6 +320,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
         # Compensated FP64 preparation avoids expensive wider long-double
         # arithmetic on targets such as the Linux AArch64 ABI.
         mode = 3
+    inline_mean = mode == 1 and order == 0 and bool(_LIB.native_inline_mean_supported())
     statistics = 'ps_std' in outputs or 'psd_std' in outputs
     spectrum = any(name != 'enbw' for name in outputs)
     # PSD also controls upstream's real/complex output convention. Keep its
@@ -409,7 +417,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
         temporary_bytes = min(length, _CHUNK) * 96 if kernel == 'scalar' else 8192
         # Modes 2/3 project our private coefficients in place; there are no
         # extra projected arrays. Detrending in modes 0/1 needs residuals.
-        bytes_per_sample = 24 if mode >= 2 or order < 0 else (40 if csd else 32)
+        bytes_per_sample = 24 if mode >= 2 or order < 0 or inline_mean else (40 if csd else 32)
         wait_started = time.perf_counter() if profile else 0.0
         reserved = gate.acquire(length * (bytes_per_sample if spectrum else 8) + temporary_bytes)
         t0 = time.perf_counter()
@@ -513,6 +521,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                                 'native_mode': mode, 'estimator': 'lpsd-1.0.6',
                                 'legacy_statistics': True, 'outputs': list(outputs),
                                 'variance_computed': statistics,
+                                'inline_mean_residual': inline_mean,
                                 'rolling_boxcar_frequencies': sum(rolling_boxcar),
                                 'fused_segment_batches': sum(fused_counts),
                                 'native_window': kernel != 'scalar' and known_window,

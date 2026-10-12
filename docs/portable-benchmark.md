@@ -63,6 +63,8 @@ these arguments changes the run:
 | Explicit FFT buffer comparison | `--fft-layout in-place` or `--fft-layout out-of-place` |
 | Explicit one-shot window memory comparison | `--window-storage full` or `--window-storage fft_input_then_blocked` |
 | Explicit matched-FFTW smoothing parallelism | `--threads 8 --smoothing-workers 8` |
+| Cap native LPSD working memory, including the hybrid's low frequencies | `--native-working-mib 384` |
+| Compare the real-input disk FFT route | `--storage disk --disk-fft-algorithm packed-real` |
 | Preserve local spectra for plotting | `--save-spectra` |
 | Put dataset files on a selected local drive | `--work-dir /path/on/local-drive/lpsd-work` |
 | Use an installed compatible compiler only | `--compiler system` |
@@ -119,6 +121,89 @@ A controlled 4/8-worker experiment with a fixed native working allowance
 is a separate configuration: this option can change that allowance or the
 selected layout, so the experiment's speedup does not predict every portable
 case.
+
+`--native-working-mib INTEGER` optionally caps the native working allowance
+for `lpsd` and the native low-frequency part of `matched`, in RAM and disk
+mode. It accepts at least **64 MiB**; one MiB is exactly 1,048,576 bytes.
+Without this option, the existing automatic allowance is preserved.
+The simple `fftw` method reports `not_applicable` and receives no native cap.
+
+The effective allowance is the smallest of the requested cap, the existing
+automatic allowance, and the remaining native headroom after input and
+runtime reserves. A `384` request can therefore admit only 256 MiB on a
+smaller machine. If the 64-MiB minimum or the actual planned buffers cannot
+fit, the case is skipped before sample/scratch allocation. The cap is used
+by both admission preview and the actual computation, and the capacity
+returned by the native estimator is verified after the complete-call timer.
+
+This option changes the native pool and potentially the selection of
+streamed coefficients. It keeps the input samples, original frequency plan,
+window/normalization definitions and output formats. A lower cap can improve
+file-cache headroom, but it can also add coefficient regeneration and limit
+concurrency; **a smaller cap is not automatically faster**. The cap is neither
+the allocated scratch-pool size nor a total-process RSS limit. It does not
+increase FFT buffers, admitted threads, total RAM/disk allowances, or OS
+limits, and the existing conservative storage/layout/window selection stays
+in force.
+
+Reports distinguish `requested_native_working_mib`, the
+`native_working_auto_limit_bytes` before the explicit cap, the admitted
+`native_working_limit_bytes`, and `native_working_applied_bytes` read from a
+completed native computation. An empty native subset does not invent an
+applied capacity. `native_working_mb` retains its historical name but uses
+MiB and agrees with the effective allowance. The closed policy is `auto`,
+`explicit_cap`, or `not_applicable`. Older reports retain absent provenance.
+Forecasts for an explicit cap use only completed cases with the same request
+and admitted byte limit; auto/2048-MiB results cannot silently calibrate a
+384-MiB profile. Keep separate reports when comparing caps, for example:
+
+```sh
+python -m lpsd_benchmark run --profile performance --methods lpsd matched --storage disk --native-working-mib 384 --point-factors 1 2 --output native384.json
+```
+
+The same argument passes through the Linux/macOS, PowerShell and prepared
+Termux bootstrap routes. Existing setup/run deadlines and small calibration
+cases still apply; no automatic cap search or extra large test is started.
+
+### Real-input disk FFT
+
+`--disk-fft-algorithm packed-real` explicitly selects a real-input transform
+for the `fftw` and `matched` disk methods. For even N >= 4, adjacent real
+samples form an N/2-point complex transform, followed by bounded reconstruction
+of the original positive-frequency powers. The input samples, original-N
+frequency grid, window sums, PSD/NSD normalization and matched smoothing are
+preserved. Odd N and N=2 fall back to the established full complex transform.
+RAM methods and native `lpsd` do not use this option. The default remains
+`--disk-fft-algorithm full`.
+
+The active complex region shrinks from 16N to 8N bytes. The backing file still
+has **16N bytes** because it stages the original input and window, and the
+input plus workspace still require **24N bytes**. Reconstruction reuses bounded
+FFTW scratch, with no extra sample-sized anonymous array. Thus this option
+reduces transform work and the active complex region; it does not halve the
+total disk budget. The same conservative resource admission and process
+supervision remain in force.
+
+Floating-point rounding can differ, especially at tiny spectral nulls. The
+packed/full comparison checks every PSD and NSD value against the requested
+1% relative limit and separately reports the historical, stricter 3-ppm gate.
+The previous strict results have not been relabeled. See the
+[qualification and platform measurements](performance-platform-followup.md).
+
+Use small **disk** calibration cases before larger packed cases; full-FFT or
+RAM timings do not calibrate this algorithm. For example:
+
+```sh
+python -m lpsd_benchmark run --profile performance --methods fftw matched --storage disk --sizes 100000 1000000 10000000 --disk-fft-algorithm packed-real --point-factors 1 2 --output packed-real.json
+```
+
+`disk_fft_algorithm` records the request, while
+`disk_fft_effective_algorithm` and `disk_fft_inner_samples` are read back from
+a completed disk computation. These fields make the odd-N fallback explicit.
+The sanitized report accepts only the documented choices and integer lengths.
+The same argument passes through the supported bootstrap wrappers.
+
+### Allocation and disk budgets
 
 `--ram-gib` is a conservative **allocation/work budget**, clamped to detected
 physical memory, cgroup limits and currently available memory. It cannot make

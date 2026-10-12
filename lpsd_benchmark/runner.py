@@ -23,9 +23,9 @@ import time
 
 from . import DEFAULT_SIZES, MAX_SECONDS, METHODS, SCHEMA, SIGNALS
 from .privacy import MAX_CASES, MAX_LOCAL_BYTES, sanitize, submit
-from .resources import (Deadline, MIB, choose_fft_layout, choose_window_storage,
-                        detect_resources, fftw_plan_reserve, predict_seconds, select_storage,
-                        smoothing_controls)
+from .resources import (Deadline, MIB, calibration_matches, choose_fft_layout, choose_window_storage,
+                        detect_resources, fftw_plan_reserve, native_working_budget,
+                        native_working_request, predict_seconds, select_storage, smoothing_controls)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -426,6 +426,10 @@ def _compare_group(report, spectra, row, spectrum):
 
 
 def run(args):
+    native_request = native_working_request(getattr(args, "native_working_mib", None))
+    disk_algorithm = getattr(args, "disk_fft_algorithm", "full")
+    if disk_algorithm not in ("full", "packed-real"):
+        raise ValueError("disk-fft-algorithm must be full or packed-real")
     deadline = Deadline(args.max_hours * 3600, os.environ.get("LPSD_BENCHMARK_DEADLINE_EPOCH"))
     args.work_dir.mkdir(parents=True, exist_ok=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -445,9 +449,12 @@ def run(args):
                            "smoothing_worker_policy": smoothing["smoothing_worker_policy"],
                            "requested_smoothing_workers": smoothing_request,
                            "smoothing_runtime_reserve_model": smoothing["smoothing_runtime_reserve_model"],
+                           "requested_native_working_mib": native_request,
+                           "native_working_policy": "auto" if native_request is None else "explicit_cap",
                            "n_averages": 100, "psll_db": 200., "prediction_safety_factor": 4.,
                            "storage": args.storage, "fft_layout": args.fft_layout,
                            "window_storage": args.window_storage,
+                           "disk_fft_algorithm": disk_algorithm,
                            "sizes": args.sizes, "points": args.points or [],
                            "quality_sizes": sorted(set(args.quality_sizes) & set(args.sizes)) if args.profile == "full" else [],
                            "base_points": args.base_points,
@@ -460,6 +467,9 @@ def run(args):
         print(f"Matched smoothing: requested {smoothing_request}, admitted limit "
               f"{smoothing['smoothing_workers_limit']}; extra runtime/address reserve "
               f"{smoothing['smoothing_runtime_reserve_bytes'] / MIB:.0f} MiB within the RAM budget.", flush=True)
+    if native_request is not None and any(method in ("lpsd", "matched") for method in args.methods):
+        print(f"Native working cap: requested {native_request} MiB; each case may admit less "
+              "within its existing RAM allowance. Default FFT buffers and resource limits are retained.", flush=True)
     print("Only synthetic signals are used. Results stay local unless public GitHub upload was explicitly selected.", flush=True)
     if args.upload_github:
         print("Public upload selected: the issue will be associated with your GitHub account.", flush=True)
@@ -492,16 +502,23 @@ def run(args):
                 smoothing_runtime_reserve_bytes=smoothing_reserve)
             working_ram = max(0, refreshed.ram_budget - smoothing_reserve)
             row.update(storage=storage, ram_required_bytes=ram_need, disk_required_bytes=disk_need,
+                       disk_fft_algorithm=(disk_algorithm if storage == "disk" and row["method"] != "lpsd"
+                                           else "not_applicable"),
                        fft_layout="blocked" if storage == "disk" and row["method"] != "lpsd" else fft_layout,
                        window_storage="blocked" if storage == "disk" and row["method"] != "lpsd" else window_storage,
                        fftw_plan_reserve_bytes=fftw_plan_reserve(row["n"], row["method"]) if storage == "ram" else 0,
                        ram_budget_mib=refreshed.ram_budget // MIB, disk_budget_mib=refreshed.disk_budget // MIB,
                        fft_memory_mb=max(1., min(128., working_ram / MIB / 8)),
                        low_working_mb=max(1., min(2048., working_ram / MIB / 3)))
+            allowance, _, native_controls = native_working_budget({
+                **row, "ram_budget_bytes": refreshed.ram_budget,
+                "requested_native_working_mib": native_request})
+            row.update(native_controls)
+            if row["method"] in ("lpsd", "matched") and allowance is None and not skip:
+                skip = "memory_budget"
             prediction = predict_seconds(row, report["cases"])
             calibration = (row["n"] <= 100_000 and not any(
-                old.get("status") == "completed" and old.get("method") == row["method"]
-                and old.get("signal") == row["signal"] for old in report["cases"]))
+                calibration_matches(row, old) for old in report["cases"]))
             if prediction is not None and not calibration:
                 row["predicted_process_s"] = prediction
             if calibration:
@@ -542,6 +559,8 @@ def run(args):
             write_report(args.output, report, args.save_spectra)
             point_label = f"J={row['target_points']} / {row['actual_points']} output points" if row.get("point_count_resolved") else f"point factor {row.get('point_factor') or 'explicit'}"
             detail = f"{row['compute_wall_s']:.6f} s" if row["status"] == "completed" else row.get("reason", "")
+            if row["native_working_policy"] == "explicit_cap":
+                detail += f"; native cap {row['native_working_limit_bytes'] / MIB:g} MiB"
             print(f"[{position + 1}/{len(matrix)}] N={row['n']} {row['method']} {storage} "
                   f"{row['signal']} {point_label}: {row['status']} {detail}", flush=True)
         report["state"] = "deadline" if deadline.remaining() <= reserve else "completed"
@@ -617,6 +636,13 @@ def _positive_smoothing_workers(value):
     return count
 
 
+def _native_working_mib(value):
+    try:
+        return native_working_request(int(value))
+    except (TypeError, ValueError) as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+
+
 def parser():
     root = argparse.ArgumentParser(description=__doc__)
     commands = root.add_subparsers(dest="command", required=True)
@@ -627,6 +653,8 @@ def parser():
     run_parser.add_argument("--threads", type=int, help="Maximum threads, capped by affinity and CPU quota")
     run_parser.add_argument("--smoothing-workers", type=_positive_smoothing_workers,
                             help="Matched FFTW smoothing worker limit, capped by admitted threads; default min(4, threads)")
+    run_parser.add_argument("--native-working-mib", type=_native_working_mib,
+                            help="Optional native LPSD/low-frequency working cap in MiB (integer >=64); only lowers existing budgets")
     run_parser.add_argument("--sizes", nargs="+", type=int, default=list(DEFAULT_SIZES))
     points = run_parser.add_mutually_exclusive_group()
     points.add_argument("--points", nargs="+", type=int, help="Raw native planner J targets, e.g. 1000 2000")
@@ -635,6 +663,8 @@ def parser():
     run_parser.add_argument("--base-points", type=int, default=1000)
     run_parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))
     run_parser.add_argument("--storage", choices=("auto", "ram", "disk", "both"), default="auto")
+    run_parser.add_argument("--disk-fft-algorithm", choices=("full", "packed-real"), default="full",
+                            help="Disk FFT: full complex transform or original-N real packing; odd N uses full fallback")
     run_parser.add_argument("--fft-layout", choices=("auto", "out-of-place", "in-place"), default="auto",
                             help="auto first tries out-of-place RAM, then the smaller in-place allocation")
     run_parser.add_argument("--window-storage", choices=("auto", "full", "fft_input_then_blocked"), default="auto",

@@ -18,7 +18,7 @@ import time
 from types import SimpleNamespace
 
 from .privacy import integer
-from .resources import MIB, smoothing_controls
+from .resources import MIB, native_working_budget, smoothing_controls
 
 
 def _write(path, report):
@@ -222,38 +222,27 @@ def _smoothing_result_fields(case, metadata=None, disk_details=None):
 
 
 def _native_working_budget(case):
-    """Return the bounded-native allowance in MiB and available buffer bytes.
-
-    RAM cases retain the original float64 input and reserve interpreter and
-    worker overhead before assigning the remaining configured budget. The
-    hybrid releases its FFT buffers before this native phase. Disk cases
-    retain their separately configured working allowance and headroom model.
-
-    The adapter has a 64-MiB minimum capacity. Return no allowance when that
-    cannot fit, so preflight can skip before constructing it or the input.
-    This scalar calculation does not allocate numerical arrays.
-    """
-    controls = _case_smoothing_controls(case)
-    headroom = case["ram_budget_bytes"] - 256 * MIB - controls["smoothing_runtime_reserve_bytes"]
-    if case["storage"] == "ram":
-        headroom -= 8 * case["n"] + case["requested_threads"] * 3 * MIB
-        working_mb = headroom / MIB
-    else:
-        working_mb = case["low_working_mb"]
-    if headroom < 64 * MIB:
-        return None, headroom
+    """Compatibility helper returning the allowance and remaining headroom."""
+    working_mb, headroom, _ = _case_native_working_controls(case)
     return working_mb, headroom
 
 
-def _native_scratch_fields(method, storage, attrs, disk_details=None):
-    """Scalar pool capacities from completed-call metadata, never RSS.
+def _case_native_working_controls(case):
+    """Revalidate request and effective bytes before numerical imports."""
+    _case_smoothing_controls(case)
+    working_mb, headroom, fields = native_working_budget(case)
+    for key, value in fields.items():
+        if key == "requested_native_working_mib" and case.get("method") == "fftw":
+            continue
+        if key in case and (type(case[key]) is not type(value) or case[key] != value):
+            raise ValueError("Inconsistent native working control or allowance")
+    return working_mb, headroom, fields
 
-    Read the returned metadata, not the constructor's admission preview.
-    Missing lifecycle data remains absent for older adapters and FFTW-only
-    calls. Planned or failed replacements do not publish retirement indices.
-    """
+
+def _native_result_source(method, storage, attrs, disk_details=None):
+    """Locate completed native metadata for the four supported call routes."""
     if method not in ("lpsd", "matched"):
-        return {}
+        return None
     if storage == "disk":
         source = (disk_details.get("lpsd" if method == "lpsd" else "low_lpsd")
                   if isinstance(disk_details, dict) else None)
@@ -263,6 +252,38 @@ def _native_scratch_fields(method, storage, attrs, disk_details=None):
             source = source.get("low_frequency_preparation") if isinstance(source, dict) else None
     else:
         source = None
+    return source if isinstance(source, dict) else None
+
+
+def _native_working_result_fields(case, attrs, disk_details=None):
+    """Read the actual native capacity after timing, without inventing work."""
+    if case["method"] not in ("lpsd", "matched"):
+        return {}
+    source = _native_result_source(case["method"], case["storage"], attrs, disk_details)
+    if (source is not None and type(source.get("frequencies")) is int
+            and source["frequencies"] == 0):
+        return {}  # An empty native subset executed no frequency work.
+    if source is None and case["method"] == "matched" and case["storage"] == "ram":
+        metadata = attrs.get("matched_smoothing_once", {}) if isinstance(attrs, dict) else {}
+        if type(metadata.get("exact_low_frequency_points")) is int and metadata["exact_low_frequency_points"] == 0:
+            return {}
+    _, _, controls = _case_native_working_controls(case)
+    applied = integer(source.get("concurrency_budget_bytes"), 64 * MIB) if source else None
+    if applied is None and controls["native_working_policy"] == "auto":
+        return {}  # Older private adapters need not invent new provenance.
+    if applied is None or applied != controls["native_working_limit_bytes"]:
+        raise ValueError("Measured native working capacity differs from admission")
+    return {"native_working_applied_bytes": applied}
+
+
+def _native_scratch_fields(method, storage, attrs, disk_details=None):
+    """Scalar pool capacities from completed-call metadata, never RSS.
+
+    Read the returned metadata, not the constructor's admission preview.
+    Missing lifecycle data remains absent for older adapters and FFTW-only
+    calls. Planned or failed replacements do not publish retirement indices.
+    """
+    source = _native_result_source(method, storage, attrs, disk_details)
     lifecycle = source.get("scratch_pool_lifecycle") if isinstance(source, dict) else None
     if not isinstance(lifecycle, dict):
         return {}
@@ -312,9 +333,38 @@ def _address_guard(case):
         pass
 
 
+def _disk_fft_result_fields(case, details):
+    """Read back the actual transform length, including odd-N fallback."""
+    if case["storage"] != "disk" or case["method"] == "lpsd":
+        return {}
+    algorithm = case.get("disk_fft_algorithm", "full")
+    description = details.get("fft", {}) if isinstance(details, dict) else {}
+    if not description:
+        # Existing automatic test doubles/legacy adapters have no readback.
+        if algorithm == "full":
+            return {}
+        raise ValueError("Packed FFT execution metadata is missing")
+    n = description.get("n")
+    inner = description.get("inner_n", n)
+    expected = case["n"] // 2 if algorithm == "packed-real" and case["n"] % 2 == 0 and case["n"] > 2 else case["n"]
+    if type(n) is not int or n != case["n"] or type(inner) is not int or inner != expected:
+        raise ValueError("Inconsistent original-N FFT execution metadata")
+    return {"disk_fft_inner_samples": inner,
+            "disk_fft_effective_algorithm": "packed-real" if inner < n else "full"}
+
+
 def run(case, directory):
+    algorithm = case.get("disk_fft_algorithm", "full")
+    if algorithm not in ("full", "packed-real", "not_applicable"):
+        raise ValueError("Invalid disk FFT algorithm")
+    needs_fft = case["storage"] == "disk" and case["method"] != "lpsd"
+    if needs_fft and algorithm == "not_applicable":
+        raise ValueError("Disk FFT cases require a transform algorithm")
+    applied_algorithm = algorithm if needs_fft else "not_applicable"
     controls = _case_smoothing_controls(case)
     case.update(controls)
+    working_mb, headroom, native_controls = _case_native_working_controls(case)
+    case.update(native_controls)
     import numpy as np
     from benchmarks import bench_fftw as bf
     from benchmarks.fftw_comparison_signals import signal, theory
@@ -331,7 +381,8 @@ def run(case, directory):
                                         case["target_points"], case["n_averages"])
     case.update(resolved)
     n, method = case["n"], case["method"]
-    result = {**resolved, **controls}
+    result = {**resolved, **controls, **native_controls,
+              "disk_fft_algorithm": applied_algorithm}
     import lpsd_fast
     result["native_version"] = lpsd_fast.__version__
     result["native_sha256"] = _file_hash(api._LIB._name)
@@ -345,6 +396,8 @@ def run(case, directory):
             source_paths.append(Path(bf.__file__).parent / "_bounded_window.py")
     if case["storage"] == "disk" or method in ("lpsd", "matched"):
         source_paths.extend(Path(bf.__file__).parent / name for name in ("bench_fftw_disk.py", "_fftw_disk.py", "_lpsd_disk.py"))
+    if needs_fft and algorithm == "packed-real":
+        source_paths.append(Path(bf.__file__).parent / "_fftw_packed_real.py")
     for path in source_paths:
         source.update(path.name.encode("ascii") + b"\0")
         source.update(path.read_bytes())
@@ -362,7 +415,6 @@ def run(case, directory):
     result["actual_threads"] = backend.threads if backend else case["requested_threads"]
     bounded_options = None
     if method in ("lpsd", "matched"):
-        working_mb, headroom = _native_working_budget(case)
         if working_mb is None:
             return {**result, "status": "skipped", "reason": "memory_budget"}
         from benchmarks._lpsd_disk import DiskLPSDSubset
@@ -385,7 +437,8 @@ def run(case, directory):
                       native_streaming_buffer_bytes=stream_bytes,
                       native_working_bytes_upper_bound=model["working_bytes_upper_bound"])
         del preview
-        if not model["fits_working_budget"] or model["working_bytes_upper_bound"] > headroom:
+        if (not model["fits_working_budget"] or model["working_bytes_upper_bound"] > headroom
+                or model["working_bytes_upper_bound"] > native_controls["native_working_limit_bytes"]):
             return {**result, "status": "skipped", "reason": "memory_budget"}
     _address_guard(case)
     started = time.perf_counter()
@@ -393,11 +446,10 @@ def run(case, directory):
     values = None
     path = directory / "input.f64"
     if case["storage"] == "disk":
-        from benchmarks.bench_fftw_disk import input_file
-        from benchmarks._fftw_disk import DiskFFT
+        from benchmarks.bench_fftw_disk import disk_fft_class, input_file
         if method != "lpsd":
             try:
-                estimate = DiskFFT.memory_estimate(n, case["fft_memory_mb"])
+                estimate = disk_fft_class(algorithm).memory_estimate(n, case["fft_memory_mb"])
             except (ValueError, MemoryError):
                 return {**result, "status": "skipped", "reason": "unsupported"}
             disk_needed = 24 * n + (0 if estimate["workspace_power_supported"] else 4 * n + 8) + 16 * MIB
@@ -447,9 +499,11 @@ def run(case, directory):
             options = SimpleNamespace(sample_rate=case["sample_rate_hz"],
                                       n_frequencies=case["target_points"], n_averages=case["n_averages"],
                                       fft_memory_mb=case["fft_memory_mb"], power_storage=power_storage,
+                                      disk_fft_algorithm=algorithm if needs_fft else "full",
                                       workers=case["requested_threads"],
                                       smoothing_workers=controls["smoothing_workers_limit"],
-                                      low_working_mb=case["low_working_mb"],
+                                      low_working_mb=(working_mb if bounded_options is not None
+                                                      else case["low_working_mb"]),
                                       lpsd_progress_interval_s=60.)
             frame, disk_details = disk_pipeline(method, values, backend, directory, options)
             phases = disk_details.get("phases", {})
@@ -481,6 +535,8 @@ def run(case, directory):
             window_metadata = frame.attrs["matched_smoothing_once"]
         result.update(compute_wall_s=time.perf_counter() - wall, compute_cpu_s=time.process_time() - cpu)
         result.update(_smoothing_result_fields(case, window_metadata, disk_details))
+        result.update(_native_working_result_fields(case, frame.attrs, disk_details))
+        result.update(_disk_fft_result_fields(case, disk_details))
         result.update(_native_scratch_fields(method, case["storage"], frame.attrs, disk_details))
         if window_metadata is not None:
             for key in ("window_storage", "window_buffer_bytes", "window_scratch_bytes", "one_shot_window"):

@@ -75,6 +75,18 @@ jobs:
       - name: Small wall-time and phase comparison on native hardware
         if: matrix.benchmark
         run: python benchmarks/ci_architecture.py --n 100000 --output-directory benchmark-results
+      - name: Check out the qualified revision for paired performance measurements
+        if: matrix.benchmark
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: 8bfbf2b0648e6b328df04be434c376dbc8de71a4
+          path: .benchmark-baseline
+          persist-credentials: false
+      - name: Build and compare the baseline with the same compiler and dependencies
+        if: matrix.benchmark
+        run: |
+          make -C .benchmark-baseline compile
+          python benchmarks/ci_architecture.py --comparison-only --baseline-directory .benchmark-baseline --baseline-commit 8bfbf2b0648e6b328df04be434c376dbc8de71a4 --output-directory benchmark-results
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

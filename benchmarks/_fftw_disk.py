@@ -67,6 +67,23 @@ def _integer(value, name):
         raise TypeError(f"{name} must be an integer") from error
 
 
+def _maps_same_file(array, path):
+    """Recognize independent mappings, ndarray views and hard-link aliases."""
+    seen = set()
+    while array is not None and id(array) not in seen:
+        seen.add(id(array))
+        filename = getattr(array, "filename", None)
+        if filename is not None:
+            try:
+                if os.path.samefile(filename, path):
+                    return True
+            except OSError:
+                if Path(filename).resolve() == path:
+                    return True
+        array = getattr(array, "base", None)
+    return False
+
+
 def _factors(n, factors):
     n = _integer(n, "n")
     if n < 2:
@@ -259,6 +276,11 @@ class DiskFFT:
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable or None")
         self.backend, self.n = backend, layout["n"]
+        staging_n = self._staging_length()
+        if staging_n != self.n:
+            # The packed-real adapter retains original-N input/window
+            # staging while this core transforms N/2 complex samples.
+            layout["workspace_bytes"] = 16 * staging_n
         self.a, self.b = layout["factors"]
         self.factors = (self.a, self.b)
         self.column_strategy = layout["column_strategy"]
@@ -301,12 +323,12 @@ class DiskFFT:
             with self.workspace_path.open("xb") as file:
                 file.truncate(layout["workspace_bytes"])
             self._mapping = np.memmap(self.workspace_path, mode="r+", dtype=np.complex128,
-                                       shape=(self.n,))
-            self._flat = self._mapping
-            self.matrix = self._mapping.reshape(self.a, self.b)
+                                       shape=(staging_n,))
+            self._flat = self._mapping[:self.n]
+            self.matrix = self._flat.reshape(self.a, self.b)
             self.y = self.matrix
             staging = self._mapping.view(np.float64)
-            self.x, self.window = staging[:self.n], staging[self.n:]
+            self.x, self.window = staging[:staging_n], staging[staging_n:]
             self.setup_phases["workspace_file_and_mapping_s"] = time.perf_counter() - tick
 
             tick = time.perf_counter()
@@ -469,20 +491,12 @@ class DiskFFT:
             np.exp(twiddle, out=twiddle)
             np.multiply(tile[first:first + count], twiddle, out=tile[first:first + count])
 
-    def execute(self):
-        """Consume windowed real x, returning Y[k2,k1], k=k2+A*k1.
+    def _staging_length(self):
+        """Real input/window length; overridden only by the packed adapter."""
+        return self.n
 
-        The caller must refill x before every call, because expansion and the
-        subsequent in-place disk stages overwrite both x and window.
-        """
-        self._require_open()
-        self._has_transform = False
-        self._power_storage = None
-        started = time.perf_counter()
-        phases = {name: 0.0 for name in (
-            "real_expansion_s", "column_gather_s", "column_fftw_s", "twiddle_s",
-            "column_scatter_s", "row_gather_s", "row_fftw_s", "row_scatter_s",
-            "column_transpose_before_s", "column_transpose_after_s")}
+    def _expand_real_input(self):
+        """Expand real staging without overwriting still-needed samples."""
         self._advise("normal")
         self._notify_progress("real_expansion", 0, self.n)
         tick = time.perf_counter()
@@ -497,7 +511,23 @@ class DiskFFT:
             destination.imag.fill(0.0)
             stop = first
             self._notify_progress("real_expansion", self.n - stop, self.n)
-        phases["real_expansion_s"] = time.perf_counter() - tick
+        return time.perf_counter() - tick
+
+    def execute(self):
+        """Consume windowed real x, returning Y[k2,k1], k=k2+A*k1.
+
+        The caller must refill x before every call, because expansion and the
+        subsequent in-place disk stages overwrite both x and window.
+        """
+        self._require_open()
+        self._has_transform = False
+        self._power_storage = None
+        started = time.perf_counter()
+        phases = {name: 0.0 for name in (
+            "real_expansion_s", "column_gather_s", "column_fftw_s", "twiddle_s",
+            "column_scatter_s", "row_gather_s", "row_fftw_s", "row_scatter_s",
+            "column_transpose_before_s", "column_transpose_after_s")}
+        phases["real_expansion_s"] = self._expand_real_input()
 
         if self.a > 1:
             self._advise("random")
@@ -576,8 +606,11 @@ class DiskFFT:
             raise ValueError("powers must be a writable contiguous float64 vector of N//2+1 values")
         if np.shares_memory(powers, self.matrix):
             raise ValueError("powers must not overlap the transform workspace")
-        if isinstance(powers, np.memmap) and Path(powers.filename).resolve() == self.workspace_path:
+        if _maps_same_file(powers, self.workspace_path):
             raise ValueError("powers must use a separate file from the transform workspace")
+        if (np.shares_memory(powers, self._work) or
+                np.shares_memory(powers, self._twiddle)):
+            raise ValueError("powers must not overlap transform scratch")
         sample_rate, window_square_sum = float(sample_rate), float(window_square_sum)
         if (not math.isfinite(sample_rate) or sample_rate <= 0
                 or not math.isfinite(window_square_sum) or window_square_sum <= 0):

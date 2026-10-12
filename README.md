@@ -7,7 +7,18 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.7`; this is not an official upstream release.
+Its package version is `1.0.6+fast.8`; this is not an official upstream release.
+
+Version `fast.8` integrates the recovered cross-platform and large-input
+measurements. On Apple Silicon, eligible mean-detrended segments fuse the
+existing residual subtraction into the native dot product. Windows and macOS
+use actual available RAM for automatic concurrency. The disk benchmark adds
+an explicit `--disk-fft-algorithm packed-real` route and an optional
+`--native-working-mib` cap. Null-energy diagnostics, workspace ownership and
+a Windows bootstrap directory race are corrected. The established full FFT
+and automatic native precision remain the defaults. See the
+[platform follow-up](docs/performance-platform-followup.md) and
+[large-input and output-count evidence](docs/performance-memory-points.md).
 
 Version `fast.7` adds a resource-aware, portable LPSD/FFTW benchmark with
 automatically installed private dependencies and an optional public GitHub

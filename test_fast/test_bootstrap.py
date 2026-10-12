@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import stat
 import subprocess
@@ -24,6 +25,16 @@ SPEC.loader.exec_module(bootstrap)
 
 def budget(root, size=16 * 1024 ** 2):
     return bootstrap.Budget(root, 0.1, size)
+
+
+def test_powershell_watchdog_keeps_budgets_when_installer_children_disappear():
+    engine = shutil.which("pwsh") or shutil.which("powershell")
+    if not engine:
+        pytest.skip("PowerShell runtime is exercised by the Windows bootstrap job")
+    subprocess.run([
+        engine, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        "-File", str(ROOT / "test_fast/check_bootstrap_budget.ps1"),
+    ], check=True, timeout=30, capture_output=True, text=True)
 
 
 @pytest.mark.parametrize("value", ["main", "v1", "a" * 39, "g" * 40, "a" * 40 + ";whoami"])

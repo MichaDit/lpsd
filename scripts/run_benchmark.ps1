@@ -59,7 +59,21 @@ if ($ramBytes -lt 128MB) { throw 'Private setup needs at least 128 MiB of admitt
 
 function Test-Budget {
     if ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $deadline) { throw 'Setup/run deadline reached.' }
-    $used = (Get-ChildItem -LiteralPath $root -Recurse -File | Measure-Object -Property Length -Sum).Sum
+    # uv atomically moves/deletes installation directories while this watchdog
+    # walks them. Keep the files already found when a child disappears, and
+    # still reject access errors or an unavailable setup root.
+    $scanErrors = @()
+    $used = (Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable scanErrors |
+             Measure-Object -Property Length -Sum).Sum
+    foreach ($failure in $scanErrors) {
+        $exception = $failure.Exception
+        if ($exception -isnot [IO.DirectoryNotFoundException] -and
+            $exception -isnot [IO.FileNotFoundException] -and
+            $exception -isnot [System.Management.Automation.ItemNotFoundException]) {
+            throw $failure
+        }
+    }
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Private setup directory is unavailable.' }
     if ($used -gt $setupGiB * 1GB) { throw 'Private setup disk budget exceeded.' }
     $drive = New-Object IO.DriveInfo ([IO.Path]::GetPathRoot($root))
     if ($drive.AvailableFreeSpace -lt 32MB) { throw 'Private setup free-space reserve reached.' }
@@ -128,6 +142,9 @@ function Start-Bounded([string]$Executable, [string[]]$NativeArgs) {
             if ($process.WorkingSet64 -gt $ramBytes) { throw 'Private Python installation RAM budget exceeded.' }
         }
         if ($process.ExitCode -ne 0) { throw ('Private setup stage failed (exit ' + $process.ExitCode + ').') }
+        # The last concurrent scan can have missed a directory during its
+        # rename. Check the settled installation after the child has exited.
+        Test-Budget
     } finally {
         if (-not $process.HasExited) {
             & taskkill /PID $process.Id /T /F 2>$null | Out-Null

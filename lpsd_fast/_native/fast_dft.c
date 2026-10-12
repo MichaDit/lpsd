@@ -21,6 +21,7 @@
 #include "fast_dft.h"
 #include "segment_starts.h"
 
+#include <float.h>
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
@@ -124,6 +125,71 @@ static LPSD_ALWAYS_INLINE void dot_csd_simd(const double *x1, const double *x2,
     *ri1 = i1;
     *rr2 = r2;
     *ri2 = i2;
+}
+
+/* On Apple's arm64 ABI, long double is ordinary FP64. Keep polyreg0's
+ * original serial sum, reciprocal-then-multiply mean and residual rounding,
+ * but form the residual directly in the existing SIMD dot. This removes
+ * one length-sized allocation and its write/read pass per PSD frequency.
+ * Wider long-double targets retain the separate residuals: interleaving
+ * software-quad/x87 subtraction with the dot prevents efficient SIMD. */
+#if LDBL_MANT_DIG == DBL_MANT_DIG && LDBL_MAX_EXP == DBL_MAX_EXP
+#define LPSD_INLINE_MEAN 1
+static LPSD_ALWAYS_INLINE long double original_order0_mean(const double *x, long int length)
+{
+    long double sum = 0.L;
+    for (long int j = 0; j < length; ++j) {
+        sum += x[j];
+    }
+    const long double reciprocal = 1.L / (1.L * (long double)length + 0);
+    return reciprocal * sum;
+}
+
+static LPSD_ALWAYS_INLINE void dot_psd_mean_simd(const double *x,
+                            const double *cr, const double *ci,
+                            long int length, double *rr, double *ri)
+{
+    const long double mean = original_order0_mean(x, length);
+    double r = 0.0, im = 0.0;
+    #pragma omp simd reduction(+:r,im)
+    for (long int j = 0; j < length; ++j) {
+        const double value = (double)((long double)x[j] - mean);
+        r += cr[j] * value;
+        im += ci[j] * value;
+    }
+    *rr = r;
+    *ri = im;
+}
+
+static LPSD_ALWAYS_INLINE void dot_csd_mean_simd(const double *x1, const double *x2,
+                            const double *cr, const double *ci,
+                            long int length, double *rr1, double *ri1,
+                            double *rr2, double *ri2)
+{
+    const long double mean1 = original_order0_mean(x1, length);
+    const long double mean2 = original_order0_mean(x2, length);
+    double r1 = 0.0, i1 = 0.0, r2 = 0.0, i2 = 0.0;
+    #pragma omp simd reduction(+:r1,i1,r2,i2)
+    for (long int j = 0; j < length; ++j) {
+        const double value1 = (double)((long double)x1[j] - mean1);
+        const double value2 = (double)((long double)x2[j] - mean2);
+        r1 += cr[j] * value1;
+        i1 += ci[j] * value1;
+        r2 += cr[j] * value2;
+        i2 += ci[j] * value2;
+    }
+    *rr1 = r1;
+    *ri1 = i1;
+    *rr2 = r2;
+    *ri2 = i2;
+}
+#else
+#define LPSD_INLINE_MEAN 0
+#endif
+
+int native_inline_mean_supported(void)
+{
+    return LPSD_INLINE_MEAN;
 }
 
 /*
@@ -637,6 +703,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
     bool owns_projected = false;
     double coefficients1[11] = {0.0};
     double coefficients2[11] = {0.0};
+    const bool inline_mean = LPSD_INLINE_MEAN && mode == 1 && order == 0;
     if (mode >= 2) {
         owns_projected = !coefficients_prepared && inplace_r == NULL;
         /* The prepared branch only reads these vectors in the unchanged
@@ -659,7 +726,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
                                                 projected_r, projected_i);
             }
         }
-    } else if (order >= 0) {
+    } else if (order >= 0 && !inline_mean) {
         residual1 = (double *)malloc((size_t)segLen * sizeof(double));
         if (csd) {
             residual2 = (double *)malloc((size_t)segLen * sizeof(double));
@@ -875,7 +942,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
         }
         const double *segment1 = x1data + istart;
         const double *segment2 = csd ? x2data + istart : segment1;
-        if (mode < 2 && order >= 0) {
+        if (mode < 2 && order >= 0 && !inline_mean) {
             detrend_original(order, segment1, (int)segLen,
                              residual1, coefficients1);
             segment1 = residual1;
@@ -892,6 +959,11 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
                 dot_csd_anchored_simd(segment1, segment2,
                                        projected_r, projected_i, segLen,
                                        &rxsum1, &ixsum1, &rxsum2, &ixsum2);
+#if LPSD_INLINE_MEAN
+            } else if (inline_mean) {
+                dot_csd_mean_simd(segment1, segment2, Cr, Ci, segLen,
+                                  &rxsum1, &ixsum1, &rxsum2, &ixsum2);
+#endif
             } else if (mode == 0) {
                 dot_csd_serial(segment1, segment2, Cr, Ci, segLen,
                                 &rxsum1, &ixsum1, &rxsum2, &ixsum2);
@@ -903,6 +975,10 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             if (mode >= 2) {
                 dot_psd_anchored_simd(segment1, projected_r, projected_i,
                                        segLen, &rxsum1, &ixsum1);
+#if LPSD_INLINE_MEAN
+            } else if (inline_mean) {
+                dot_psd_mean_simd(segment1, Cr, Ci, segLen, &rxsum1, &ixsum1);
+#endif
             } else if (mode == 0) {
                 dot_psd_serial(segment1, Cr, Ci, segLen, &rxsum1, &ixsum1);
             } else {

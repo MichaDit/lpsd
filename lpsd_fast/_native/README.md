@@ -18,6 +18,18 @@ The Python API selects mode 2 only for detrending order 0 in automatic mode.
 Explicit projection for order 1 can lose accuracy for a large ramp with a
 very small residual. See [numerical limits](../../docs/numerics.md).
 
+On targets where C `long double` has the same precision and exponent range
+as `double`, mode 1 with order-0 detrending subtracts the original mean
+directly in the SIMD dot. It preserves `polyreg0`'s serial sum,
+reciprocal-then-multiply mean and double residual rounding. No projected
+coefficients are substituted. The length-sized residual vectors and their
+write/read pass are omitted; the scalar mode and wider long-double targets
+retain the existing path. `native_inline_mean_supported()` reports this
+compiled capability, and public results report whether the call used it in
+`inline_mean_residual`. A native test compares both channel projections with
+the original residual-vector helpers bitwise, including odd vector tails,
+DC plus nanovolt noise, constants and a large starting transient.
+
 Mode 3 keeps an upper and lower FP64 part for each coefficient sum and for
 the mean. It uses independent SIMD lanes, compensated division and
 compensated subtraction. Extreme coefficient magnitudes fall back to the

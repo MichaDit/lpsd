@@ -53,10 +53,21 @@ from lpsd_fast import api
 CHUNK = 262144
 GIB = 1024**3
 METHODS = ("fftw", "matched", "lpsd")
+DISK_FFT_ALGORITHMS = ("full", "packed-real")
 TIMEOUT_SCOPE = ("Parent-enforced whole-child-process budget, including process/import/library "
                  "startup, input hashes before and after the measured call, the complete "
                  "call and report finalization. A timeout is not a completed-call timing "
                  "or an exact lower bound of that many seconds on the measured call.")
+
+
+def disk_fft_class(algorithm="full"):
+    """Choose an explicit transform while keeping original-N estimators."""
+    if algorithm == "full":
+        return DiskFFT
+    if algorithm == "packed-real":
+        from benchmarks._fftw_packed_real import PackedRealDiskFFT
+        return PackedRealDiskFFT
+    raise ValueError("disk_fft_algorithm must be 'full' or 'packed-real'")
 
 
 def large_file_bytes(n, methods, power_storage):
@@ -155,12 +166,15 @@ def frame_from_psd(frequencies, density):
 def disk_pipeline(method, values, backend, directory, args, *, progress=None,
                   fft_progress=None, lpsd_progress=None):
     n = len(values)
+    fft_algorithm = getattr(args, "disk_fft_algorithm", "full")
+    fft_class = disk_fft_class(fft_algorithm)
     power_storage = getattr(args, "power_storage", "external")
     file_bytes = large_file_bytes(n, (method,), power_storage)
     if (method != "lpsd" and power_storage == "workspace"
-            and not DiskFFT.memory_estimate(n, args.fft_memory_mb)["workspace_power_supported"]):
+            and not fft_class.memory_estimate(n, args.fft_memory_mb)["workspace_power_supported"]):
         raise ValueError("Workspace power storage requires an even B factor; choose --power-storage external")
     phases, metadata = {}, {}
+    metadata["disk_fft_algorithm"] = fft_algorithm if method != "lpsd" else None
     metadata["power_storage"] = {
         "mode": "none" if method == "lpsd" else power_storage,
         "maximum_large_file_bytes": file_bytes,
@@ -193,8 +207,6 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
     metadata["point_plan"] = {"requested_j": n_frequencies,
                                "n_averages": n_averages,
                                "output_points": len(frequencies), "psll_db": psll}
-    workspace_path = directory / "workspace.c128"
-    powers_path = directory / "powers.f64"
     if method == "lpsd":
         with DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=psll,
                             overlap=overlap, workers=args.workers,
@@ -209,14 +221,20 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         mark("workspace_cleanup_s")
         return result, {"phases": phases, **metadata}
 
+    # This call owns only its exclusively created child directory. A caller's
+    # existing workspace/power files must survive success and partial setup
+    # failures alike; fixed paths in the caller's directory are not ours.
+    temporary_work = tempfile.TemporaryDirectory(prefix="fft-work-", dir=directory)
+    workspace_path = Path(temporary_work.name) / "workspace.c128"
+    powers_path = Path(temporary_work.name) / "powers.f64"
     fft, powers = None, None
     try:
         backend.forget_wisdom()
-        fft = DiskFFT(backend, n, workspace_path, memory_mb=args.fft_memory_mb,
+        fft = fft_class(backend, n, workspace_path, memory_mb=args.fft_memory_mb,
                       progress=fft_progress)
         # The window occupies the second half of the file before complex
         # expansion. Preprocessing consumes it before execute overwrites it.
-        window = fft.matrix.reshape(-1).view(np.float64)[n:2 * n]
+        window = fft.window
         if power_storage == "external":
             powers = np.memmap(powers_path, dtype=np.float64, mode="w+", shape=(n // 2 + 1,))
         mark("workspace_and_fftw_planning_s")
@@ -255,7 +273,7 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
         obtained = mapped_sum(powers) * args.sample_rate / n
         np.testing.assert_allclose(obtained, expected, rtol=1e-10, atol=0.0)
         metadata["parseval"] = {"time_power_v2": expected, "fft_power_v2": obtained,
-                                "relative_error": abs(obtained - expected) / expected,
+                                "relative_error": 0.0 if expected == 0.0 else abs(obtained - expected) / expected,
                                 "diagnostic_passes_included_in_timer": True}
         mark("frequency_energy_diagnostic_s")
         if method == "fftw":
@@ -320,12 +338,15 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
                 result = frame_from_psd(frequencies, density)
             mark("low_lpsd_and_outputs_s")
     finally:
-        if powers is not None:
-            close_map(powers)
-        if fft is not None:
-            fft.close()
-        powers_path.unlink(missing_ok=True)
-        workspace_path.unlink(missing_ok=True)
+        try:
+            if powers is not None:
+                close_map(powers)
+        finally:
+            try:
+                if fft is not None:
+                    fft.close()
+            finally:
+                temporary_work.cleanup()
     mark("workspace_cleanup_s")
     return result, {"phases": phases, **metadata}
 
@@ -431,6 +452,8 @@ def main():
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--smoothing-workers", type=int, default=4)
     parser.add_argument("--fft-memory-mb", type=float, default=128)
+    parser.add_argument("--disk-fft-algorithm", choices=DISK_FFT_ALGORITHMS, default="full",
+                        help="Full complex FFT or original-N real packing into N/2 complex values")
     parser.add_argument("--power-storage", choices=("external", "workspace"), default="external",
                         help="Store FFT powers in a separate 4N+8-byte file (external), or "
                              "consume an even-B FFT and reuse its 16N-byte file (workspace).")
@@ -470,6 +493,7 @@ def main():
               "started_utc": datetime.now(timezone.utc).isoformat(),
               "source_sha256": {str(path.relative_to(ROOT)): sha256(path) for path in
                                 [Path(__file__), ROOT / "benchmarks/_fftw_disk.py",
+                                 ROOT / "benchmarks/_fftw_packed_real.py",
                                  ROOT / "benchmarks/_lpsd_disk.py", ROOT / "benchmarks/bench_fftw.py",
                                  ROOT / "benchmarks/bench_fftw_optimized.py", ROOT / "benchmarks/bench_fftw_large_n.py",
                                  ROOT / "benchmarks/fftw_comparison_metrics.py", ROOT / "benchmarks/matched_smoothing.py",
@@ -511,6 +535,7 @@ def main():
                                "--fftw-library", str(args.fftw_library), "--threads-library", str(args.threads_library),
                                "--fftw-threads", str(args.fftw_threads), "--workers", str(args.workers),
                                "--smoothing-workers", str(args.smoothing_workers), "--fft-memory-mb", str(args.fft_memory_mb),
+                               "--disk-fft-algorithm", args.disk_fft_algorithm,
                                "--low-working-mb", str(args.low_working_mb), "--sample-rate", str(args.sample_rate),
                                "--n-frequencies", str(args.n_frequencies),
                                "--n-averages", str(args.n_averages), "--psll", str(args.psll),

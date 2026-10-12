@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from benchmarks import bench_fftw as bf
+from benchmarks import bench_fftw_disk as disk_benchmark
 from benchmarks.bench_fftw_disk import disk_pipeline, fill_tukey, input_file
 from benchmarks.bench_fftw_optimized import assert_equivalent
 from benchmarks.fftw_comparison_signals import signal
@@ -84,3 +85,53 @@ def test_chunked_input_matches_original_source(tmp_path):
         assert source["sha256"] == bf.digest_array(expected)
     finally:
         mapped._mmap.close()
+
+
+def _small_options(algorithm="full", storage="workspace"):
+    return SimpleNamespace(sample_rate=50., n_frequencies=1000, n_averages=100,
+                           workers=1, smoothing_workers=1, low_working_mb=8.,
+                           fft_memory_mb=.1, power_storage=storage,
+                           disk_fft_algorithm=algorithm)
+
+
+@pytest.mark.parametrize("algorithm", ["full", "packed-real"])
+@pytest.mark.parametrize("method", ["fftw", "matched"])
+@pytest.mark.parametrize("level", [0., 7.])
+def test_zero_detrended_energy_has_zero_spectra_and_valid_parseval(fftw, tmp_path,
+                                                                algorithm, method, level):
+    frame, details = disk_pipeline(method, np.full(1000, level), fftw, tmp_path,
+                                   _small_options(algorithm))
+    np.testing.assert_array_equal(frame.to_numpy(), np.zeros_like(frame.to_numpy()))
+    assert details["parseval"]["time_power_v2"] == 0.
+    assert details["parseval"]["fft_power_v2"] == 0.
+    assert details["parseval"]["relative_error"] == 0.
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("algorithm", ["full", "packed-real"])
+@pytest.mark.parametrize("storage", ["workspace", "external"])
+@pytest.mark.parametrize("failure", [None, "planning", "preprocessing"])
+def test_pipeline_preserves_caller_files_and_cleans_only_owned_work(
+        fftw, tmp_path, monkeypatch, algorithm, storage, failure):
+    sentinels = {tmp_path / "workspace.c128": b"Caller workspace",
+                 tmp_path / "powers.f64": b"Caller powers"}
+    for path, content in sentinels.items():
+        path.write_bytes(content)
+    if failure == "planning":
+        # Fail after a real workspace and anonymous buffers were created.
+        monkeypatch.setattr(fftw.lib, "fftw_plan_many_dft", lambda *args: None)
+    elif failure == "preprocessing":
+        def fail_prepare(*args, **kwargs):
+            raise RuntimeError("Controlled preprocessing failure")
+        monkeypatch.setattr(disk_benchmark.FFTWOperations, "prepare", fail_prepare)
+    args = _small_options(algorithm, storage)
+    values = np.random.default_rng(95).normal(size=1000)
+    if failure is None:
+        frame, _ = disk_pipeline("fftw", values, fftw, tmp_path, args)
+        assert np.isfinite(frame.to_numpy()).all()
+    else:
+        with pytest.raises((MemoryError, RuntimeError), match="batch-plan|Controlled preprocessing"):
+            disk_pipeline("fftw", values, fftw, tmp_path, args)
+    assert set(tmp_path.iterdir()) == set(sentinels)
+    for path, content in sentinels.items():
+        assert path.read_bytes() == content
