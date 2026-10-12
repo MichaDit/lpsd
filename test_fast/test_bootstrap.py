@@ -133,11 +133,17 @@ def test_download_size_limit_is_enforced_without_content_length(tmp_path, monkey
     assert not destination.exists()
 
 
-@pytest.mark.parametrize("name", ["../escape", "/absolute", "root/../../escape", "C:/drive", "root\\escape"])
+@pytest.mark.parametrize("name", ["../escape", "/absolute", "root/../../escape", "C:/drive", "root\\escape", "root/file\x00hidden"])
 def test_zip_traversal_never_writes_outside_destination(tmp_path, name):
     archive = tmp_path / "source.zip"
+    # Preserve the deliberately invalid bytes when constructing the fixture:
+    # ZipInfo(name) itself normalizes backslashes on Windows and truncates NUL.
+    entry = zipfile.ZipInfo("placeholder")
+    entry.filename = name
     with zipfile.ZipFile(archive, "w") as output:
-        output.writestr(name, "should-not-extract")
+        output.writestr(entry, "should-not-extract")
+    with zipfile.ZipFile(archive) as source:
+        assert source.infolist()[0].orig_filename == name
     with pytest.raises(bootstrap.BootstrapError, match="unsafe path"):
         bootstrap.extract_archive(archive, tmp_path / "extracted", budget(tmp_path), max_bytes=1024)
     assert not (tmp_path.parent / "escape").exists()
@@ -218,17 +224,39 @@ def test_numerical_temp_uses_original_os_parent_without_changing_private_setup(t
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX process group contract; Windows uses taskkill tree termination")
-def test_deadline_stops_subprocess_group(tmp_path):
-    inherited = time.time() + 0.15
+def test_deadline_stops_subprocess_group(tmp_path, monkeypatch):
+    inherited = time.time() + 10
     instance = bootstrap.Budget(tmp_path, 0.1, 1024 ** 2, inherited_deadline=inherited)
     pid_file = tmp_path / "pid"
     code = "import os,time,pathlib; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(30)" % str(pid_file)
-    started = time.monotonic()
+    original = bootstrap.subprocess.Popen
+    observed = []
+
+    def started_child(*args, **kwargs):
+        child = original(*args, **kwargs)
+        observed.append(child)
+        try:
+            # Slow ARM startup must not be mistaken for failure to terminate.
+            # Once the real child is ready, shorten the existing deadline.
+            while not pid_file.exists():
+                instance.check()
+                assert child.poll() is None
+                time.sleep(.01)
+            instance.deadline_monotonic = min(instance.deadline_monotonic, time.monotonic() + .15)
+            return child
+        except BaseException:
+            bootstrap.stop_process(child)
+            raise
+
+    monkeypatch.setattr(bootstrap.subprocess, "Popen", started_child)
     with pytest.raises(bootstrap.BootstrapError, match="deadline"):
         bootstrap.run_checked([sys.executable, "-c", code], instance, cwd=tmp_path,
                               environment=os.environ.copy())
-    assert time.monotonic() - started < 3
+    assert time.monotonic() - instance.deadline_monotonic < 3
+    assert observed
+    observed[0].wait(timeout=3)
     pid = int(pid_file.read_text())
+    assert pid == observed[0].pid
     # waitpid reaps the child if the termination raced with Popen's poll.
     try:
         os.waitpid(pid, 0)

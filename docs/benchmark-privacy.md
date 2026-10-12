@@ -53,6 +53,8 @@ format checks. Unknown fields and arbitrary text are not carried through.
 | Optional native working request in MiB, automatic/admitted/applied byte limits and closed policy | Distinguish requested and actually used native allowances; keep explicit-cap forecast profiles separate without collecting paths or free-form text |
 | Wall/CPU times, available phases, input setup, process memory and numeric working-set metadata | Compare completed work and resource use |
 | Native scratch-pool initial/final/peak byte capacities, a replacement Boolean and actual plan indices | Describe observed buffer lifecycle without including policy text or claiming RSS savings |
+| Closed disk power-reduction option, native ABI, bounded group/energy/endpoint counts and state bytes | Identify the experimental Direct-log route without exposing the FFT matrix or power arrays |
+| Live-memory observation Boolean and bounded sample/missing-sample/RSS-fallback counts | Distinguish actual live observations from a later process high-water mark and explicitly count macOS disk probes that conservatively use RSS; one observed sample does not imply continuous coverage or an observed private-memory value |
 | Closed status/reason categories, forecasts and timeouts | Preserve incomplete or infeasible cases without disclosing exception text |
 | Numeric quality checks, noise roughness, peak widths, comparison summaries and spectrum hashes | Check whether speed results remain numerically comparable |
 

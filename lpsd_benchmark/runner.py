@@ -262,9 +262,9 @@ class _LinuxMemoryReader:
 def _memory_usage(pid):
     """Return complete-tree RSS/private bytes; None denotes an unavailable counter.
 
-    On macOS, psutil's RSS query uses proc_pidinfo, whereas USS needs the more
-    restricted task_for_pid API. A denied optional USS query must not discard
-    valid RSS. An unreadable RSS value anywhere in the live tree invalidates
+    On macOS, read RSS through proc_pidinfo without issuing the optional,
+    privileged and potentially blocking USS query. An unreadable RSS value
+    anywhere in the live tree invalidates
     the whole RSS sum instead of treating that process as using zero bytes.
     """
     if sys.platform.startswith("linux"):
@@ -281,7 +281,11 @@ def _memory_usage(pid):
             if type(info.rss) is not int or info.rss < 0:
                 return None, None
             rss += info.rss
-            if os.name == "nt":
+            if sys.platform == "darwin":
+                # Optional USS needs a privileged task port on older psutil and
+                # can block the synchronous watchdog. Read complete RSS only.
+                value = None
+            elif os.name == "nt":
                 value = getattr(info, "private", None)
                 if value is None:
                     value = getattr(info, "pagefile", None)

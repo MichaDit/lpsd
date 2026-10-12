@@ -31,6 +31,10 @@ and [public-report data policy](docs/benchmark-privacy.md). The
 commit-pinned commands for the validated runtime, including
 32-GB budgets and optional issue submission without repository write access.
 
+The [physical-device test results](docs/device-tests-20261012.md) publish
+sanitized Windows and ARM64 benchmark checkpoints, complete and interrupted
+runs, regression failures, and the limits of comparing these measurements.
+
 For large inputs, the benchmark can reuse the real FFT buffer in place, release
 FFT storage before the matched estimator's native phase, and compute long LPSD
 points with bounded streaming scratch. The disk FFT uses blocked contiguous

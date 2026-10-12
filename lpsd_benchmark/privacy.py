@@ -254,10 +254,14 @@ def sanitize(report):
                 result[key] = row[key]
         if row.get("rss_measurement") in ("process_high_water_mark", "sampled", "unavailable"):
             result["rss_measurement"] = row["rss_measurement"]
-        for key in ("live_memory_samples", "live_memory_missing_samples", "live_memory_rss_fallback_samples"):
+        for key in ("live_memory_samples", "live_memory_missing_samples"):
             value = integer(row.get(key))
             if value is not None:
                 result[key] = value
+        fallback_samples = integer(row.get("live_memory_rss_fallback_samples"))
+        live_samples = integer(row.get("live_memory_samples"))
+        if fallback_samples is not None and live_samples is not None and fallback_samples <= live_samples:
+            result["live_memory_rss_fallback_samples"] = fallback_samples
         if isinstance(row.get("live_memory_observed"), bool):
             result["live_memory_observed"] = row["live_memory_observed"]
         if row.get("native_backend") in ("bounded", "legacy", "not_applicable"):

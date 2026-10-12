@@ -13,7 +13,7 @@ from lpsd_benchmark import SCHEMA, privacy, resources, runner
 
 
 def _fake_case(tmp_path, monkeypatch, probe, *, storage="disk", exit_at=None,
-               interval=.25, budget=100, worker_result=None):
+               interval=.25, budget=100, worker_result=None, platform=None):
     clock, reads, sleeps, stopped = [0.], [], [], []
 
     class Process:
@@ -42,6 +42,8 @@ def _fake_case(tmp_path, monkeypatch, probe, *, storage="disk", exit_at=None,
     (tmp_path / "result.json").write_text(json.dumps(
         worker_result if worker_result is not None else {"status": "completed", "reason": ""}
     ), encoding="utf-8")
+    if platform is not None:
+        monkeypatch.setattr(runner, "sys", SimpleNamespace(platform=platform, executable=sys.executable))
     monkeypatch.setattr(runner, "time", SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
     monkeypatch.setattr(runner.subprocess, "Popen", lambda *args, **kwargs: process)
     monkeypatch.setattr(runner, "_LinuxMemoryReader", lambda pid: SimpleNamespace(read=memory))
@@ -234,7 +236,7 @@ def test_partial_private_tree_counter_is_unavailable(monkeypatch):
 
 
 @pytest.mark.parametrize("error_kind", ["access", "exited", "unsupported", "oserror"])
-def test_macos_optional_uss_error_preserves_valid_rss(monkeypatch, error_kind):
+def test_other_posix_optional_uss_error_preserves_valid_rss(monkeypatch, error_kind):
     import psutil
 
     errors = {"access": psutil.AccessDenied(12345), "exited": psutil.NoSuchProcess(12345),
@@ -248,7 +250,7 @@ def test_macos_optional_uss_error_preserves_valid_rss(monkeypatch, error_kind):
                               memory_full_info=unavailable)
     monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(
         Process=lambda pid: process, AccessDenied=psutil.AccessDenied, NoSuchProcess=psutil.NoSuchProcess))
-    monkeypatch.setattr(runner, "sys", SimpleNamespace(platform="darwin"))
+    monkeypatch.setattr(runner, "sys", SimpleNamespace(platform="other-posix"))
     monkeypatch.setattr(runner, "os", SimpleNamespace(name="posix"))
     assert runner._memory_usage(12345) == (9, None)
 
@@ -328,11 +330,7 @@ def test_real_macos_owned_child_memory_probe(capsys):
         process = psutil.Process(child.pid)
         rss = process.memory_info().rss
         assert type(rss) is int and rss > 0
-        try:
-            private = getattr(process.memory_full_info(), "uss", None)
-            private_state = "available" if type(private) is int and private >= 0 else "unavailable"
-        except (psutil.AccessDenied, psutil.NoSuchProcess, OSError, NotImplementedError) as error:
-            private_state = type(error).__name__
+        private_state = "not_queried"
         tree_rss, tree_private = runner._memory_usage(child.pid)
         observed = {"psutil_version": psutil.__version__, "rss_available": True,
                     "uss_probe": private_state,
@@ -340,7 +338,7 @@ def test_real_macos_owned_child_memory_probe(capsys):
                     "tree_private_available": type(tree_private) is int and tree_private >= 0}
         with capsys.disabled():
             print("macOS owned-child memory probe: " + json.dumps(observed, sort_keys=True), flush=True)
-        assert observed["tree_rss_available"], observed
+        assert observed["tree_rss_available"] and tree_private is None, observed
     finally:
         child.terminate()
         try:
@@ -349,6 +347,111 @@ def test_real_macos_owned_child_memory_probe(capsys):
             child.kill()
             child.wait(timeout=3)
         child.stdout.close()
+
+
+def _darwin_reader_with_forbidden_uss(monkeypatch):
+    rss_reads, uss_reads = [], []
+
+    def process(label, resident):
+        def memory_info():
+            rss_reads.append(label)
+            return SimpleNamespace(rss=resident)
+
+        def memory_full_info():
+            uss_reads.append(label)
+            raise PermissionError("The privileged USS API must not be called")
+
+        return SimpleNamespace(is_running=lambda: True, memory_info=memory_info,
+                               memory_full_info=memory_full_info)
+
+    owner, child = process("owner", 9), process("child", 3)
+    owner.children = lambda recursive: [child]
+    monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(Process=lambda pid: owner))
+    monkeypatch.setattr(runner, "sys", SimpleNamespace(platform="darwin", executable=sys.executable))
+    return runner._memory_usage, owner, child, rss_reads, uss_reads
+
+
+def test_darwin_reads_complete_rss_tree_without_issuing_privileged_uss_query(monkeypatch):
+    read, owner, child, rss_reads, uss_reads = _darwin_reader_with_forbidden_uss(monkeypatch)
+    assert read(12345) == (12, None)
+    assert rss_reads == ["owner", "child"]
+    assert not uss_reads
+
+
+@pytest.mark.parametrize("storage,budget,expected,fallbacks", [
+    ("ram", 20, "completed", 0), ("ram", 10, "failed", 0),
+    ("disk", 20, "completed", 2), ("disk", 10, "failed", 1),
+])
+def test_darwin_actual_reader_keeps_ram_rss_and_enforces_conservative_disk_bound(
+        tmp_path, monkeypatch, storage, budget, expected, fallbacks):
+    read, owner, child, rss_reads, uss_reads = _darwin_reader_with_forbidden_uss(monkeypatch)
+    result, process, reads, sleeps, stopped = _fake_case(
+        tmp_path, monkeypatch, lambda clock, child: read(child.pid), storage=storage,
+        budget=budget, exit_at=.5, platform="darwin")
+    assert result["status"] == expected and not uss_reads
+    assert result["peak_rss_bytes"] == 12 and result["rss_measurement"] == "sampled"
+    assert result["live_memory_observed"] is True and result["live_memory_missing_samples"] == 0
+    assert result["live_memory_rss_fallback_samples"] == fallbacks
+    assert len(rss_reads) == 2 * result["live_memory_samples"]
+    if expected == "failed":
+        assert result["reason"] == "memory_limit" and stopped == [(process, 0.)]
+    else:
+        assert not stopped
+
+
+@pytest.mark.parametrize("failure", ["exception", "absent", "negative", "boolean"])
+def test_darwin_partial_or_invalid_rss_does_not_pass_using_known_owner_bytes(
+        tmp_path, monkeypatch, failure):
+    read, owner, child, rss_reads, uss_reads = _darwin_reader_with_forbidden_uss(monkeypatch)
+
+    def bad_child_info():
+        if failure == "exception":
+            raise PermissionError("Child RSS unavailable")
+        return SimpleNamespace(**({} if failure == "absent" else {"rss": -1 if failure == "negative" else True}))
+
+    child.memory_info = bad_child_info
+    assert read(12345) == (None, None)
+    result, process, reads, sleeps, stopped = _fake_case(
+        tmp_path, monkeypatch, lambda clock, child: read(child.pid), platform="darwin")
+    assert result["status"] == "failed" and result["reason"] == "memory_measurement_unavailable"
+    assert result["process_wall_s"] == 1. and stopped == [(process, 1.)]
+    assert result["live_memory_samples"] == result["live_memory_rss_fallback_samples"] == 0
+    assert not uss_reads
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+def test_private_counter_absence_does_not_enable_disk_rss_fallback_on_other_platforms(
+        tmp_path, monkeypatch, platform):
+    result, process, reads, sleeps, stopped = _fake_case(
+        tmp_path, monkeypatch, lambda clock, child: (7, None), platform=platform)
+    assert result["status"] == "failed" and result["reason"] == "memory_measurement_unavailable"
+    assert result["process_wall_s"] == 1. and stopped == [(process, 1.)]
+    assert result["live_memory_samples"] == result["live_memory_rss_fallback_samples"] == 0
+
+
+@pytest.mark.parametrize("private", [0, 3])
+def test_darwin_known_private_counter_is_not_replaced_by_larger_rss(tmp_path, monkeypatch, private):
+    result, process, reads, sleeps, stopped = _fake_case(
+        tmp_path, monkeypatch, lambda clock, child: (7, private), budget=6,
+        exit_at=.5, platform="darwin")
+    assert result["status"] == "completed" and not stopped
+    assert result["live_memory_samples"] == 2 and result["live_memory_rss_fallback_samples"] == 0
+
+
+def test_rss_fallback_public_counter_is_bounded_and_cannot_claim_more_than_live_samples():
+    row = {"n": 16, "target_points": 2, "method": "fftw", "signal": "white", "storage": "disk",
+           "status": "completed", "live_memory_observed": True, "live_memory_samples": 3,
+           "live_memory_missing_samples": 0, "live_memory_rss_fallback_samples": 2}
+    report = {"schema": SCHEMA, "state": "completed", "cases": [row]}
+    clean = privacy.sanitize(report)
+    assert clean["cases"][0]["live_memory_rss_fallback_samples"] == 2
+    assert privacy.sanitize(clean) == clean
+    for bad in (True, False, -1, 1.5, 4, 2 ** 63, "personal-hostname"):
+        row["live_memory_rss_fallback_samples"] = bad
+        assert "live_memory_rss_fallback_samples" not in privacy.sanitize(report)["cases"][0]
+    row["live_memory_rss_fallback_samples"] = 0
+    del row["live_memory_samples"]
+    assert "live_memory_rss_fallback_samples" not in privacy.sanitize(report)["cases"][0]
 
 
 def test_live_probe_report_fields_are_closed_and_strictly_typed():

@@ -145,7 +145,7 @@ def test_linux_address_guard_does_not_grow_for_explicit_smoothing(monkeypatch):
     monkeypatch.setitem(sys.modules, "resource", fake_resource)
     monkeypatch.setattr(worker.sys, "platform", "linux")
     def status(path, *args, **kwargs):
-        assert str(path) == "/proc/self/status"
+        assert path.as_posix() == "/proc/self/status"
         return "VmSize: 1000000 kB\nVmRSS: 100000 kB\n"
     monkeypatch.setattr(Path, "read_text", status)
     for request in (None, 8):

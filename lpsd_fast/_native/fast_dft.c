@@ -583,6 +583,19 @@ static LPSD_ALWAYS_INLINE void dot_csd_anchored_simd(const double *x1, const dou
     *ri2 = i2;
 }
 
+static LPSD_ALWAYS_INLINE bool csd_projection_has_variance_range(
+    double r1, double i1, double r2, double i2)
+{
+    /* Four projection factors enter the legacy variance. Reserve four
+     * exponent bits per factor for the complex products, mean differences
+     * and their sums. Comparisons also reject NaN/Inf without inspecting
+     * the input vectors again. This is a conservative batching bound, not
+     * a change to the reference's exceptional-value arithmetic. */
+    const double limit = ldexp(1.0, DBL_MAX_EXP / 4 - 4);
+    return fabs(r1) <= limit && fabs(i1) <= limit &&
+           fabs(r2) <= limit && fabs(i2) <= limit;
+}
+
 static double monotonic_seconds(void)
 {
 #ifdef _WIN32
@@ -759,8 +772,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
     if (profile) {
         *preparation_seconds = segments_started - preparation_started;
     }
-    double start = 0.0;
-    double Mr_r = 0.0, Mr_i = 0.0, M2_r = 0.0, M2_i = 0.0;
+    double start, Mr_r, Mr_i, M2_r, M2_i;
     /* Matched per-length probes of the nonfused selected kernel favor
      * eight-way reuse for the smallest vectors and for L>=1024. Its
      * 256<=L<1024 interval retains the faster single-segment loop. The
@@ -774,13 +786,24 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
     const bool batch_csd_four = batched && mode >= 2 && csd &&
         segLen >= 128 && (segLen < 256 || segLen >= 1024) &&
         use_eight_segment_batch();
+    bool allow_csd_batches = (batch_csd_four && navg >= 6) ||
+        (batched && mode >= 2 && csd && segLen >= 2048 && navg >= 4);
+
+restart_csd_segments:
+    /* An extreme projection may be discovered after ordinary batches have
+     * already contributed to the mean. Replaying the complete sequence on
+     * the original single-CSD path removes all earlier batch rounding too.
+     * The range guard disables itself before this one possible restart;
+     * projected coefficients are reused, not projected a second time. */
+    start = 0.0;
+    Mr_r = Mr_i = M2_r = M2_i = 0.0;
     for (long int ii = 0; ii < navg; ++ii) {
         /* Keep the first two CSD projections on their original single-
          * segment path: the legacy ii=1 mean reset subtracts the complete
          * first periodogram and can amplify an otherwise tiny dot-product
          * rounding change after a large initial transient. */
-        const int csd_batch = ii >= 2 && batch_csd_four && navg - ii >= 4 ? 4 :
-            ii >= 2 && batched && mode >= 2 && csd &&
+        const int csd_batch = !allow_csd_batches || ii < 2 ? 0 :
+            batch_csd_four && navg - ii >= 4 ? 4 :
             segLen >= 2048 && navg - ii >= 2 ? 2 : 0;
         if (csd_batch != 0) {
             const double *segments[8];
@@ -811,6 +834,11 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
                     projected_r, projected_i, segLen, rr, ri);
             }
             for (int b = 0; b < csd_batch; ++b) {
+                if (!csd_projection_has_variance_range(
+                        rr[2*b], ri[2*b], rr[2*b+1], ri[2*b+1])) {
+                    allow_csd_batches = false;
+                    goto restart_csd_segments;
+                }
                 update_original_statistics(
                     ii + b, rr[2*b], ri[2*b], rr[2*b+1], ri[2*b+1],
                     statistics && ii + b == navg - 1,
@@ -986,6 +1014,12 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
             }
             rxsum2 = rxsum1;
             ixsum2 = ixsum1;
+        }
+
+        if (allow_csd_batches && !csd_projection_has_variance_range(
+                rxsum1, ixsum1, rxsum2, ixsum2)) {
+            allow_csd_batches = false;
+            goto restart_csd_segments;
         }
 
         /* Only the final (overwriting) legacy M2 value is observable. */

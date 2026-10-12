@@ -85,6 +85,7 @@ jobs:
           $diskReport = Join-Path $reports[0].DirectoryName 'disk-algorithm-pairs.json'
           $phaseReport = Join-Path $reports[0].DirectoryName 'packed-phase-pairs.json'
           $directReport = Join-Path $reports[0].DirectoryName 'direct-power-smoke.json'
+          $deviceTestReport = Join-Path $reports[0].DirectoryName 'device-regressions.xml'
           $memoryProbe = @'
           import sys
           from lpsd_fast._resources import host_available_memory
@@ -108,6 +109,48 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Packed phase comparison failed' }
             & $python "$env:GITHUB_WORKSPACE/test_fast/check_direct_power_smoke.py" --source-root (Join-Path $reports[0].DirectoryName 'source') --output $directReport
             if ($LASTEXITCODE -ne 0) { throw 'Direct log-power correctness smoke failed' }
+            # The physical-device reports found Windows-specific archive/path
+            # regressions. Exercise those contracts in this actual private
+            # Windows environment after all performance observations finish.
+            $uv = @(Get-ChildItem -LiteralPath (Join-Path $reports[0].DirectoryName 'uv') -Filter uv.exe -Recurse -File)
+            if ($uv.Count -ne 1) { throw 'Expected exactly one private uv executable' }
+            & $uv[0].FullName --no-config --no-cache pip install --python $python 'pytest>=8'
+            if ($LASTEXITCODE -ne 0) { throw 'Windows regression prerequisites failed' }
+            $nativeTestSetup = @'
+          import json, shlex
+          from pathlib import Path
+          from benchmarks import bench_fftw
+          from lpsd_benchmark.worker import _load_fftw
+          from lpsd_fast import api
+          api._native()
+          build = json.loads(Path(api._LIB._name).with_suffix(".build.json").read_text())
+          print(json.dumps({"fftw_library": _load_fftw(bench_fftw, 1).lib._name,
+                            "compiler": shlex.join(build["compiler"])}))
+          '@
+            $privateToolchainJson = & $python -c $nativeTestSetup
+            if ($LASTEXITCODE -ne 0) { throw 'Private native test toolchain lookup failed' }
+            $privateToolchain = $privateToolchainJson | ConvertFrom-Json -ErrorAction Stop
+            $env:LPSD_TEST_FFTW_LIBRARY = $privateToolchain.fftw_library
+            $env:CC = $privateToolchain.compiler
+            & $python -m pytest -o addopts='' -q test_fast/test_bootstrap.py test_fast/test_smoothing_controls.py test_fast/test_csd_batches.py test_fast/test_csd_extreme_fallback.py test_fast/test_matched_smoothing.py --junitxml $deviceTestReport
+            if ($LASTEXITCODE -ne 0) { throw 'Windows device regression contracts failed' }
+            $deviceGate = @'
+          import sys
+          import xml.etree.ElementTree as ET
+          cases = list(ET.parse(sys.argv[1]).iter("testcase"))
+          groups = (
+              ("frozen estimator comparisons", 24, lambda c: c.get("name", "").startswith("test_all_six_signals_match_frozen_estimator[")),
+              ("Bluestein comparison", 1, lambda c: c.get("name") == "test_measured_bluestein_hybrid_retains_original_density"),
+              ("CSD fallback route", 28, lambda c: c.get("classname", "").endswith("test_csd_extreme_fallback")),
+          )
+          for label, count, match in groups:
+              selected = [case for case in cases if match(case)]
+              if len(selected) != count or any(len(case) for case in selected):
+                  raise RuntimeError(f"{label}: expected {count} executed, passing tests")
+              print(f"{label}: {count} executed and passed")
+          '@
+            & $python -c $deviceGate $deviceTestReport
+            if ($LASTEXITCODE -ne 0) { throw 'Windows numerical tests were not executed completely' }
           } finally { Pop-Location }
           & $python test_fast/check_portable_smoke.py $boundedReport fft_input_then_blocked 8
           if ($LASTEXITCODE -ne 0) { throw 'Incomplete bounded window comparison' }
@@ -124,5 +167,6 @@ jobs:
             ${{ runner.temp }}/lpsd-benchmark*/disk-algorithm-pairs.json
             ${{ runner.temp }}/lpsd-benchmark*/packed-phase-pairs.json
             ${{ runner.temp }}/lpsd-benchmark*/direct-power-smoke.json
+            ${{ runner.temp }}/lpsd-benchmark*/device-regressions.xml
             ${{ runner.temp }}/lpsd-benchmark*/source/lpsd/*.build.json
             ${{ runner.temp }}/lpsd-benchmark*/source/lpsd_fast/_native/*.build.json
