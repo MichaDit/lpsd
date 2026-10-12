@@ -1,0 +1,818 @@
+{
+  "schema": "lpsd-recovered-followup-summary-v1",
+  "evidence_date": "2026-10-12",
+  "synthetic_input_only": true,
+  "scope": "Whitelisted extract of previously completed or failed Linux experiment records recovered from archived PSD/NSD work. These are separate historical cohorts, not additional physical-machine coverage or validation of a future integrated binary.",
+  "privacy": "Only experiment settings, scalar results, relative archive members, source hashes and execution timestamps are retained.",
+  "recovery_integrity": {
+    "scope": "Read-only archive/file hashing and comparison of stored arrays; no archived code or estimator was executed.",
+    "verified_manifest_file_count": 126,
+    "all_126_manifest_file_hashes_match": true,
+    "verified_r3_candidate_source_pin_count": 8,
+    "r3_raw_child_equals_embedded_parent_raw": true,
+    "archive_receipts": [
+      {
+        "filename": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "bytes": 20060652,
+        "sha256": "48f305fdb51e3ac73d2b8d148503492cf06e96edcbf191b46e90cfaa654f0850",
+        "manifest_filename": "MANIFEST.json",
+        "manifest_sha256": "d4ddf73aa80048aa101988498c951b417c63786063b6b377d3cdfa1e15064c9f",
+        "verified_manifest_file_count": 99,
+        "all_manifest_file_hashes_match": true
+      },
+      {
+        "filename": "r3_numeric_gate_and_large_pair_sources_20261012.zip",
+        "bytes": 10307373,
+        "sha256": "965e431cff7081dfaa3a77992bd6263a3b999bf6be262d282002a2ef915f8996",
+        "manifest_filename": "MANIFEST.json",
+        "manifest_sha256": "f475fb12c14bc2e2fdf5d723bdcf0eb36d5cf3595809a17737b62e4c5a948722",
+        "verified_manifest_file_count": 16,
+        "all_manifest_file_hashes_match": true
+      },
+      {
+        "filename": "qualification_reviews_and_verified_nsd_20261012.zip",
+        "bytes": 951543,
+        "sha256": "a00447dce5e02b095d12679cc01ecc22502fceec3d7354d2d8374f6fc02721f1",
+        "manifest_filename": "MANIFEST.json",
+        "manifest_sha256": "cf19c7fa02903c35499b715db99bfb972cc19a9425e419dfde61f54c950a139a",
+        "verified_manifest_file_count": 11,
+        "all_manifest_file_hashes_match": true
+      },
+      {
+        "filename": "native_g2_1b_infrastructure_affected_20261012.zip",
+        "bytes": 3019500,
+        "sha256": "f5a7f2718ef749f1a746c45fa7130f96f8c6181b6fc0c376f6e0101f7be8e60e",
+        "manifest_filename": "RESCUE_MANIFEST.json",
+        "manifest_sha256": "21d1b6f2d001b91eb837c98ee1061549a7a3334b4041575104b0cf2fca368124",
+        "included_in_126_verified_file_count": false
+      }
+    ],
+    "limitation": "Matching hashes establish faithful recovery. They do not replace missing runtime observations or qualify an integrated revision."
+  },
+  "r3_small_numerical_gate": {
+    "status": "completed",
+    "started_utc": "2026-10-12T09:50:00.712354+00:00",
+    "finished_utc": "2026-10-12T09:50:25.446835+00:00",
+    "source_commit_label": "7d0f52b9096cbe2f74064d86f2fe6b9fa69320c9",
+    "source_commit_scope": "Original E reference label; actual source and library pins remain in the frozen identity and gate. Not the published fast.8 integration.",
+    "environment": {
+      "os": "Linux",
+      "process_arch": "x86_64",
+      "compiler": "GCC 13",
+      "python_version": "3.12.14",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scipy": "1.17.0",
+      "fftw": "3.3.10",
+      "shared_cgroup_limit_bytes": 8589934592
+    },
+    "sources": [
+      {
+        "archive": "r3_numeric_gate_and_large_pair_sources_20261012.zip",
+        "member": "numeric_gate/numeric_gate_run1.json",
+        "bytes": 20870974,
+        "sha256": "3b18225111d31bec582714fa4f8681127beb65979c3bf323d3285869b43be355"
+      },
+      {
+        "archive": "r3_numeric_gate_and_large_pair_sources_20261012.zip",
+        "member": "numeric_gate/numeric_gate_run1.child.json",
+        "bytes": 19648981,
+        "sha256": "2b8633223d81ed439c6121d0ac4401470ff1e0947ed6aa1da1418816b19a7b71"
+      },
+      {
+        "archive": "r3_numeric_gate_and_large_pair_sources_20261012.zip",
+        "member": "build/build.json",
+        "bytes": 2260,
+        "sha256": "893c1fdbc879d6d0ca36f195de618c3da05f6f279aca1eb4c88b37f6e001d085"
+      },
+      {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "direct_log_power_recovery_r3/candidate_sources.json",
+        "bytes": 960,
+        "sha256": "82e650a3194bbf5849eb3a26980b04dfabda028e8792f2bdf87ca54c35a6a6ae"
+      },
+      {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "direct_log_power_recovery_r3/FREEZE.json",
+        "bytes": 1734,
+        "sha256": "a6b7f10ce69700f7d2446d8d216e9e39b79c09ff01b78eb86cbc08d3ffab34cc"
+      },
+      {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "direct_log_power_recovery_r3/frozen_identity.json",
+        "bytes": 11569,
+        "sha256": "72de7082bf403d62a6b7acb2438f031be5bb936b7021837ec02683556614fde9"
+      },
+      {
+        "archive": "qualification_reviews_and_verified_nsd_20261012.zip",
+        "member": "direct_log_power_r3_result_review/RESULT_REVIEW.json",
+        "bytes": 277564,
+        "sha256": "9dca7e3487d9591a955a35a128cb36e41376688aa68f8b7e439779586ffd00ad"
+      }
+    ],
+    "candidate_sources_sha256": {
+      "direct_log_power.c": "4c59f90d1d50c8aa62ffbead5e2702fb84835e354a7c34597d870efb6ebc12ec",
+      "direct_log_power.py": "ddc74e130428cac00f067ff4022840e80ab093ee4f3e5282fb8f3fc6a7a41f62",
+      "build_helper.py": "debc0bd1a1f16332222a32150faa0abe5e2908388c575a5fcabee414a9156ee8",
+      "contracts.py": "040d10b7941f55fb48f7114052188a5f1f0ec5e719427b43f9ecd0cb0625ff66",
+      "small_gates.py": "7e3054edea9b43f9bd63ecc2d9bae5a6187fa716a26a4cda50f5f3c12a93dc4c",
+      "run_gate.py": "f9f005dff9e4f1ad37d54ddc1483066e87501d2e567ec7acc47e55b2bbaa620b",
+      "frozen_identity.json": "72de7082bf403d62a6b7acb2438f031be5bb936b7021837ec02683556614fde9",
+      "case_plan.json": "c70f935a6ba45f2d7cc2d395f2f3d5f34cd49ad7c8fb189fdc043b41c50b0a8a"
+    },
+    "helper_binary": {
+      "filename": "libdirect_log_power_r3.so",
+      "sha256": "db482ee6863ea4f11b87c33916c87e73a6ed46c652ad0eb7d553985805102734",
+      "binary_bytes_included": false
+    },
+    "settings": {
+      "small_contracts": 30,
+      "configurations": 24,
+      "full_calls": 48,
+      "n_values": [
+        100000,
+        1000000
+      ],
+      "rtol": 3e-06,
+      "atol": 0.0,
+      "parseval_rtol": 1e-10,
+      "child_seconds": 600.0,
+      "parent_seconds": 680.0,
+      "anonymous_tree_limit_bytes": 1073741824,
+      "address_limit_bytes": 4294967296,
+      "owned_large_file_limit_bytes": 24000000
+    },
+    "signals": [
+      "brown",
+      "dc_nanovolt",
+      "mixed_tones",
+      "offbin_tone",
+      "pink",
+      "white"
+    ],
+    "actual_output_points_by_n": [
+      {
+        "n": 100000,
+        "actual_output_points": [
+          469,
+          938
+        ]
+      },
+      {
+        "n": 1000000,
+        "actual_output_points": [
+          577,
+          1154
+        ]
+      }
+    ],
+    "qualification": {
+      "independent_saved_data_checks": 1080,
+      "failed_check_count": 0,
+      "small_named_cases": 30,
+      "small_numeric_comparisons": 141,
+      "unique_main_configurations": 24,
+      "complete_calls": 48,
+      "paired_values_per_spectrum": 18828,
+      "all_frequency_psd_nsd_pairs_bitidentical": true,
+      "spectrum_errors": {
+        "psd": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "different_values": 0,
+          "reference_zero_mismatches": 0
+        },
+        "nsd": {
+          "maximum_absolute_error": 0.0,
+          "maximum_relative_error": 0.0,
+          "different_values": 0,
+          "reference_zero_mismatches": 0
+        }
+      },
+      "maximum_complete_call_parseval_relative_error": 1.1693803047441206e-15,
+      "maximum_small_numeric_relative_error": 9.279298865518796e-16,
+      "process_reaped": true,
+      "cleanup_completed": true,
+      "exit_code": 0
+    },
+    "qualification_duration_diagnostics_only": {
+      "parent_total_wall_s": 24.78888479300076,
+      "supervised_child_wall_s": 24.521500579008716,
+      "child_body_wall_s": 22.714409577005426
+    },
+    "evidence_limits": {
+      "estimator_speed_evidence": false,
+      "integrated_fast8_validation": false,
+      "additional_platform_validation": false,
+      "large_pair_execution_evidence_present": false,
+      "large_pair_driver_state_in_recovered_artifacts": "statically_reviewed_only",
+      "large_pair_driver_sources": [
+        {
+          "archive": "r3_numeric_gate_and_large_pair_sources_20261012.zip",
+          "member": "pair_sources/pair_sources.json",
+          "bytes": 1731,
+          "sha256": "cc41047e67ce28238563d7201a3d673f13961e7ed7eaa2725fec7e37f410dfbe"
+        },
+        {
+          "archive": "r3_numeric_gate_and_large_pair_sources_20261012.zip",
+          "member": "pair_sources/FREEZE.json",
+          "bytes": 1704,
+          "sha256": "09725825fa9afc59fd4258d42b9a06a91ea4050e01888257ab21986f2f548cc8"
+        },
+        {
+          "archive": "qualification_reviews_and_verified_nsd_20261012.zip",
+          "member": "direct_log_power_r3_1b_pair/INDEPENDENT_REVIEW.md",
+          "bytes": 11935,
+          "sha256": "018ba0b191b31ad4f5caafce60a3f0b1560aa1fc06656556606a170426678b50"
+        }
+      ],
+      "reason": "The small gate includes deliberate hashes and diagnostics inside its timers. It supplies finite-corpus numerical qualification, not a performance ratio. The recovered large driver has no execution result here."
+    }
+  },
+  "columns_1b_factor_policy_pair": {
+    "status": "completed",
+    "started_utc": "2026-10-12T09:12:33.861220+00:00",
+    "finished_utc": "2026-10-12T09:48:00.284421+00:00",
+    "source_commit_label": "7d0f52b9096cbe2f74064d86f2fe6b9fa69320c9",
+    "source_commit_is_operator_declaration": true,
+    "environment": {
+      "os": "Linux",
+      "process_arch": "x86_64",
+      "python_version": "3.12.14",
+      "numpy_version": "2.3.5",
+      "fftw": "3.3.10",
+      "shared_cgroup_limit_bytes": 8589934592
+    },
+    "sources": [
+      {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "column_policy/paired_disk1b_columns_E_policy_followup.json",
+        "bytes": 1329245,
+        "sha256": "67964f63b22497c8b4bd82a45671635da7eb3e24d6dbe0c87e9368525a37b2dd"
+      },
+      {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "column_policy/paired_disk1b_column_strategy_screen.py",
+        "bytes": 42086,
+        "sha256": "32c48f10df4c1541672f78008812be78339b520f0fd89bc5337f964dc79cea80"
+      },
+      {
+        "archive": "qualification_reviews_and_verified_nsd_20261012.zip",
+        "member": "column_policy_followup_review/RESULT_REVIEW.json",
+        "bytes": 29319,
+        "sha256": "589a83b446434b65cdcfab5d7b2b57b3d3480d467317852b8a2cc1058c658a8b"
+      }
+    ],
+    "selected_computational_source_pins": {
+      "benchmarks/bench_fftw_disk.py": "3bf3bb35f745a929c10dffe7a670c3abf01e03bb7f180523d382ba98e7620737",
+      "benchmarks/_fftw_disk.py": "346a728ad0ccb1737cacc3d999a4c6a011a8208b76ad9654a1a94bfc9fc91cdf",
+      "benchmarks/bench_fftw.py": "ef2fb6cd025b127bbfa0557a5eb0f43b035a1ec12b7eb20a96cebef58ca4f24f",
+      "benchmarks/bench_fftw_optimized.py": "836d52ebfb99eb1a468f695bc71521a44d87513fb5e98c263324e639cda74998",
+      "lpsd_fast/api.py": "46d150f758ec10a028cdae4d5e725b3f9e211ac1de89248c5bb0df8889075889",
+      "lpsd_fast/_native/fast_dft.c": "d3f6af52d2667beb7fb247e94f5ebef73ce6013d4c8821019cd032d3214dede3"
+    },
+    "recorded_library_pins": {
+      "liblpsd_fast.so": "c3ed285831e8dd93577aa9043aca1ba0f91524bc3c03c31fe87531fa473a7688",
+      "libfftw3.so.3.6.10": "b5cc02c4d360b5b20111cb0a251f8368af8c9ce3145357f5ba54c51ac4ca9b35",
+      "libfftw3_threads.so.3.6.10": "fd4b9672b1c7b297c87681f8bcaad414c3b18f3aed5edbf5fa7f665482eb0c7c"
+    },
+    "settings": {
+      "n": 1000000000,
+      "sample_rate": 50.0,
+      "n_frequencies": 1000,
+      "n_averages": 100,
+      "psll": 200.0,
+      "seed": 20261010,
+      "fftw_threads": 8,
+      "workers": 8,
+      "smoothing_workers": 4,
+      "fft_memory_mb": 128.0,
+      "power_storage": "workspace",
+      "child_seconds": 3600.0,
+      "max_seconds": 7200.0,
+      "signal": "white",
+      "input_dtype": "float64",
+      "actual_output_points": 744,
+      "large_file_logical_bytes": 24000000000,
+      "sequence": [
+        "strided_default",
+        "auto"
+      ]
+    },
+    "canonical_input_sha256": "550c34dc15eece7023d5aae748974266283731d423d41c27aea8714c1bd41f7d",
+    "input_preparation": {
+      "source": {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "column_policy/jobs/input_preparation.json",
+        "bytes": 25833,
+        "sha256": "e24295ebdd989be4687e31946439ce95e0d02ce173b0336a8d8ebaf4cf5b946b"
+      },
+      "status": "completed",
+      "started_utc": "2026-10-12T09:12:33.908665+00:00",
+      "finished_utc": "2026-10-12T09:13:15.305236+00:00",
+      "preparation_wall_s": 40.44063734699739,
+      "whole_child_wall_s": 41.73323093399813,
+      "whole_child_timeout_s": 3600.0,
+      "child_exit_code": 0,
+      "process_reaped": true
+    },
+    "jobs": [
+      {
+        "sequence_index": 0,
+        "variant": "strided_default",
+        "source": {
+          "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+          "member": "column_policy/jobs/00_strided_default.json",
+          "bytes": 424448,
+          "sha256": "e771deb30f6ac84bac009e6277e87641b007d745e53ecb19204d2f30fd585de6"
+        },
+        "status": "completed",
+        "started_utc": "2026-10-12T09:13:16.562665+00:00",
+        "finished_utc": "2026-10-12T09:26:31.921365+00:00",
+        "strategy_wrapper_started_utc": "2026-10-12T09:13:15.645966+00:00",
+        "child_exit_code": 0,
+        "process_reaped": true,
+        "stop_reason": null,
+        "whole_child_wall_s": 796.6051967500098,
+        "whole_child_timeout_s": 3600.0,
+        "factors": [
+          31250,
+          32000
+        ],
+        "column_strategy": "strided",
+        "actual_output_points": 744,
+        "complete_call_timing": {
+          "wall_s": 784.941853812,
+          "cpu_s": 265.535434706
+        },
+        "complete_call_phases": {
+          "workspace_and_fftw_planning_s": 0.005293886992149055,
+          "window_and_normalization_s": 20.43189985101344,
+          "input_validation_copy_mean_window_s": 50.576485452998895,
+          "time_energy_diagnostic_s": 2.498180989990942,
+          "blocked_fftw_s": 536.6592590900109,
+          "ordered_one_sided_power_s": 171.49971320398618,
+          "frequency_energy_diagnostic_s": 2.3247054110106546,
+          "logarithmic_grouping_and_outputs_s": 0.2512690139992628,
+          "workspace_cleanup_s": 0.6891634069907013
+        },
+        "fft_setup_subphases": {
+          "workspace_file_and_mapping_s": 0.00020561000565066934,
+          "anonymous_buffers_s": 0.0003364480071468279,
+          "fftw_batch_planning_s": 0.002709376989514567,
+          "total_s": 0.0035119289968861267
+        },
+        "fft_and_power_subphases": {
+          "real_expansion_s": 26.545534624994616,
+          "column_gather_s": 414.4491661948705,
+          "column_fftw_s": 3.196862042066641,
+          "twiddle_s": 26.215067680197535,
+          "column_scatter_s": 37.892236940941075,
+          "row_gather_s": 13.349941788867,
+          "row_fftw_s": 2.4876059258385794,
+          "row_scatter_s": 12.150155264884233,
+          "column_transpose_before_s": 0.0,
+          "column_transpose_after_s": 0.0,
+          "execute_total_s": 536.658578653005,
+          "power_gather_s": 74.98196879409079,
+          "power_arithmetic_s": 3.748575000106939,
+          "power_store_s": 92.64858475893561,
+          "power_workspace_pack_s": 11.425895469990792,
+          "power_workspace_transpose_s": 160.0597426910099,
+          "power_total_s": 171.49590118399647
+        },
+        "power_workspace_transpose_tile_edge": 2047,
+        "progress_phase_timing_deltas": [
+          {
+            "phase": "real_expansion",
+            "complete": true,
+            "observations": 3,
+            "wall_s": 26.5451794,
+            "cpu_s": 14.964335718,
+            "rusage": {
+              "user_s": 4.282325999999998,
+              "system_s": 10.681708999999998
+            }
+          },
+          {
+            "phase": "column_fft",
+            "complete": true,
+            "observations": 31,
+            "wall_s": 481.998339566,
+            "cpu_s": 127.643920047,
+            "rusage": {
+              "user_s": 62.07450300000001,
+              "system_s": 65.569152
+            }
+          },
+          {
+            "phase": "row_fft",
+            "complete": true,
+            "observations": 3,
+            "wall_s": 28.099596592,
+            "cpu_s": 26.465900536,
+            "rusage": {
+              "user_s": 14.96192099999999,
+              "system_s": 11.503861
+            }
+          },
+          {
+            "phase": "power_workspace_pack",
+            "complete": true,
+            "observations": 2,
+            "wall_s": 11.426082824,
+            "cpu_s": 7.731049499,
+            "rusage": {
+              "user_s": 3.145949999999999,
+              "system_s": 4.585052000000019
+            }
+          },
+          {
+            "phase": "power_workspace_transpose",
+            "complete": true,
+            "observations": 12,
+            "wall_s": 160.057934083,
+            "cpu_s": 21.840398006,
+            "rusage": {
+              "user_s": 3.31061600000001,
+              "system_s": 18.529640999999998
+            }
+          }
+        ],
+        "complete_call_enclosing_process_io_delta": {
+          "rchar": 336497,
+          "wchar": 9702873,
+          "syscr": 2266,
+          "syscw": 121,
+          "read_bytes": 102966054912,
+          "write_bytes": 210385133568,
+          "cancelled_write_bytes": 4096
+        },
+        "parseval": {
+          "time_power_v2": 2.4997501450542054e-15,
+          "fft_power_v2": 2.499750145054206e-15,
+          "relative_error": 1.5778795068414844e-16,
+          "diagnostic_passes_included_in_timer": true
+        },
+        "spectrum_hashes": {
+          "frequency_hz": "211e54f9d9c6387cbbd8f83aa4cd544df2b88fb4e1a1cfe95599e7ba6dbf0f53",
+          "psd": "8220883ee631cbd57867e1b089d92efdddf5bc9d8a99ea1255718d648293df17",
+          "nsd": "254b2d67210f0c4b50a6a9d179e0f315d956e90c39ed8db3777c89f034c5c3d2"
+        },
+        "memory": {
+          "samples": 3968,
+          "anonymous_limit_bytes": 6710886400,
+          "sampled_peak_anonymous_bytes": 189034496,
+          "sampled_peak_rss_bytes": 10175815680
+        },
+        "process_VmHWM_bytes": 10180112384
+      },
+      {
+        "sequence_index": 1,
+        "variant": "auto",
+        "source": {
+          "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+          "member": "column_policy/jobs/01_auto.json",
+          "bytes": 638788,
+          "sha256": "2fac798f2eba2c7505858977e49000c55918509dac0897464e1f20055cc7a337"
+        },
+        "status": "completed",
+        "started_utc": "2026-10-12T09:26:33.147434+00:00",
+        "finished_utc": "2026-10-12T09:48:00.008244+00:00",
+        "strategy_wrapper_started_utc": "2026-10-12T09:26:32.275348+00:00",
+        "child_exit_code": 0,
+        "process_reaped": true,
+        "stop_reason": null,
+        "whole_child_wall_s": 1287.9863350299856,
+        "whole_child_timeout_s": 3600.0,
+        "factors": [
+          10000,
+          100000
+        ],
+        "column_strategy": "transpose",
+        "actual_output_points": 744,
+        "complete_call_timing": {
+          "wall_s": 1276.722081807,
+          "cpu_s": 334.02689696
+        },
+        "complete_call_phases": {
+          "workspace_and_fftw_planning_s": 0.007182463989011012,
+          "window_and_normalization_s": 16.901533844007645,
+          "input_validation_copy_mean_window_s": 51.818638133991044,
+          "time_energy_diagnostic_s": 2.882741449007881,
+          "blocked_fftw_s": 1000.2113003230043,
+          "ordered_one_sided_power_s": 201.36084161698818,
+          "frequency_energy_diagnostic_s": 2.3233106400002725,
+          "logarithmic_grouping_and_outputs_s": 0.2887743820028845,
+          "workspace_cleanup_s": 0.9175250660046004
+        },
+        "fft_setup_subphases": {
+          "workspace_file_and_mapping_s": 0.00017486399156041443,
+          "anonymous_buffers_s": 0.00019149899890180677,
+          "fftw_batch_planning_s": 0.005160704997251742,
+          "total_s": 0.005738716994528659
+        },
+        "fft_and_power_subphases": {
+          "real_expansion_s": 25.213690824995865,
+          "column_gather_s": 14.809457223964273,
+          "column_fftw_s": 2.006609869058593,
+          "twiddle_s": 29.04225575210876,
+          "column_scatter_s": 9.02515906302142,
+          "row_gather_s": 17.67949452481116,
+          "row_fftw_s": 3.4486792130046524,
+          "row_scatter_s": 14.031146374050877,
+          "column_transpose_before_s": 395.83391845699225,
+          "column_transpose_after_s": 488.9893488629896,
+          "execute_total_s": 1000.2106110230088,
+          "power_gather_s": 75.17926080919278,
+          "power_arithmetic_s": 4.719876490125898,
+          "power_store_s": 121.27311581192771,
+          "power_workspace_pack_s": 14.953239381007734,
+          "power_workspace_transpose_s": 186.36736798299535,
+          "power_total_s": 201.3461023629934
+        },
+        "power_workspace_transpose_tile_edge": 2046,
+        "progress_phase_timing_deltas": [
+          {
+            "phase": "real_expansion",
+            "complete": true,
+            "observations": 3,
+            "wall_s": 25.212955615,
+            "cpu_s": 14.908588632,
+            "rusage": {
+              "user_s": 4.325866000000001,
+              "system_s": 10.582613000000002
+            }
+          },
+          {
+            "phase": "column_transpose_before",
+            "complete": true,
+            "observations": 26,
+            "wall_s": 395.829976611,
+            "cpu_s": 55.918963145,
+            "rusage": {
+              "user_s": 8.436316999999999,
+              "system_s": 47.482544000000004
+            }
+          },
+          {
+            "phase": "column_fft",
+            "complete": true,
+            "observations": 5,
+            "wall_s": 54.928731919,
+            "cpu_s": 54.812940341,
+            "rusage": {
+              "user_s": 42.57390099999999,
+              "system_s": 12.238945999999999
+            }
+          },
+          {
+            "phase": "column_transpose_after",
+            "complete": true,
+            "observations": 32,
+            "wall_s": 488.981739895,
+            "cpu_s": 67.568994716,
+            "rusage": {
+              "user_s": 9.13409,
+              "system_s": 58.43490899999999
+            }
+          },
+          {
+            "phase": "row_fft",
+            "complete": true,
+            "observations": 4,
+            "wall_s": 35.210799095,
+            "cpu_s": 41.609835037,
+            "rusage": {
+              "user_s": 19.590034000000003,
+              "system_s": 22.019650999999982
+            }
+          },
+          {
+            "phase": "power_workspace_pack",
+            "complete": true,
+            "observations": 2,
+            "wall_s": 14.962859321,
+            "cpu_s": 10.535358179,
+            "rusage": {
+              "user_s": 3.527834999999996,
+              "system_s": 7.007550000000009
+            }
+          },
+          {
+            "phase": "power_workspace_transpose",
+            "complete": true,
+            "observations": 13,
+            "wall_s": 186.365684464,
+            "cpu_s": 25.513658463,
+            "rusage": {
+              "user_s": 3.1102349999999888,
+              "system_s": 22.403314000000023
+            }
+          }
+        ],
+        "complete_call_enclosing_process_io_delta": {
+          "rchar": 526732,
+          "wchar": 24916428,
+          "syscr": 3762,
+          "syscw": 189,
+          "read_bytes": 132546170880,
+          "write_bytes": 148881145856,
+          "cancelled_write_bytes": 4096
+        },
+        "parseval": {
+          "time_power_v2": 2.4997501450542054e-15,
+          "fft_power_v2": 2.4997501450542054e-15,
+          "relative_error": 0.0,
+          "diagnostic_passes_included_in_timer": true
+        },
+        "spectrum_hashes": {
+          "frequency_hz": "211e54f9d9c6387cbbd8f83aa4cd544df2b88fb4e1a1cfe95599e7ba6dbf0f53",
+          "psd": "8220883ee631cbd57867e1b089d92efdddf5bc9d8a99ea1255718d648293df17",
+          "nsd": "254b2d67210f0c4b50a6a9d179e0f315d956e90c39ed8db3777c89f034c5c3d2"
+        },
+        "memory": {
+          "samples": 6416,
+          "anonymous_limit_bytes": 6710886400,
+          "sampled_peak_anonymous_bytes": 188350464,
+          "sampled_peak_rss_bytes": 9275375616
+        },
+        "process_VmHWM_bytes": 9285771264
+      }
+    ],
+    "whole_experiment_wall_s": 2126.467894390007,
+    "owned_temporary_directory_cleaned": true,
+    "comparisons": {
+      "independent_saved_data_checks": 70,
+      "failed_check_count": 0,
+      "paired_frequency_values": 744,
+      "paired_psd_values": 744,
+      "paired_nsd_values": 744,
+      "all_frequency_psd_nsd_pairs_bitidentical": true,
+      "rtol": 3e-06,
+      "atol": 0.0,
+      "maximum_absolute_psd_error": 0.0,
+      "maximum_relative_psd_error": 0.0,
+      "maximum_absolute_nsd_error": 0.0,
+      "maximum_relative_nsd_error": 0.0
+    },
+    "descriptive_single_pair_ratios": {
+      "auto_over_strided_default_wall": 1.6265180351980382,
+      "auto_over_strided_default_cpu": 1.2579371839010245,
+      "strided_default_wall_reduction_percent": 38.518972531513064,
+      "strided_default_write_bytes_increase_percent": 41.3107968496478
+    },
+    "evidence_limits": [
+      "One ordered strided_default-then-auto pair; both factorization and column access change. This is not the earlier same-factor auto-versus-strided experiment.",
+      "No repeat median, causal isolation, cross-hardware comparison or automatic policy change is established.",
+      "Complete-call timers include planning, preprocessing, original diagnostics, progress/checkpoint costs and cleanup. Input preparation and additional input/source hashes are outside complete-call timers and inside child/experiment durations.",
+      "FFT setup/subphases are nested within complete-call phases. Power gather/arithmetic/store and power pack/transpose overlap; do not add both breakdowns. Progress-counter intervals also overlap their enclosing phases.",
+      "Process I/O counters include page-cache/writeback effects and are not exclusive physical-device totals. RSS/HWM can count overlapping mappings and do not measure unique physical memory.",
+      "Raw scope.limits describes 10800 seconds, but actual settings/commands use 7200 seconds for the parent and 3600 seconds per child; the complete experiment met the actual limits.",
+      "All complete-call, preparation, whole-child, whole-experiment, named setup/FFT/power and progress-phase timing deltas are retained. Repeated progress-event snapshots and log timestamps are omitted."
+    ]
+  },
+  "g2_1b_doubled_grid_infrastructure_affected": {
+    "original_status": "failed",
+    "started_utc": "2026-10-12T08:08:18.290433+00:00",
+    "finished_utc": "2026-10-12T08:50:19.057887+00:00",
+    "reference_declared_commit": "29ea18567be652ca289e8bf61e3ce5587663ccec",
+    "candidate_scope": "External G2 adapter; separate source cohort from E/R3 and published fast.8.",
+    "environment": {
+      "os": "Linux",
+      "process_arch": "x86_64",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "native_version": "1.0.6+fast.7",
+      "shared_cgroup_limit_bytes": 8589934592
+    },
+    "sources": [
+      {
+        "archive": "native_g2_1b_infrastructure_affected_20261012.zip",
+        "member": "optimization/native_pool_second_retirement/disk1b_double_G_G2_run1.json",
+        "bytes": 8802908,
+        "sha256": "cb820e2994a811c752871663fb58defd9554c8dc918e83836bd6483ba82a6fc4"
+      },
+      {
+        "archive": "native_g2_1b_infrastructure_affected_20261012.zip",
+        "member": "optimization/native_pool_second_retirement/disk1b_double_G_G2_run1_jobs/01_candidate.json",
+        "bytes": 3701474,
+        "sha256": "246e3241b19bc90a8f7bf7ab98f0e497b4eb8642489d8c1a55e2b39ba63a4561"
+      },
+      {
+        "archive": "r3_sources_and_recovered_results_checkpoint_20261012.zip",
+        "member": "recovery_review/native_1b_infrastructure_review.json",
+        "bytes": 47816,
+        "sha256": "cb18864493a771104c43516f933b4e79d3846fc4c7ae6e9a05dcb9b733383f54"
+      }
+    ],
+    "settings": {
+      "n": 1000000000,
+      "point_factor": 2,
+      "requested_j": 2105,
+      "actual_points": 1488,
+      "native_workers": 8,
+      "native_working_mb": 2048.0,
+      "initial_pool_bytes": 1431655760
+    },
+    "canonical_input_sha256": "550c34dc15eece7023d5aae748974266283731d423d41c27aea8714c1bd41f7d",
+    "jobs": [
+      {
+        "variant": "G",
+        "original_status": "completed",
+        "started_utc": "2026-10-12T08:09:14.181308+00:00",
+        "finished_utc": "2026-10-12T08:20:44.480899+00:00",
+        "child_exit_code": 0,
+        "process_reaped": true,
+        "stop_reason": null,
+        "whole_child_wall_s": 690.7243012380059,
+        "complete_call_timing_diagnostic_only": {
+          "wall_s": 678.938672397,
+          "cpu_s": 4191.142352467
+        },
+        "counter_interval_timing_diagnostic_only": {
+          "wall_s": 678.938991759,
+          "cpu_s": 4191.142676737
+        },
+        "counter_interval_io_diagnostic_only": {
+          "read_bytes": 359193837568,
+          "write_bytes": 1204224
+        },
+        "counter_interval_rusage_diagnostic_only": {
+          "user_s": 3890.0013409999997,
+          "system_s": 301.14111299999996,
+          "minor_faults": 5660952,
+          "major_faults": 54226
+        },
+        "actual_points": 1488,
+        "input_hashes_match": true,
+        "output_sha256": {
+          "frequency_hz": "c13f2e8f2322a2e0078037392289b9d9dd48efe846b712da07c8de461ea2a4c7",
+          "psd": "b66680c06522ee47f557a3c92eb0f19ce29e83cf42a2d085f4fbc284a68492c3",
+          "nsd": "b4e77848f69559ec3f04cda24a8a5f76503a2a161798899ca72347682f94bb0d"
+        },
+        "selected_module_filename": "_lpsd_disk.py",
+        "selected_module_sha256": "29995a2bfc8744235781747eebd2d11f8e1cda568c4b5c73277dc671790f1d09"
+      },
+      {
+        "variant": "candidate",
+        "original_status": "failed",
+        "started_utc": "2026-10-12T08:20:45.231189+00:00",
+        "finished_utc": "2026-10-12T08:50:17.669119+00:00",
+        "child_exit_code": 1,
+        "process_reaped": true,
+        "stop_reason": null,
+        "whole_child_wall_s": 1772.957105738009,
+        "complete_call_timing_diagnostic_only": {
+          "wall_s": 1760.79467066,
+          "cpu_s": 4896.916875033
+        },
+        "counter_interval_timing_diagnostic_only": {
+          "wall_s": 1760.794732002,
+          "cpu_s": 4896.916939678
+        },
+        "counter_interval_io_diagnostic_only": {
+          "read_bytes": 337086623744,
+          "write_bytes": 1380352
+        },
+        "counter_interval_rusage_diagnostic_only": {
+          "user_s": 3922.9256339999997,
+          "system_s": 973.991321,
+          "minor_faults": 35118852,
+          "major_faults": 30668542
+        },
+        "actual_points": 1488,
+        "input_hashes_match": true,
+        "output_sha256": {
+          "frequency_hz": "c13f2e8f2322a2e0078037392289b9d9dd48efe846b712da07c8de461ea2a4c7",
+          "psd": "b66680c06522ee47f557a3c92eb0f19ce29e83cf42a2d085f4fbc284a68492c3",
+          "nsd": "b4e77848f69559ec3f04cda24a8a5f76503a2a161798899ca72347682f94bb0d"
+        },
+        "selected_module_filename": "adapter_g2.py",
+        "selected_module_sha256": "c7b60aa0f33d108aee9b57d281403c9cbf7c11fbb499e3495bafd64f89856d2f"
+      }
+    ],
+    "whole_experiment_wall_s": 2520.800259156007,
+    "owned_temporary_directory_cleaned": true,
+    "valid_completed_pair_count": 0,
+    "runtime_admitted": false,
+    "runtime_ratios": null,
+    "saved_data_review": {
+      "checks": 47,
+      "failed_check_count": 0,
+      "numerical_gate_status": "passed",
+      "paired_values_per_spectrum": 1488,
+      "all_frequency_psd_nsd_pairs_bitidentical": true,
+      "maximum_absolute_psd_error": 0.0,
+      "maximum_relative_psd_error": 0.0,
+      "maximum_absolute_nsd_error": 0.0,
+      "maximum_relative_nsd_error": 0.0
+    },
+    "evidence_limits": [
+      "The G2 child failed its final source-file reread after the complete numerical call. Workspace infrastructure loss occurred during that call; original failure status is retained.",
+      "Saved full spectra and memory-retirement observations can be reviewed, but the pair is not admitted for speed comparisons. No timing ratio or winner is reported.",
+      "The separate G child JSON was unavailable in the recovery; its embedded parent raw object was preserved. The actual G2 child file is available.",
+      "Restoring source bytes later does not replace the missing final runtime source confirmation."
+    ]
+  }
+}

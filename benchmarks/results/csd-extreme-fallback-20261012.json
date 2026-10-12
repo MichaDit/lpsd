@@ -1,0 +1,1012 @@
+{
+  "schema": "lpsd-csd-extreme-fallback-evidence-v1",
+  "evidence_date_utc": "2026-10-12",
+  "scope": "Reported physical-device CSD failure, source-bound local correction checks, and bounded local native-frequency-call overhead observations.",
+  "reported_device_regression": {
+    "report_path": "benchmarks/results/device-tests-20261012/regressions.json",
+    "report_sha256": "9cd83f7474d2f96fedeb842cad92385756200871b4681787b69465669da71a54",
+    "published_report_commit": "3fab6be75601562444f7cd22bf0fc13c21c6204d",
+    "reported_source_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+    "instrument_platform": "Linux aarch64 instrument",
+    "test_id": "test_fast/test_csd_batches.py::test_csd_batches_preserve_native_exceptional_arithmetic[1e+155-2049]",
+    "reported_required_limit": 2e-12,
+    "existing_complex_relative_tolerance": 2e-12,
+    "tolerance_changed": false,
+    "comparison_contract": "Compare power and legacy variance as separate complex pairs using a common max-absolute scaling; preserve NaN and signed-infinity classifications and finite companion components.",
+    "source_limitations": [
+      "The published device summary does not contain the actual/reference arrays or the failing pair index.",
+      "The exact ARM deviation was not reproduced locally."
+    ],
+    "physical_instrument_recheck": "Not observed by this evidence collection; the local tests are not a physical ARM confirmation.",
+    "reported_observed_error": 3.0936972401917152e-12
+  },
+  "implementation": {
+    "c_source": "lpsd_fast/_native/fast_dft.c",
+    "c_source_sha256": "734a6dd695770d43cf19c3b49ad34c1e6b1c55b783e7ab3f1a90599e9e5e9798",
+    "measurement_state": "Local candidate before publication; identified by C source and native binary digests.",
+    "later_commits_with_identical_c_source": [
+      "83da4d035258e718c4f0c8744b4c279a68092221",
+      "c417b9acfd1bf022c190430b3a7f4a11adaeece2"
+    ],
+    "binding_limit": "The C source and two focused CSD test files were checked against both commits. The timings were not rerun at either published Git head; this is not a full-tree timing identity claim.",
+    "test_source_sha256": {
+      "test_fast/test_csd_batches.py": "130cf9e34a4bd96e4fe995b615b80b0d98d681113df9b1404da5a7c3bc6400fb",
+      "test_fast/test_csd_extreme_fallback.py": "5df9e7534357784fc01ed333b780020cf2e7ca32d726d6bf0f4b1e2fdc42d109"
+    },
+    "guard": "Require each already computed real/imaginary CSD projection to have absolute value <= 2^(DBL_MAX_EXP/4 - 4); comparisons reject NaN/Inf.",
+    "fp64_projection_limit": 7.237005577332262e+75,
+    "reason": "Four projection factors enter the inherited variance. Four reserved exponent bits per factor leave headroom for complex products, mean differences and sums.",
+    "fallback": "At the first out-of-range projection, disable CSD batching for this call, reset every segment start and legacy accumulator, and replay the complete sequence through the existing single-CSD path. Reuse the already prepared coefficients.",
+    "coverage": "Check batched, first and trailing single projections; at most one replay; no additional input-sized scan or public ABI change.",
+    "qualification_limit": "The guard bounds observed projections. It is not a proof for every possible cancellation-sensitive input and does not modify the estimator or legacy recurrence.",
+    "existing_csd_test_byte_identical_to_reported_fast8_source": true,
+    "requested_head_at_collection": "c417b9acfd1bf022c190430b3a7f4a11adaeece2"
+  },
+  "local_validation": {
+    "platform": "Linux x86-64",
+    "focused_runs": [
+      {
+        "id": "gcc_focused",
+        "record_kind": "Observed local command result; no separate JUnit was retained for this original focused invocation.",
+        "commands_sanitized": [
+          [
+            "python",
+            "-m",
+            "lpsd_fast.build"
+          ],
+          [
+            "python",
+            "-m",
+            "pytest",
+            "-q",
+            "test_fast/test_csd_extreme_fallback.py",
+            "test_fast/test_csd_batches.py"
+          ]
+        ],
+        "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "compiler_target": "x86_64-linux-gnu",
+        "build_flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC",
+          "-fopenmp-simd",
+          "-DLPSD_HAVE_TARGET_CLONES=1"
+        ],
+        "link_flags": [
+          "-shared",
+          "-lm"
+        ],
+        "native_isa_override": false,
+        "passed": 204,
+        "failed": 0,
+        "skipped": 0,
+        "elapsed_s": 6.44,
+        "tested_routes": "Existing installed native CSD tests plus a separate instrumented GCC build used by the 28 route tests."
+      },
+      {
+        "id": "zig_focused",
+        "record_kind": "Observed local command result; no separate JUnit was retained for this original focused invocation.",
+        "commands_sanitized": [
+          [
+            "python",
+            "-m",
+            "pytest",
+            "-q",
+            "test_fast/test_csd_extreme_fallback.py"
+          ]
+        ],
+        "compiler_environment_sanitized": {
+          "CC": "tools/zig cc -target x86_64-linux-gnu -mcpu=baseline",
+          "LPSD_TARGET_CLONES": "0"
+        },
+        "compiler_version": "Zig 0.13.0",
+        "target": "x86_64-linux-gnu",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "elapsed_s": 1.57,
+        "tested_routes": "Temporary instrumented candidate built with Zig, including the two-CSD-segment batch geometry. This is x86 execution, not ARM emulation."
+      }
+    ],
+    "route_test_contract": [
+      "Counters are inserted only into an isolated source copy; arithmetic and dispatch guards remain unchanged and the production ABI has no test hooks.",
+      "Ordinary inputs execute batches with no replay.",
+      "Repeated extremes, a late batch event and the final single segment each cause exactly one complete replay.",
+      "All finite results after replay equal the single-CSD reference bitwise; NaN and signed-infinity classes match.",
+      "Extreme unequal channel scales and a zero companion channel are checked even when the resulting cross power is finite; spectrum-only results retain identical power values."
+    ],
+    "later_local_full_suite_corroboration": {
+      "artifact": "device-fixes-local.xml",
+      "artifact_sha256": "71d960413dcce0fd2806301bd92d95ecb20734acdfe7c916951a15c49515257b",
+      "csd_groups": [
+        {
+          "test_module": "test_csd_batches",
+          "executed_and_passed": 176
+        },
+        {
+          "test_module": "test_csd_extreme_fallback",
+          "executed_and_passed": 28
+        }
+      ],
+      "scope": "Independent extraction of the CSD entries from the later integrated local suite; does not replace the original focused-run durations or supply physical-device confirmation."
+    },
+    "pre_fix_reproduction_attempts": {
+      "c_source_sha256": "709a618ac7cebf0113169060739bb491cc349faaf6e334baebf301ca2338e744",
+      "baseline_commit": "5f64570f8a8028a0ac8fa81d65d523fdeae0328e",
+      "platform": "Local Linux x86-64 only",
+      "geometry": {
+        "segment_length": 2049,
+        "samples_per_channel": 10245,
+        "channels": 2,
+        "overlap_percent": 75,
+        "projection_mode": 2,
+        "detrending_order": 0,
+        "rng_seed": 79171,
+        "replacement_value": 1e+155,
+        "first_channel_stride": 11,
+        "second_channel_stride": 13
+      },
+      "result": "All seven completed compiler variants have zero recorded power-pair relative difference between selected and single-CSD paths. None reproduces the physical ARM error.",
+      "variants": [
+        {
+          "id": "gcc_sse",
+          "compiler": "GCC 13.3.0",
+          "extra_flags": [],
+          "c_long_double_significand_bits": 64,
+          "power_pair_relative_error": 0.0,
+          "outputs_bit_identical": true,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "0939d18f3fe0bb9f4c33868d42745a366c8be6675446c35674b8977455cc954d",
+          "original_artifact": "probe.json"
+        },
+        {
+          "id": "gcc_avx2",
+          "compiler": "GCC 13.3.0",
+          "extra_flags": [
+            "-mavx2"
+          ],
+          "c_long_double_significand_bits": 64,
+          "power_pair_relative_error": 0.0,
+          "outputs_bit_identical": true,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "784dc74629bf30d153f8d6468956b1c52d25ffb23e7dd65a0fd4b3c912805527",
+          "original_artifact": "probe.json"
+        },
+        {
+          "id": "gcc_sse_ld64",
+          "compiler": "GCC 13.3.0",
+          "extra_flags": [
+            "-mlong-double-64"
+          ],
+          "c_long_double_significand_bits": 53,
+          "power_pair_relative_error": 0.0,
+          "outputs_bit_identical": true,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "fc7fee4a6dfeeb47d71ebe8d6fab41cc8f24b573cf0e5ba3025f4115e2dde8b9",
+          "original_artifact": "probe.json"
+        },
+        {
+          "id": "gcc_sse_ld128",
+          "compiler": "GCC 13.3.0",
+          "extra_flags": [
+            "-mlong-double-128"
+          ],
+          "c_long_double_significand_bits": 113,
+          "power_pair_relative_error": 0.0,
+          "outputs_bit_identical": true,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "7cf9f03b108a3ebf1d98c6c17ea4a6a401c27b7ed983744da1666341aa737d66",
+          "original_artifact": "probe.json"
+        },
+        {
+          "id": "zig_avx2",
+          "compiler": "Zig 0.13.0",
+          "compiler_argv_sanitized": [
+            "tools/zig",
+            "cc",
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off",
+            "-fPIC",
+            "-fopenmp-simd",
+            "-shared",
+            "lpsd_fast/_native/fast_dft.c",
+            "-lm",
+            "-mavx2",
+            "-o",
+            "diagnostics/zig_avx2.so"
+          ],
+          "c_long_double_significand_bits": 64,
+          "power_pair_relative_error": 0.0,
+          "outputs_bit_identical": true,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "5e303d6e8b81047602f1832f18d0cfd1f2e00cc2fa78f4036010ebccc942207f",
+          "original_artifact": "zig_probe.json"
+        },
+        {
+          "id": "zig_baseline",
+          "compiler": "Zig 0.13.0",
+          "compiler_argv_sanitized": [
+            "tools/zig",
+            "cc",
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off",
+            "-fPIC",
+            "-fopenmp-simd",
+            "-shared",
+            "lpsd_fast/_native/fast_dft.c",
+            "-lm",
+            "-target",
+            "x86_64-linux-gnu",
+            "-mcpu=baseline",
+            "-o",
+            "diagnostics/zig_baseline.so"
+          ],
+          "c_long_double_significand_bits": 64,
+          "power_pair_relative_error": 0.0,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "3332c7656faac0e0bc6e17d5cba91814d97a136562a60132840fe5282e03ee0f",
+          "original_artifact": "zig_baseline_probe.json",
+          "recorded_finite_values_and_nonfinite_classes_equal": true
+        },
+        {
+          "id": "zig_baseline_ld64",
+          "compiler": "Zig 0.13.0",
+          "compiler_argv_sanitized": [
+            "tools/zig",
+            "cc",
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off",
+            "-fPIC",
+            "-fopenmp-simd",
+            "-shared",
+            "lpsd_fast/_native/fast_dft.c",
+            "-lm",
+            "-target",
+            "x86_64-linux-gnu",
+            "-mcpu=baseline",
+            "-mlong-double-64",
+            "-o",
+            "diagnostics/zig_baseline_ld64.so"
+          ],
+          "c_long_double_significand_bits": 53,
+          "power_pair_relative_error": 0.0,
+          "segment_counts": [
+            17,
+            17
+          ],
+          "binary_sha256": "56323adf6e305b882c9a2648e1332ef7c754712e2a22ea74687a3b2c5b48dcd2",
+          "original_artifact": "zig_baseline_probe.json",
+          "recorded_finite_values_and_nonfinite_classes_equal": true
+        }
+      ]
+    }
+  },
+  "bounded_normal_comparison": {
+    "scope": "Native single-frequency CSD calls including their small Python/ctypes wrapper; not a complete PSD/NSD estimator, disk campaign or cross-platform benchmark.",
+    "samples_per_channel": 1048577,
+    "channels": 2,
+    "signal": "independent standard-normal samples",
+    "rng_seed": 92823,
+    "coefficient_profile": {
+      "phase_cycles_per_segment": 4.371,
+      "kaiser_beta": 23.7,
+      "periodic_window": "numpy.kaiser(L+1, beta)[:-1]"
+    },
+    "native_call": {
+      "overlap_percent": 75,
+      "projection_mode": 2,
+      "detrending_order": 0,
+      "csd": true,
+      "statistics": true,
+      "inplace_coefficients": true
+    },
+    "timing_contract": "Each observation is a block mean of repeated calls. Timed wrapper work includes coefficient copies, ctypes argument/output construction and the native frequency call. Input/coefficient generation and library loading are outside each observation. Individual call durations inside a block were not retained.",
+    "baseline": {
+      "commit": "5f64570f8a8028a0ac8fa81d65d523fdeae0328e",
+      "c_source_sha256": "709a618ac7cebf0113169060739bb491cc349faaf6e334baebf301ca2338e744",
+      "binary_sha256": "28bc3d4ee4c67281f43f4bdd447283d595fc178be6bbb3c414d3467c3f13d6a6",
+      "compiler_argv_sanitized": [
+        "cc",
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-fopenmp-simd",
+        "-DLPSD_HAVE_TARGET_CLONES=1",
+        "-shared",
+        "diagnostics/old_dispatch.c",
+        "-o",
+        "diagnostics/old_dispatch.so",
+        "-lm"
+      ],
+      "source_derivation": "diagnostics/old_dispatch.c is the pinned baseline C file with only quoted include paths rewritten for an isolated build; arithmetic is unchanged."
+    },
+    "candidate": {
+      "c_source_sha256": "734a6dd695770d43cf19c3b49ad34c1e6b1c55b783e7ab3f1a90599e9e5e9798",
+      "binary_sha256": "61e18e7c420bbcf9b5f102d6e1e4fcea7a120e8f9bf69051754d2ecda2db9fe6",
+      "compiler_argv_sanitized": [
+        "cc",
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-fopenmp-simd",
+        "-DLPSD_HAVE_TARGET_CLONES=1",
+        "-shared",
+        "lpsd_fast/_native/fast_dft.c",
+        "-o",
+        "diagnostics/candidate.so",
+        "-lm"
+      ],
+      "measurement_state": "Local source candidate with the recorded digest, before the later matching published commits."
+    },
+    "statistics_contract": {
+      "time_units": "seconds per call, as recorded from observation block means",
+      "raw_pair_names": "old = baseline, new = candidate; original pair order and all four recorded timing values are preserved.",
+      "summary_values": "Median/minimum/maximum recomputed from all seven observations for each variant and segment length.",
+      "ratio_of_medians": "median(new) / median(old)",
+      "relative_median_increase_percent": "100 * (median(new) / median(old) - 1)",
+      "paired_ratio_summary": "Median/minimum/maximum of new / old computed within each corresponding pair; not the ratio of separately pooled medians."
+    },
+    "observations": [
+      {
+        "id": "initial_short_noisy",
+        "original_artifact": "normal_native_calls.json",
+        "original_artifact_sha256": "9b10ecf59e2929b856e24153f75988fd3b5cc8348b34acf7e0cb88ef602c0752",
+        "calls_per_observation": 8,
+        "pairs_per_segment_length": 7,
+        "timed_calls_total": 224,
+        "interpretation": "Very short observations with large pair-to-pair variation and a candidate outlier. Retained separately; its approximately 17% higher medians do not establish a stable regression.",
+        "configurations": [
+          {
+            "segment_length": 2049,
+            "segment_count": 2044,
+            "output_bits_equal": true,
+            "recomputed_statistics": {
+              "wall_s": {
+                "old": {
+                  "median": 0.0013927346244599903,
+                  "minimum": 0.001197348625282757,
+                  "maximum": 0.002011908625718206
+                },
+                "new": {
+                  "median": 0.0016340418751497054,
+                  "minimum": 0.0012013033738185186,
+                  "maximum": 0.009654911500547314
+                },
+                "new_over_old_ratio_of_medians": 1.173261471677189,
+                "relative_median_increase_percent": 17.326147167718897,
+                "paired_new_over_old_ratios": {
+                  "median": 1.1266146652652331,
+                  "minimum": 0.707680747877718,
+                  "maximum": 6.932341115803626
+                },
+                "pairs_new_faster": 3,
+                "pairs_new_slower": 4
+              },
+              "cpu_s": {
+                "old": {
+                  "median": 0.0013935496249999901,
+                  "minimum": 0.001197315124999987,
+                  "maximum": 0.0020115413750000366
+                },
+                "new": {
+                  "median": 0.0016347788750000203,
+                  "minimum": 0.0012017830000000118,
+                  "maximum": 0.009655636500000009
+                },
+                "new_over_old_ratio_of_medians": 1.173104169146493,
+                "relative_median_increase_percent": 17.310416914649295,
+                "paired_new_over_old_ratios": {
+                  "median": 1.1265348983553571,
+                  "minimum": 0.7078424499222679,
+                  "maximum": 6.928807074236826
+                },
+                "pairs_new_faster": 3,
+                "pairs_new_slower": 4
+              }
+            },
+            "raw_pairs": [
+              {
+                "pair_index": 0,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.001197348625282757,
+                "new_wall_s": 0.0016340418751497054,
+                "old_cpu_s": 0.001197315124999987,
+                "new_cpu_s": 0.0016347788750000203
+              },
+              {
+                "pair_index": 1,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.001451652373361867,
+                "new_wall_s": 0.0020568031250149943,
+                "old_cpu_s": 0.0014605512499999973,
+                "new_cpu_s": 0.002057465124999991
+              },
+              {
+                "pair_index": 2,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.002011908625718206,
+                "new_wall_s": 0.001423789000909892,
+                "old_cpu_s": 0.0020115413750000366,
+                "new_cpu_s": 0.0014238543750000332
+              },
+              {
+                "pair_index": 3,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0012201392491988372,
+                "new_wall_s": 0.0012013033738185186,
+                "old_cpu_s": 0.0012209451249999836,
+                "new_cpu_s": 0.0012017830000000118
+              },
+              {
+                "pair_index": 4,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012853763746534241,
+                "new_wall_s": 0.0014481238740700064,
+                "old_cpu_s": 0.0012861906250000166,
+                "new_cpu_s": 0.001448938625000007
+              },
+              {
+                "pair_index": 5,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0013927346244599903,
+                "new_wall_s": 0.009654911500547314,
+                "old_cpu_s": 0.0013935496249999901,
+                "new_cpu_s": 0.009655636500000009
+              },
+              {
+                "pair_index": 6,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0018448528735461878,
+                "new_wall_s": 0.0018100678753398824,
+                "old_cpu_s": 0.001845574374999992,
+                "new_cpu_s": 0.0018209327500000039
+              }
+            ]
+          },
+          {
+            "segment_length": 16385,
+            "segment_count": 253,
+            "output_bits_equal": true,
+            "recomputed_statistics": {
+              "wall_s": {
+                "old": {
+                  "median": 0.001460177623812342,
+                  "minimum": 0.0012212584988446906,
+                  "maximum": 0.0016747373756516026
+                },
+                "new": {
+                  "median": 0.0017164053751912434,
+                  "minimum": 0.0012408242509991396,
+                  "maximum": 0.0023738997497275705
+                },
+                "new_over_old_ratio_of_medians": 1.1754771112776832,
+                "relative_median_increase_percent": 17.547711127768316,
+                "paired_new_over_old_ratios": {
+                  "median": 1.1044212556103075,
+                  "minimum": 0.8838753744122891,
+                  "maximum": 1.6257609423774169
+                },
+                "pairs_new_faster": 2,
+                "pairs_new_slower": 5
+              },
+              "cpu_s": {
+                "old": {
+                  "median": 0.001460880624999994,
+                  "minimum": 0.0012219441249999852,
+                  "maximum": 0.0016760293749999988
+                },
+                "new": {
+                  "median": 0.0017175369999999912,
+                  "minimum": 0.0012412701250000269,
+                  "maximum": 0.002374633125000025
+                },
+                "new_over_old_ratio_of_medians": 1.175686069489763,
+                "relative_median_increase_percent": 17.568606948976306,
+                "paired_new_over_old_ratios": {
+                  "median": 1.104367486689564,
+                  "minimum": 0.8835519365524259,
+                  "maximum": 1.6254806069455778
+                },
+                "pairs_new_faster": 2,
+                "pairs_new_slower": 5
+              }
+            },
+            "raw_pairs": [
+              {
+                "pair_index": 0,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0016335416257788893,
+                "new_wall_s": 0.0014605506257794332,
+                "old_cpu_s": 0.0016340108749999804,
+                "new_cpu_s": 0.0014615541249999864
+              },
+              {
+                "pair_index": 1,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.001460177623812342,
+                "new_wall_s": 0.0023738997497275705,
+                "old_cpu_s": 0.001460880624999994,
+                "new_cpu_s": 0.002374633125000025
+              },
+              {
+                "pair_index": 2,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012506778748502256,
+                "new_wall_s": 0.0017326347497146344,
+                "old_cpu_s": 0.001251397749999994,
+                "new_cpu_s": 0.0017333893750000051
+              },
+              {
+                "pair_index": 3,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0016747373756516026,
+                "new_wall_s": 0.0014802591249463148,
+                "old_cpu_s": 0.0016760293749999988,
+                "new_cpu_s": 0.001480859000000001
+              },
+              {
+                "pair_index": 4,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0014111536256677937,
+                "new_wall_s": 0.0017164053751912434,
+                "old_cpu_s": 0.0014119845000000186,
+                "new_cpu_s": 0.0017175369999999912
+              },
+              {
+                "pair_index": 5,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0015771597500133794,
+                "new_wall_s": 0.0017418487514078151,
+                "old_cpu_s": 0.001577918374999987,
+                "new_cpu_s": 0.0017426017500000168
+              },
+              {
+                "pair_index": 6,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012212584988446906,
+                "new_wall_s": 0.0012408242509991396,
+                "old_cpu_s": 0.0012219441249999852,
+                "new_cpu_s": 0.0012412701250000269
+              }
+            ]
+          }
+        ],
+        "affinity": {
+          "policy": "not explicitly pinned"
+        },
+        "warmup": "One initial result call per library and length; no extended warm-up recorded."
+      },
+      {
+        "id": "longer_affine_control",
+        "original_artifact": "normal_native_calls_stabilized.json",
+        "original_artifact_sha256": "7ad038de188a7943f1935d1d68dd0178dece2bc413abdc1ff5de464ed7f20197",
+        "calls_per_observation": 64,
+        "pairs_per_segment_length": 7,
+        "timed_calls_total": 1792,
+        "interpretation": "Longer observations with process-local CPU affinity. Ratios of medians indicate approximately 0.28% and 1.50% additional wall time at the two tested lengths. A small guard overhead is plausible; neither zero overhead nor a general platform or estimator percentage is established.",
+        "configurations": [
+          {
+            "segment_length": 2049,
+            "segment_count": 2044,
+            "output_bits_equal": true,
+            "recomputed_statistics": {
+              "wall_s": {
+                "old": {
+                  "median": 0.0012503327811828058,
+                  "minimum": 0.0012217812811741169,
+                  "maximum": 0.0018609416874824092
+                },
+                "new": {
+                  "median": 0.0012538318126189552,
+                  "minimum": 0.0012254367968580482,
+                  "maximum": 0.0013308374843745696
+                },
+                "new_over_old_ratio_of_medians": 1.002798480123699,
+                "relative_median_increase_percent": 0.27984801236990986,
+                "paired_new_over_old_ratios": {
+                  "median": 0.9932900176341388,
+                  "minimum": 0.6737620104127026,
+                  "maximum": 1.0734501651282269
+                },
+                "pairs_new_faster": 4,
+                "pairs_new_slower": 3
+              },
+              "cpu_s": {
+                "old": {
+                  "median": 0.0012503767031250002,
+                  "minimum": 0.0012218350468750014,
+                  "maximum": 0.0018609299999999968
+                },
+                "new": {
+                  "median": 0.001253893000000006,
+                  "minimum": 0.0012254776249999988,
+                  "maximum": 0.0013308956718749987
+                },
+                "new_over_old_ratio_of_medians": 1.0028121900113922,
+                "relative_median_increase_percent": 0.28121900113922127,
+                "paired_new_over_old_ratios": {
+                  "median": 0.9931663717157092,
+                  "minimum": 0.6737991219444085,
+                  "maximum": 1.0733307805035213
+                },
+                "pairs_new_faster": 4,
+                "pairs_new_slower": 3
+              }
+            },
+            "raw_pairs": [
+              {
+                "pair_index": 0,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0018609416874824092,
+                "new_wall_s": 0.0012538318126189552,
+                "old_cpu_s": 0.0018609299999999968,
+                "new_cpu_s": 0.001253893000000006
+              },
+              {
+                "pair_index": 1,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0012217812811741169,
+                "new_wall_s": 0.001228731609216993,
+                "old_cpu_s": 0.0012218350468750014,
+                "new_cpu_s": 0.0012286537343749945
+              },
+              {
+                "pair_index": 2,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012509053749454324,
+                "new_wall_s": 0.0012254367968580482,
+                "old_cpu_s": 0.0012509603750000056,
+                "new_cpu_s": 0.0012254776249999988
+              },
+              {
+                "pair_index": 3,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0012501946093834704,
+                "new_wall_s": 0.0012382750780943752,
+                "old_cpu_s": 0.0012502702968750015,
+                "new_cpu_s": 0.0012381740937500024
+              },
+              {
+                "pair_index": 4,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012975979689144879,
+                "new_wall_s": 0.0012888911094250943,
+                "old_cpu_s": 0.0012976292031249975,
+                "new_cpu_s": 0.0012887616875000008
+              },
+              {
+                "pair_index": 5,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0012281986093967134,
+                "new_wall_s": 0.0013184100000671606,
+                "old_cpu_s": 0.0012282529843750042,
+                "new_cpu_s": 0.0013183217343750026
+              },
+              {
+                "pair_index": 6,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012503327811828058,
+                "new_wall_s": 0.0013308374843745696,
+                "old_cpu_s": 0.0012503767031250002,
+                "new_cpu_s": 0.0013308956718749987
+              }
+            ]
+          },
+          {
+            "segment_length": 16385,
+            "segment_count": 253,
+            "output_bits_equal": true,
+            "recomputed_statistics": {
+              "wall_s": {
+                "old": {
+                  "median": 0.0012621744062926155,
+                  "minimum": 0.0012179947968888882,
+                  "maximum": 0.0012738260311380145
+                },
+                "new": {
+                  "median": 0.0012811545780095912,
+                  "minimum": 0.001244450328158564,
+                  "maximum": 0.0013408608906502195
+                },
+                "new_over_old_ratio_of_medians": 1.0150376775367567,
+                "relative_median_increase_percent": 1.5037677536756666,
+                "paired_new_over_old_ratios": {
+                  "median": 1.0197210486256691,
+                  "minimum": 0.9934313504450875,
+                  "maximum": 1.1008757131599962
+                },
+                "pairs_new_faster": 1,
+                "pairs_new_slower": 6
+              },
+              "cpu_s": {
+                "old": {
+                  "median": 0.0012622245625000111,
+                  "minimum": 0.0012178147031250003,
+                  "maximum": 0.0012737120468750002
+                },
+                "new": {
+                  "median": 0.0012812061249999895,
+                  "minimum": 0.0012445161406249988,
+                  "maximum": 0.0013409535468749956
+                },
+                "new_over_old_ratio_of_medians": 1.015038181844903,
+                "relative_median_increase_percent": 1.503818184490302,
+                "paired_new_over_old_ratios": {
+                  "median": 1.0197199721500987,
+                  "minimum": 0.9934368725889782,
+                  "maximum": 1.1011145976756662
+                },
+                "pairs_new_faster": 1,
+                "pairs_new_slower": 6
+              }
+            },
+            "raw_pairs": [
+              {
+                "pair_index": 0,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012179947968888882,
+                "new_wall_s": 0.0013408608906502195,
+                "old_cpu_s": 0.0012178147031250003,
+                "new_cpu_s": 0.0013409535468749956
+              },
+              {
+                "pair_index": 1,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.001268048734345939,
+                "new_wall_s": 0.0012811545780095912,
+                "old_cpu_s": 0.001267942093749988,
+                "new_cpu_s": 0.0012812061249999895
+              },
+              {
+                "pair_index": 2,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012349464532235288,
+                "new_wall_s": 0.0012520311092885095,
+                "old_cpu_s": 0.0012349848281250075,
+                "new_cpu_s": 0.0012520663906250007
+              },
+              {
+                "pair_index": 3,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0012738260311380145,
+                "new_wall_s": 0.0013228311875082,
+                "old_cpu_s": 0.0012737120468750002,
+                "new_cpu_s": 0.0013225846093749966
+              },
+              {
+                "pair_index": 4,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012683441561875952,
+                "new_wall_s": 0.0013165595469217806,
+                "old_cpu_s": 0.0012683813437499997,
+                "new_cpu_s": 0.001316598250000009
+              },
+              {
+                "pair_index": 5,
+                "order": [
+                  "new",
+                  "old"
+                ],
+                "old_wall_s": 0.0012621744062926155,
+                "new_wall_s": 0.0012538836249404994,
+                "old_cpu_s": 0.0012622245625000111,
+                "new_cpu_s": 0.0012539404218750022
+              },
+              {
+                "pair_index": 6,
+                "order": [
+                  "old",
+                  "new"
+                ],
+                "old_wall_s": 0.0012203830938233295,
+                "new_wall_s": 0.001244450328158564,
+                "old_cpu_s": 0.0012204489218750059,
+                "new_cpu_s": 0.0012445161406249988
+              }
+            ]
+          }
+        ],
+        "affinity": {
+          "policy": "single process-local CPU",
+          "selected_cpu_index": 0
+        },
+        "warmup_calls_per_library_per_length": 40,
+        "total_screen_wall_s": 2.5126642090035602
+      }
+    ],
+    "interpretation_limits": [
+      "The short disturbed attempt is retained as a separate observation; it is not pooled with the longer affine control.",
+      "The longer control supports a small local cost for the correctness guard, not zero overhead or a universal percentage.",
+      "No hardware-wide, platform-wide, full-estimator or physical ARM speed claim follows from these observations.",
+      "These CSD fix checks are separate from the previously source-bound ca2d26f direct-power performance measurements."
+    ]
+  },
+  "original_artifacts": [
+    {
+      "name": "normal_native_calls.json",
+      "sha256": "9b10ecf59e2929b856e24153f75988fd3b5cc8348b34acf7e0cb88ef602c0752",
+      "bytes": 7090,
+      "digest_scope": "original local artifact before this report sanitization"
+    },
+    {
+      "name": "normal_native_calls_stabilized.json",
+      "sha256": "7ad038de188a7943f1935d1d68dd0178dece2bc413abdc1ff5de464ed7f20197",
+      "bytes": 7773,
+      "digest_scope": "original local artifact before this report sanitization"
+    },
+    {
+      "name": "probe.json",
+      "sha256": "041095516e99ed5e79511c0a4b61403cbae7beddaa2ea850a11c8721e400e2c2",
+      "bytes": 1614,
+      "digest_scope": "original local artifact before this report sanitization"
+    },
+    {
+      "name": "zig_probe.json",
+      "sha256": "256084ded0f2c9bc25b591fb939486f133d4bace08fa7b5a0eef474e5cd0ebd7",
+      "bytes": 2262,
+      "digest_scope": "original local artifact before this report sanitization"
+    },
+    {
+      "name": "zig_baseline_probe.json",
+      "sha256": "d9c3f1a0c91c45a9c91a3c12defa185e98eefc0971ac5a0d6f5746f47cc0b2d7",
+      "bytes": 2068,
+      "digest_scope": "original local artifact before this report sanitization"
+    },
+    {
+      "name": "candidate-native-build.json",
+      "sha256": "9cf8d478e39aa80755d14dda413f1cc69f5f527a3c8bb05b7e17d065ec8f609f",
+      "bytes": 2020,
+      "digest_scope": "original local artifact; name may be a public logical alias"
+    },
+    {
+      "name": "device-fixes-local.xml",
+      "sha256": "71d960413dcce0fd2806301bd92d95ecb20734acdfe7c916951a15c49515257b",
+      "bytes": 335841,
+      "digest_scope": "original local artifact; name may be a public logical alias"
+    },
+    {
+      "name": "diagnostics/old_dispatch.c",
+      "sha256": "d6fcdfb58231d46d3097afd9a241c233a598730e483ffb3ae93a78c92d918df8",
+      "bytes": 54032,
+      "digest_scope": "original local artifact; name may be a public logical alias"
+    }
+  ],
+  "sanitization": {
+    "applied": true,
+    "compiler_arguments": "Absolute workspace, compiler and temporary output paths are replaced by explicit relative source/tool/binary aliases. Flags and argument ordering are retained. Candidate output alias replaces the atomic-build temporary filename.",
+    "logical_paths": {
+      "lpsd_fast/_native/fast_dft.c": "Actual repository source file.",
+      "diagnostics/old_dispatch.c": "Isolated baseline source copy, identified by its original artifact digest.",
+      "diagnostics/*.so": "Logical names for locally generated diagnostic binaries.",
+      "tools/zig": "Local Zig 0.13.0 executable; no original installation path is published.",
+      "candidate-native-build.json": "Logical name for the original candidate native build metadata."
+    },
+    "omitted": "Original absolute directories, JUnit hostname, temporary probe paths and raw compiler-warning path strings. No timing sample or numerical threshold is removed or changed.",
+    "digest_policy": "Original artifact digests cover original bytes before this report sanitization. This report is a distinct derived artifact and does not claim byte identity with those source files."
+  },
+  "subsequent_test_fixture_followup": {
+    "source_commit": "1c345822f015f3df93d5acb60ace2170f99d0547",
+    "production_c_source_unchanged": true,
+    "changed_file": "test_fast/test_csd_extreme_fallback.py",
+    "changed_file_sha256": "08df1ff25272a52f9dc9f5528a40ac19c1e39fda2aa7a623243e87e365036fdf",
+    "change": "Copy and hash-verify the recursive C include closure on the temporary drive before instrumentation, allowing Windows source and pytest directories on different drives.",
+    "local_rerun": {
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "elapsed_s": 6.64,
+      "artifact": "csd-copied-closure.xml",
+      "artifact_sha256": "0bc1ddcf674a7d1f376641584dd310382de4aff3f343be3233a9bee122422e4f"
+    },
+    "qualification_record": "benchmarks/results/fast9-device-fixes-validation-20261012.json",
+    "measurement_scope_unchanged": true
+  }
+}

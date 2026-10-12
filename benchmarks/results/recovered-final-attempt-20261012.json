@@ -1,0 +1,719 @@
+{
+  "schema": "lpsd-recovered-final-attempt-v1",
+  "evidence_date_utc": "2026-10-12",
+  "scope": "Recovered agent experiment and separate local fast.9 validation. This record does not establish new physical-machine coverage or substitute for platform CI.",
+  "archive": {
+    "filename": "last_large_attempt_and_fast9_local_evidence_20261012.zip",
+    "bytes": 392656,
+    "sha256": "9d27c7825593676af1871f00d3f6021ed4f45df8c2fc96bd7bdc5c58b407e890",
+    "created_utc": "2026-10-12T10:51:37.422262Z",
+    "model_generated": true
+  },
+  "integrity": {
+    "manifest": {
+      "archive_member": "MANIFEST.json",
+      "bytes": 4221,
+      "sha256": "613397a7b8f3bbd48b6ed0e515857a7612f31c7cf4e3cd3a2cb2b46392233dc6"
+    },
+    "archive_manifest_entries": 21,
+    "archive_manifest_hashes_verified": 21,
+    "archive_manifest_size_checks_verified": 21,
+    "archive_manifest_failures": 0,
+    "embedded_child_reports_equal_standalone_files": true,
+    "source_files_verified_against_commit": 20,
+    "source_commit": "e6aa1603d01ef81b9cfb6cc03643029768712bd0",
+    "source_freeze": {
+      "archive_member": "direct_power_integration_proposal/TEXT_FREEZE_v2.json",
+      "bytes": 7581,
+      "sha256": "4e8296b84c3d2d29a2a185614e8d29ac6f707c3bce055bab6ea78de3a96e0ec0"
+    },
+    "source_file_pins": [
+      {
+        "path": "lpsd_fast/_native/fftw_direct_log_power.c",
+        "sha256": "c299e08981ea546c79d096508a3f288e0bfb5b001784021e71506ed960a8ae50"
+      },
+      {
+        "path": "lpsd_fast/_native/fast_dft.c",
+        "sha256": "709a618ac7cebf0113169060739bb491cc349faaf6e334baebf301ca2338e744"
+      },
+      {
+        "path": "benchmarks/_fftw_direct_power.py",
+        "sha256": "7703b716d6cb2aa88fde214da1125f11a3aa4d363ba6117d160ff47fffa2b220"
+      },
+      {
+        "path": "benchmarks/_fftw_disk.py",
+        "sha256": "9fc6f3c6d85c16cc36484d7ad28efb42704355cba9b3e87bfc816d30762216ed"
+      },
+      {
+        "path": "benchmarks/bench_fftw_disk.py",
+        "sha256": "8ed2997186812d2882d24600045d770914ec0f70903872f4f3d1177986b2ecce"
+      },
+      {
+        "path": "lpsd_benchmark/worker.py",
+        "sha256": "9f333de88b4db0e36747d077cf5ff3e26893d7e9299a28419004ce0308d1f74b"
+      },
+      {
+        "path": "lpsd_benchmark/runner.py",
+        "sha256": "8d431ea37aec0519f8c490db495274e7df5461e10284a86b8c77aade68f541a8"
+      },
+      {
+        "path": "lpsd_benchmark/resources.py",
+        "sha256": "1588f4851558f79f672a2b8918b21749cd07ce9cf9ef10c2aefdf76ffd1a033b"
+      },
+      {
+        "path": "lpsd_benchmark/privacy.py",
+        "sha256": "213a66df7752023fd51aae7f21b77fa375d2676522f9c75575d3d98b9eaff48f"
+      },
+      {
+        "path": "lpsd_fast/__init__.py",
+        "sha256": "b15c1bd1af39ee15356fda2aee20ebc9877e2956b2ee31c9fb780d03e66c3f1e"
+      },
+      {
+        "path": "pyproject.toml",
+        "sha256": "518d04794efa53a36e320ae3cc1f6bae56b460c3a11511884609d0cb96a5a415"
+      },
+      {
+        "path": "test_fast/test_direct_log_power.py",
+        "sha256": "2280fc30d14d2f9fe75425d5df982d3605ac1cf81850fa2fc5ba86c2cdc52da0"
+      },
+      {
+        "path": "test_fast/test_direct_power_pipeline.py",
+        "sha256": "c2d3602ed105faf112617b2d5bc0ced1fba179e1264df5b58154edd1bdf641a8"
+      },
+      {
+        "path": "test_fast/test_portable_direct_power.py",
+        "sha256": "02630ff899a30e329bd1807176c0721cb0091b13ad9e97c96bf23cc854aed245"
+      },
+      {
+        "path": "test_fast/test_benchmark_owned_file_counter.py",
+        "sha256": "e2dd9e15e460f3d42da4ceeb35e00ca4f48c10e12ddce582cef7894952b6203d"
+      },
+      {
+        "path": "test_fast/test_portable_benchmark.py",
+        "sha256": "8f4ce34ff92076d13d8ba576471ad323062417ea90032be868f8fd0fb605a399"
+      },
+      {
+        "path": "test_fast/test_benchmark_memory_measurement.py",
+        "sha256": "b6bd4eee28ef0df1fb7c1a231a356c3af655ceb3eee9cb43e8accd6a7844d617"
+      },
+      {
+        "path": "test_fast/wheel_smoke.py",
+        "sha256": "39834ad4d1c8f94783b803f299a4504d69cdf19f19bbbc4b74b2a701af4718cd"
+      },
+      {
+        "path": "test_fast/check_direct_power_smoke.py",
+        "sha256": "b872fea2c181a92cc9abf0877eb638571d4394b9889ab5ca5140861bdbe06895"
+      },
+      {
+        "path": ".github/workflows/portable-benchmark.yml",
+        "sha256": "8186a03844c9675e2994dc9da87c986d044692c22552678eaffee335d62b7249"
+      }
+    ]
+  },
+  "source_files": [
+    {
+      "archive_member": "MANIFEST.json",
+      "bytes": 4221,
+      "sha256": "613397a7b8f3bbd48b6ed0e515857a7612f31c7cf4e3cd3a2cb2b46392233dc6"
+    },
+    {
+      "archive_member": "direct_log_power_r3_1b_pair/result_E_R3_run1.json",
+      "bytes": 469893,
+      "sha256": "f05ae10b8b8f7088a4c84ac72cb66c8566cf13849d7210d4b1bd48eb468355ad"
+    },
+    {
+      "archive_member": "direct_log_power_r3_1b_pair/result_E_R3_run1_jobs/00_prepare.json",
+      "bytes": 101721,
+      "sha256": "92fc8da42927f9da2fdb60e5d94fbfc561963ecbf545518625695794d61b1ba2"
+    },
+    {
+      "archive_member": "direct_log_power_r3_1b_pair/result_E_R3_run1_jobs/01_E.json",
+      "bytes": 259400,
+      "sha256": "e9fa6b7ad6020048f1fc0bbad50b06b77d29d90159990c42d49e5f12e5bf8a80"
+    },
+    {
+      "archive_member": "direct_log_power_r3_1b_result_review/RESULT_REVIEW.json",
+      "bytes": 16276,
+      "sha256": "97af713c41591bf1fd96139fa7e07fb1446c173e34e19588aedffc9c390576f9"
+    },
+    {
+      "archive_member": "direct_log_power_r3_1b_result_review/RESULT_REVIEW.md",
+      "bytes": 13101,
+      "sha256": "22e681e64dc74d8c5d2cec72eca4abedb175a4f0173044ab758e0c3d5885c596"
+    },
+    {
+      "archive_member": "fast9_integration_review/INDEPENDENT_REVIEW.md",
+      "bytes": 20319,
+      "sha256": "6cb1928826acf5bb06af70d1568f0a829f9f92ebeb4b8a88f16b8653b57b196f"
+    },
+    {
+      "archive_member": "fast9_integration_review/REVIEW_MANIFEST.json",
+      "bytes": 6144,
+      "sha256": "71a610d760e68121e2037a93fa9908de28ddc54d8283650d4adf56f6b0bb3830"
+    },
+    {
+      "archive_member": "direct_power_integration_proposal/TEXT_FREEZE_v2.json",
+      "bytes": 7581,
+      "sha256": "4e8296b84c3d2d29a2a185614e8d29ac6f707c3bce055bab6ea78de3a96e0ec0"
+    },
+    {
+      "archive_member": "fast9_validation/direct-power-smoke.json",
+      "bytes": 15290,
+      "sha256": "fb32a9b5039db3a1dc0f33b451887cd6bb71e0ce409ea5e013adcf2763eff49e"
+    },
+    {
+      "archive_member": "fast9_validation/local-regression.xml",
+      "bytes": 321624,
+      "sha256": "0b8eb997da82c86f4f15b423ed9f980ac478ac770578443cd4a48a1738d42f78"
+    },
+    {
+      "archive_member": "fast9_validation/local-validation.json",
+      "bytes": 10633,
+      "sha256": "dcd7da5b67d0c9187d80149af59fa5e5b6fa5c44aadca34aaa2c9075748092c9"
+    },
+    {
+      "archive_member": "fast9_validation/reference.build.json",
+      "bytes": 1099,
+      "sha256": "060f8c198d43332570bc1f0a4e050b2631fff24d2107126dc1f2b746c22b671e"
+    },
+    {
+      "archive_member": "fast9_validation/fast.build.json",
+      "bytes": 2020,
+      "sha256": "809efaa3f3261e6d84aff060e998094240f9d6abc43c87adaabb5903c4d59b40"
+    }
+  ],
+  "large_attempt": {
+    "status": "failed",
+    "closed_failure_reason": "insufficient_free_disk_before_direct_child",
+    "started_utc": "2026-10-12T10:11:59.013447Z",
+    "finished_utc": "2026-10-12T10:32:07.092851Z",
+    "whole_sequence_elapsed_s": 1208.0794156330085,
+    "planned_complete_calls": 2,
+    "completed_complete_calls": 1,
+    "completed_pairs": 0,
+    "planned_sequence": [
+      "E",
+      "direct"
+    ],
+    "actual_jobs": [
+      "prepare",
+      "E"
+    ],
+    "direct_child_started": false,
+    "large_r3_numerics_available": false,
+    "large_r3_timing_available": false,
+    "paired_runtime_ratio": null,
+    "final_pair_identity_and_qualification_checks_reached": false,
+    "runtime_comparison_admitted": false,
+    "source_identity": {
+      "reference_commit_label": "7d0f52b9096cbe2f74064d86f2fe6b9fa69320c9",
+      "commit_identity_scope": "Reference commit label recorded by the frozen experiment; the experiment enforces source-file hashes. It is distinct from the integrated fast.9 revision.",
+      "pair_pin_sha256": "cc41047e67ce28238563d7201a3d673f13961e7ed7eaa2725fec7e37f410dfbe",
+      "pair_source_file_pins": [
+        {
+          "path": "adapter.py",
+          "sha256": "d3c42a443715a5ba1a0efa3e59d9e69aba76c7637a956e57fbc61f1952de6111"
+        },
+        {
+          "path": "pair_contracts.py",
+          "sha256": "4a87f3d71928989bc4b4f2db0312bd79f2da93a940959b063b4650abe979b7c8"
+        },
+        {
+          "path": "run_pair.py",
+          "sha256": "16e6623ac725e44c637851e959b36ea684acc697f6c8d3e1817c5b24d77d5ff1"
+        },
+        {
+          "path": "case_plan.json",
+          "sha256": "b47effb6f8bfd9492612b0247604367e0fbe07a62305f10237d42aade24b23eb"
+        },
+        {
+          "path": "AUDIT.md",
+          "sha256": "51f3051ca0a0d486a75e13aebb85ba850ece1e88452a5b2ec50c24b89ea904b0"
+        }
+      ],
+      "external_r3_source_pin_sha256": "82e650a3194bbf5849eb3a26980b04dfabda028e8792f2bdf87ca54c35a6a6ae",
+      "external_r3_c_sha256": "4c59f90d1d50c8aa62ffbead5e2702fb84835e354a7c34597d870efb6ebc12ec",
+      "helper_build_manifest_sha256": "893c1fdbc879d6d0ca36f195de618c3da05f6f279aca1eb4c88b37f6e001d085",
+      "helper_binary_sha256": "db482ee6863ea4f11b87c33916c87e73a6ed46c652ad0eb7d553985805102734",
+      "reference_native_binary_sha256": "c3ed285831e8dd93577aa9043aca1ba0f91524bc3c03c31fe87531fa473a7688",
+      "fftw_binary_sha256": "b5cc02c4d360b5b20111cb0a251f8368af8c9ce3145357f5ba54c51ac4ca9b35",
+      "fftw_threads_binary_sha256": "fd4b9672b1c7b297c87681f8bcaad414c3b18f3aed5edbf5fa7f665482eb0c7c"
+    },
+    "environment": {
+      "os": "linux",
+      "cpu_model": null,
+      "cpu_model_recorded": false,
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scipy": "1.17.0",
+      "fftw": "fftw-3.3.10-sse2-avx",
+      "cpu_affinity_count": 9,
+      "shared_cgroup_memory_max_bytes": 8589934592,
+      "shared_cgroup_cpu_quota_us": 800000,
+      "shared_cgroup_cpu_period_us": 100000,
+      "filesystem": "overlay",
+      "scope": "Shared Linux agent environment; affinity and cgroup limits do not establish exclusive hardware access. No CPU model or dedicated physical-machine identification is provided."
+    },
+    "settings": {
+      "n": 1000000000,
+      "method": "fftw",
+      "outputs": "both",
+      "signal": "white",
+      "point_factor": 1,
+      "n_frequencies": 1000,
+      "output_points": 744,
+      "n_averages": 100,
+      "sample_rate": 50.0,
+      "psll": 200.0,
+      "seed": 20261010,
+      "fftw_threads": 8,
+      "fft_memory_mb": 128.0,
+      "low_working_mb": 2048.0,
+      "native_workers": 8,
+      "smoothing_workers_unused_simple": 4,
+      "power_storage": "workspace",
+      "requested_column_strategy": "auto",
+      "actual_column_strategy": "transpose",
+      "input_dtype": "float64",
+      "input_chunk_samples": 262144,
+      "complete_calls": 2,
+      "additional_fft_workers": 0,
+      "maximum_large_file_bytes": 24000000000,
+      "anonymous_limit_bytes": 6710886400,
+      "whole_child_seconds": 3600.0,
+      "whole_sequence_seconds": 10800.0,
+      "spectral_rtol": 3e-06,
+      "spectral_atol": 0.0,
+      "parseval_rtol": 1e-10,
+      "parseval_atol": 0.0,
+      "automatic_repetitions_or_followups": false,
+      "factors": [
+        10000,
+        100000
+      ]
+    },
+    "prepare": {
+      "role": "prepare",
+      "status": "completed",
+      "exit_code": 0,
+      "started_utc": "2026-10-12T10:11:59.835502Z",
+      "finished_utc": "2026-10-12T10:12:41.770632Z",
+      "process_reaped": true,
+      "whole_child_wall_s": 41.93410318699898,
+      "whole_child_counter_deltas": {
+        "wall_s": 41.579027406,
+        "cpu_s": 40.532055022,
+        "io": {
+          "read_bytes": 7998689280,
+          "write_bytes": 8002142208,
+          "cancelled_write_bytes": 0
+        },
+        "rusage": {
+          "user_s": 21.804029,
+          "system_s": 18.728106,
+          "minor_faults": 2136540,
+          "major_faults": 2,
+          "input_blocks": 15622440,
+          "output_blocks": 15629184,
+          "voluntary_context_switches": 271,
+          "involuntary_context_switches": 4808
+        }
+      },
+      "whole_child_counter_scope": "Includes setup, input checks and finalization; excludes interpreter time before child counter endpoints.",
+      "preparation_wall_s": 41.20079806500871,
+      "preparation_scope": "Input preparation only, separate from the fresh estimator complete-call timer."
+    },
+    "reference_E": {
+      "role": "E",
+      "status": "completed",
+      "exit_code": 0,
+      "started_utc": "2026-10-12T10:12:41.775789Z",
+      "finished_utc": "2026-10-12T10:32:07.061416Z",
+      "process_reaped": true,
+      "whole_child_wall_s": 1165.2825771880016,
+      "whole_child_counter_deltas": {
+        "wall_s": 1165.029613033,
+        "cpu_s": 334.539304063,
+        "io": {
+          "read_bytes": 144718045184,
+          "write_bytes": 197803479040,
+          "cancelled_write_bytes": 0
+        },
+        "rusage": {
+          "user_s": 112.807307,
+          "system_s": 221.731987,
+          "minor_faults": 28314575,
+          "major_faults": 6799118,
+          "input_blocks": 282652432,
+          "output_blocks": 386334920,
+          "voluntary_context_switches": 6826205,
+          "involuntary_context_switches": 69895
+        }
+      },
+      "whole_child_counter_scope": "Includes setup, input checks and finalization; excludes interpreter time before child counter endpoints.",
+      "complete_call": {
+        "wall_s": 1153.282266022,
+        "cpu_s": 322.839616948,
+        "scope": "One fresh complete E call including construction, input processing, full FFT, power reduction, PSD/NSD outputs, energy diagnostics and workspace cleanup. Additional full-input hashes and saved-output checks occur outside this timer.",
+        "endpoint_counter_deltas": {
+          "wall_s": 1153.282493254,
+          "cpu_s": 322.839850224,
+          "io": {
+            "read_bytes": 131914235904,
+            "write_bytes": 197803352064,
+            "cancelled_write_bytes": 0
+          },
+          "rusage": {
+            "user_s": 101.45503000000001,
+            "system_s": 221.384724,
+            "minor_faults": 28007186,
+            "major_faults": 6799115,
+            "input_blocks": 257644992,
+            "output_blocks": 386334672,
+            "voluntary_context_switches": 6826082,
+            "involuntary_context_switches": 68188
+          }
+        },
+        "endpoint_counter_scope": "Slightly wider than the primary complete-call timer and includes endpoint counter reads.",
+        "phases": {
+          "workspace_and_fftw_planning_s": 0.009526509995339438,
+          "window_and_normalization_s": 17.34753007000836,
+          "input_validation_copy_mean_window_s": 52.55242916000134,
+          "time_energy_diagnostic_s": 2.7793162589950953,
+          "blocked_fftw_s": 866.0117283270083,
+          "ordered_one_sided_power_s": 210.75701436300005,
+          "frequency_energy_diagnostic_s": 2.8169700569997076,
+          "logarithmic_grouping_and_outputs_s": 0.2258863459865097,
+          "workspace_cleanup_s": 0.7803795800136868
+        },
+        "nested_fft_power_profile": {
+          "real_expansion_s": 23.083019514990156,
+          "column_gather_s": 13.207443213948864,
+          "column_fftw_s": 2.028901262965519,
+          "twiddle_s": 28.32736947099329,
+          "column_scatter_s": 11.808165217924397,
+          "row_gather_s": 18.44730255883769,
+          "row_fftw_s": 3.1681287420215085,
+          "row_scatter_s": 15.536468880920438,
+          "column_transpose_before_s": 360.81196821900085,
+          "column_transpose_after_s": 389.565068099997,
+          "execute_total_s": 866.011684800993,
+          "power_gather_s": 96.87321060305112,
+          "power_arithmetic_s": 5.467123659153003,
+          "power_store_s": 108.38894267994328,
+          "power_workspace_pack_s": 15.003912858999684,
+          "power_workspace_transpose_s": 195.75240471299912,
+          "power_workspace_transpose_tile_edge": 2046,
+          "power_total_s": 210.75692656100728
+        },
+        "phase_scope": "Nested FFT and power profile intervals overlap their enclosing phases and must not be added to them."
+      },
+      "memory": {
+        "sample_interval_s": 0.2,
+        "samples": 5798,
+        "anonymous_limit_bytes": 6710886400,
+        "sampled_peak_anonymous_bytes": 185729024,
+        "sampled_peak_rss_bytes": 8520273920,
+        "no_RSS_fallback": true,
+        "process_high_water_rss_bytes": 8520491008,
+        "scope": "Sampled genuine anonymous bytes of the verified owned process tree. RSS includes file mappings and aliases. Samples do not prove instantaneous maxima.",
+        "logical_large_file_bytes": 24000000000,
+        "large_file_observations": 5736,
+        "virtual_mapping_allowance_bytes": 28000000008,
+        "runtime_virtual_allowance_bytes": 2147483648,
+        "rlimit_as_soft_bytes": 30366205960
+      },
+      "correctness": {
+        "scope": "Completed E reference only; no large R3 outputs exist for a paired numerical comparison.",
+        "output_values_per_array": 744,
+        "saved_values_rechecked": 2232,
+        "all_values_finite_and_positive": true,
+        "frequencies_strictly_increasing": true,
+        "typed_output_sha256": {
+          "frequency_hz": "211e54f9d9c6387cbbd8f83aa4cd544df2b88fb4e1a1cfe95599e7ba6dbf0f53",
+          "psd": "8220883ee631cbd57867e1b089d92efdddf5bc9d8a99ea1255718d648293df17",
+          "nsd": "254b2d67210f0c4b50a6a9d179e0f315d956e90c39ed8db3777c89f034c5c3d2"
+        },
+        "typed_hash_formula": "SHA256 of ASCII dtype plus a NUL byte followed by little-endian element bytes; frequency <f8, PSD/NSD <f4.",
+        "typed_hashes_recomputed": true,
+        "nsd_equals_rounded_float32_sqrt_psd": true,
+        "maximum_nsd_relative_error_to_double_sqrt_psd": 5.4556116944786114e-08,
+        "parseval": {
+          "time_power_v2": 2.4997501450542054e-15,
+          "fft_power_v2": 2.4997501450542054e-15,
+          "diagnostic_passes_included_in_timer": true,
+          "relative_error": 0.0,
+          "rtol": 1e-10,
+          "atol": 0.0
+        },
+        "recorded_child_checks_passed": true,
+        "recorded_parent_checks_passed": true,
+        "recorded_assertions_passed": 11,
+        "input_sha256": "550c34dc15eece7023d5aae748974266283731d423d41c27aea8714c1bd41f7d",
+        "recorded_input_unchanged": true,
+        "recorded_original_complex64_sqrt_exact": true
+      }
+    },
+    "direct_R3": {
+      "status": "not_started",
+      "complete_call_wall_s": null,
+      "complete_call_cpu_s": null,
+      "outputs_available": false
+    },
+    "disk_admission": {
+      "initial_free_bytes": 26648821760,
+      "initial_required_bytes": 26147483648,
+      "initial_headroom_bytes": 501338112,
+      "free_with_input_present_bytes": 18082508800,
+      "required_with_input_present_bytes": 18147483648,
+      "deficit_bytes": 64974848,
+      "unchanged_reserve_bytes": 2147483648,
+      "scope": "A second preflight with the input still present failed before spawning direct R3. The free-space change is observed; its cause is not established.",
+      "numerical_failure": false,
+      "completed_call_timeout": false
+    },
+    "cleanup_reported": {
+      "owned_tmp_cleaned": true,
+      "only_after_all_children_reaped": true,
+      "all_owned_children_reaped": true
+    },
+    "saved_independent_review": {
+      "checks": 40,
+      "passed": true,
+      "failures": 0,
+      "scope": "Archived metadata review, not an additional benchmark execution."
+    },
+    "small_gate_link": {
+      "gate_sha256": "3b18225111d31bec582714fa4f8681127beb65979c3bf323d3285869b43be355",
+      "child_sha256": "2b8633223d81ed439c6121d0ac4401470ff1e0947ed6aa1da1418816b19a7b71",
+      "small_cases": 30,
+      "configurations": 24,
+      "complete_calls": 48,
+      "paired_values_per_spectrum": 18828,
+      "scope": "Previously recovered small R3 correctness cohort; not a new large-case or performance qualification."
+    }
+  },
+  "local_fast9_validation": {
+    "status": "passed",
+    "commit": "e6aa1603d01ef81b9cfb6cc03643029768712bd0",
+    "version": "1.0.6+fast.9",
+    "created_utc": "2026-10-12T10:47:16.531549Z",
+    "platform": {
+      "os": "Linux",
+      "architecture": "x86_64",
+      "python": "3.12.14"
+    },
+    "scope": "Local regression and small correctness smoke for this exact source revision. Neither proves platform CI completion or one-billion R3 performance.",
+    "source_files_verified_against_commit": 20,
+    "builds": [
+      {
+        "manifest": {
+          "archive_member": "fast9_validation/reference.build.json",
+          "bytes": 1099,
+          "sha256": "060f8c198d43332570bc1f0a4e050b2631fff24d2107126dc1f2b746c22b671e"
+        },
+        "source": "ltpda_dft.c",
+        "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "compiler_target": "x86_64-linux-gnu",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC"
+        ],
+        "target_clones": false,
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_mant_dig": 64,
+          "long_double_bytes": 16
+        },
+        "binary_sha256": "338912a25267a08737a78bfe47eeda64cc124b954b1baffd71a904dce30d95fc"
+      },
+      {
+        "manifest": {
+          "archive_member": "fast9_validation/fast.build.json",
+          "bytes": 2020,
+          "sha256": "809efaa3f3261e6d84aff060e998094240f9d6abc43c87adaabb5903c4d59b40"
+        },
+        "source": "fast_dft.c",
+        "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "compiler_target": "x86_64-linux-gnu",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC",
+          "-fopenmp-simd",
+          "-DLPSD_HAVE_TARGET_CLONES=1"
+        ],
+        "target_clones": true,
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_mant_dig": 64,
+          "long_double_bytes": 16
+        },
+        "binary_sha256": "1e54f69911076a24cabf3637a21b3e9566f16f4c6b20c9ab891354fbd158779a"
+      }
+    ],
+    "regression": {
+      "passed": 2215,
+      "fast_passed": 2197,
+      "upstream_passed": 18,
+      "skipped": 5,
+      "expected_failures": 2,
+      "failures": 0,
+      "errors": 0,
+      "junit_total": 2222,
+      "elapsed_seconds_pytest": 71.26,
+      "junit_seconds": 71.224,
+      "junit_started_utc": "2026-10-12T10:44:15.659211Z",
+      "junit_counts_independently_recomputed": true,
+      "command": "python -m pytest -o addopts= -q -ra test_fast test",
+      "initial_dependency_issue": "A first invocation failed before collection because a test dependency was absent; the supplied successful full run followed installation of Pygments 2.19.2."
+    },
+    "direct_power_smoke": {
+      "status": "passed",
+      "scope": "Four correctness calls; their stored durations are diagnostic and are not admitted as performance evidence.",
+      "cases": [
+        {
+          "n": 4096,
+          "signal": "white",
+          "storage": "disk",
+          "disk_fft_algorithm": "full",
+          "disk_power_reduction": "materialized",
+          "actual_points": 206,
+          "status": "completed",
+          "requested_threads": 1,
+          "actual_threads": 1,
+          "fft_memory_mb": 128.0,
+          "low_working_mb": 64.0,
+          "compute_wall_s": 0.00612201499461662,
+          "compute_cpu_s": 0.0061225910000000106,
+          "input_setup_s": 0.006985928004723974,
+          "power_vector_created": true,
+          "input_sha256": "2633f160ca65872c92e823fbe6d3cc158bd818bd22d1a57eff5dfee216b294e6",
+          "frequency_sha256": "3e1d0f3d19f40ff962d9b4381d752e618528e1f265c3a9d51f0f85789d05bde3",
+          "psd_sha256": "cd5a40c5fc6aabc5e0a50874dd9ca2ce62bd9a086ea3b8693dd958d559654868",
+          "nsd_sha256": "5eaa18729c07dd11c69f7e9108f216c994b37a7ac39669208ad673258b416521",
+          "native_sha256": "1e54f69911076a24cabf3637a21b3e9566f16f4c6b20c9ab891354fbd158779a",
+          "native_version": "1.0.6+fast.9",
+          "finite": true,
+          "psd_nonnegative": true,
+          "nsd_matches_sqrt_psd": true,
+          "input_unchanged": true,
+          "point_count_resolved": true
+        },
+        {
+          "n": 4096,
+          "signal": "white",
+          "storage": "disk",
+          "disk_fft_algorithm": "full",
+          "disk_power_reduction": "direct-log",
+          "actual_points": 206,
+          "status": "completed",
+          "requested_threads": 1,
+          "actual_threads": 1,
+          "fft_memory_mb": 128.0,
+          "low_working_mb": 64.0,
+          "compute_wall_s": 0.003967014999943785,
+          "compute_cpu_s": 0.0039672980000000635,
+          "input_setup_s": 0.0024355039931833744,
+          "power_vector_created": false,
+          "input_sha256": "2633f160ca65872c92e823fbe6d3cc158bd818bd22d1a57eff5dfee216b294e6",
+          "frequency_sha256": "3e1d0f3d19f40ff962d9b4381d752e618528e1f265c3a9d51f0f85789d05bde3",
+          "psd_sha256": "cd5a40c5fc6aabc5e0a50874dd9ca2ce62bd9a086ea3b8693dd958d559654868",
+          "nsd_sha256": "5eaa18729c07dd11c69f7e9108f216c994b37a7ac39669208ad673258b416521",
+          "native_sha256": "1e54f69911076a24cabf3637a21b3e9566f16f4c6b20c9ab891354fbd158779a",
+          "native_version": "1.0.6+fast.9",
+          "finite": true,
+          "psd_nonnegative": true,
+          "nsd_matches_sqrt_psd": true,
+          "input_unchanged": true,
+          "point_count_resolved": true
+        },
+        {
+          "n": 4096,
+          "signal": "dc_nanovolt",
+          "storage": "disk",
+          "disk_fft_algorithm": "full",
+          "disk_power_reduction": "materialized",
+          "actual_points": 206,
+          "status": "completed",
+          "requested_threads": 1,
+          "actual_threads": 1,
+          "fft_memory_mb": 128.0,
+          "low_working_mb": 64.0,
+          "compute_wall_s": 0.022571417997824028,
+          "compute_cpu_s": 0.010572162999999968,
+          "input_setup_s": 0.025286313000833616,
+          "power_vector_created": true,
+          "input_sha256": "504baaec4d34851ac5673aaf68728b99a901ff9384e4537bf296cf840e05bf92",
+          "frequency_sha256": "3e1d0f3d19f40ff962d9b4381d752e618528e1f265c3a9d51f0f85789d05bde3",
+          "psd_sha256": "8ba76b5929eba01ce782fd723ca1742e1ae2f515a496769f837be15fd3a84129",
+          "nsd_sha256": "f3200b9d806c3581bde283d2514aed3f5eedf0be104ed9d74415316b355116a1",
+          "native_sha256": "1e54f69911076a24cabf3637a21b3e9566f16f4c6b20c9ab891354fbd158779a",
+          "native_version": "1.0.6+fast.9",
+          "finite": true,
+          "psd_nonnegative": true,
+          "nsd_matches_sqrt_psd": true,
+          "input_unchanged": true,
+          "point_count_resolved": true
+        },
+        {
+          "n": 4096,
+          "signal": "dc_nanovolt",
+          "storage": "disk",
+          "disk_fft_algorithm": "full",
+          "disk_power_reduction": "direct-log",
+          "actual_points": 206,
+          "status": "completed",
+          "requested_threads": 1,
+          "actual_threads": 1,
+          "fft_memory_mb": 128.0,
+          "low_working_mb": 64.0,
+          "compute_wall_s": 0.005136879000929184,
+          "compute_cpu_s": 0.005138493000000022,
+          "input_setup_s": 0.02063080100924708,
+          "power_vector_created": false,
+          "input_sha256": "504baaec4d34851ac5673aaf68728b99a901ff9384e4537bf296cf840e05bf92",
+          "frequency_sha256": "3e1d0f3d19f40ff962d9b4381d752e618528e1f265c3a9d51f0f85789d05bde3",
+          "psd_sha256": "8ba76b5929eba01ce782fd723ca1742e1ae2f515a496769f837be15fd3a84129",
+          "nsd_sha256": "f3200b9d806c3581bde283d2514aed3f5eedf0be104ed9d74415316b355116a1",
+          "native_sha256": "1e54f69911076a24cabf3637a21b3e9566f16f4c6b20c9ab891354fbd158779a",
+          "native_version": "1.0.6+fast.9",
+          "finite": true,
+          "psd_nonnegative": true,
+          "nsd_matches_sqrt_psd": true,
+          "input_unchanged": true,
+          "point_count_resolved": true
+        }
+      ],
+      "abi": 3,
+      "tiny_nonzero_powers_passed": true,
+      "zero_parseval_guard_passed": true,
+      "all_point_rtol": 3e-06,
+      "all_point_atol": 0.0,
+      "two_signal_pair_output_hashes_equal": true,
+      "raw_smoke_environment_is_generic": true,
+      "platform_attribution_source": "local-validation.json and compiler target, not the generic smoke environment block."
+    },
+    "new_large_trial_executed": false,
+    "actual_32gb_run": false,
+    "archive_checkpoint_open_items": [
+      "macos_memory_sampling_portability_correction",
+      "fresh_platform_qualification"
+    ],
+    "open_item_scope": "Recorded archive checkpoint status; later fixes and CI belong to their own revisions."
+  },
+  "limitations": [
+    "The E-only timing cannot yield an E/R3 speedup; direct R3 never started.",
+    "The failed sequence did not reach final pair-level identity and qualification checks.",
+    "The saved 744-point E outputs and scalar endpoints were independently rechecked without rerunning the estimator or rereading the billion-sample input.",
+    "The archived review is metadata/static evidence. The local suite and smoke are separate executed evidence.",
+    "Nested phase durations overlap and shared memory/CPU counters must not be summed or attributed to exclusive hardware.",
+    "The historical small R3 gate, this incomplete large attempt and integrated local fast.9 checks remain separate cohorts."
+  ]
+}

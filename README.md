@@ -7,7 +7,23 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.8`; this is not an official upstream release.
+Its package version is `1.0.6+fast.9`; this is not an official upstream release.
+
+Version `fast.9` reduces phase-construction overhead in packed-real disk FFTs
+and adds an explicit direct logarithmic power reducer for the full disk FFT.
+The small paired FFTW phase comparison shows lower wall medians on Linux
+x86-64/ARM64, macOS ARM64 and Windows x64. A separate Linux 100-million-sample
+comparison measures 6.89% and 10.08% less complete-call wall time for direct
+reduction at 704 and 1,408 output points, with bit-identical PSD/NSD values.
+Matched-estimator improvements are mixed, and these observations do not
+establish large-input speedups on every platform. The follow-up also fixes
+Windows installation path races, counts nested owned FFT files in live disk
+budgets, avoids privileged macOS USS queries, and restores the original CSD
+arithmetic for extreme projections. Archive-based reference tests now work
+without Git metadata.
+See the [fast.9 results and validation](docs/performance-fast9.md),
+[packed-phase comparison](docs/performance-packed-phase.md) and
+[direct-reduction profile](docs/direct-log-power.md).
 
 Version `fast.8` integrates the recovered cross-platform and large-input
 measurements. On Apple Silicon, eligible mean-detrended segments fuse the

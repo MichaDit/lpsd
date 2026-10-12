@@ -80,6 +80,13 @@ smoothing fields keep them absent; the sanitizer does not infer that four
 workers were actually used in an older measurement. These fields extend the
 existing allowlist without changing its schema identifier or upload consent.
 
+The macOS `live_memory_rss_fallback_samples` field is retained only when both
+it and `live_memory_samples` are valid bounded integers and the fallback
+count does not exceed the live count. Missing or malformed coverage is not
+converted to zero or treated as evidence of continuous monitoring. Direct-log
+metadata likewise contains only the selected route, ABI, counts, state bytes
+and power-vector Boolean, without FFT or spectral arrays.
+
 Hardware class, timing and software combinations can still be distinctive,
 especially when associated with a public account or information posted
 elsewhere. The schema is data-minimizing, not a mathematical anonymity claim.

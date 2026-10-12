@@ -1,5 +1,13 @@
 # Ergänzende Nachweise zur Benchmarkkampagne vom 12. Oktober 2026
 
+**Einordnung nach der Zusammenführung:** Diese Ergänzung bewahrt die
+historischen E-/R3-Messungen und die unten genannten fast.9-Prüfkohorten.
+Der [aktuelle fast.9-Bericht](performance-fast9.md) ergänzt die danach
+hochgeladenen physischen Geräteberichte, die daraus entstandenen Korrekturen
+und die neue gemeinsame Plattformprüfung. Der 100M-Direct-Vergleich dort
+wurde separat an `ca2d26f9` gemessen; er ist kein nachträgliches R3-Ergebnis
+des hier dokumentierten unvollständigen 1B-Versuchs.
+
 Diese Ergänzung dokumentiert die Wiederherstellung und erneute Auswertung
 vorhandener Messdaten sowie neu abgeschlossene, unabhängig geprüfte
 Spalten- und Direct-log-R3-Nachweise. Die Methoden, großen Zahlentabellen und früheren
@@ -404,8 +412,11 @@ sind bereits im Hauptzweig vorhanden; PR #3 ergänzt die oben beschriebenen
 [Startanleitung mit festem Quellstand](portable-benchmark.md#start-from-a-pinned-revision)
 verwendet für Launcher und heruntergeladenen Quellcode denselben
 qualifizierten Commit. Dieser Pin bleibt von den E/G-Messkohorten und der
-externen R3-Revision getrennt. Der Pull Request wird zur Prüfung bereitgestellt;
-er wird durch diese Arbeit nicht gemergt.
+externen R3-Revision getrennt. Die ursprüngliche Ergänzung wurde über PR #3
+zur Prüfung bereitgestellt. Dessen Quellhistorie und Nachweise sind inzwischen
+in der gemeinsamen [fast.9-Veröffentlichung über PR #2](https://github.com/MichaDit/lpsd/pull/2)
+enthalten; den aktuellen Prüf- und Veröffentlichungsstand dokumentiert der
+[fast.9-Bericht](performance-fast9.md).
 
 Messungen bleiben standardmäßig lokal. `submit RESULTS.json` bereitet den
 öffentlichen Beitrag zunächst lokal vor; eine Veröffentlichung erfordert

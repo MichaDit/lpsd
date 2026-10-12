@@ -1,0 +1,1107 @@
+{
+  "schema": "lpsd-packed-phase-pairs-v1",
+  "status": "completed",
+  "baseline_variant": "legacy-phase",
+  "candidate_variant": "packed-real",
+  "started_utc": "2026-10-12T10:38:26.540819+00:00",
+  "system": "Linux",
+  "machine": "x86_64",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "requested_threads": 8,
+  "actual_fftw_threads": 8,
+  "fftw_version": "fftw-3.3.10-sse2-avx",
+  "fftw_sha256": "b5cc02c4d360b5b20111cb0a251f8368af8c9ce3145357f5ba54c51ac4ca9b35",
+  "native_sha256": "12e79ce8356f7f66711c79b1ab8f6cbc05b157061231c0debae8db2cb7e6cb83",
+  "source_sha256": {
+    "benchmarks/bench_disk_algorithms.py": "646a06726314f500f556df0c84dac4c1c9b24b1c37384e4373d8fbf9cbd94775",
+    "benchmarks/_fftw_disk.py": "b74ceff6d5b6ca42e9d543ace5792676ad2c4c82d1c6925257384e5eb900fc82",
+    "benchmarks/_fftw_packed_real.py": "a63bfa8676ff56993e18454eb6e2bf488ad49545f813e00144e84ada74c8ef9e",
+    "benchmarks/bench_fftw_disk.py": "bed2ca743bfe942fa04390c5e6076189218fe8e725262a10261b281670f354a5",
+    "benchmarks/_lpsd_disk.py": "29995a2bfc8744235781747eebd2d11f8e1cda568c4b5c73277dc671790f1d09",
+    "benchmarks/matched_smoothing.py": "4cfc94e502a23fcef3c48600d4cf73479651852fcd3282c1e05f6218e3385bc0",
+    "benchmarks/reference/packed_real_phase_fast8.py": "15fe88e2b81d508efb4422ccccc075d8d75bcb4f1d79a3331a314bd47f894d54"
+  },
+  "settings": {
+    "sizes": [
+      100000000
+    ],
+    "methods": [
+      "fftw",
+      "matched"
+    ],
+    "signals": [
+      "white"
+    ],
+    "point_factors": [
+      1,
+      2
+    ],
+    "threads": 8,
+    "repeats": 3,
+    "fft_memory_mib": 128.0,
+    "native_working_mib": 384.0,
+    "max_seconds": 900.0,
+    "compare_packed_phase": true
+  },
+  "scope": "Alternating fresh complete PSD+NSD calls on the same input. All planning, preprocessing, bounded diagnostics and cleanup timed. Signal generation/hash, imports and library loading excluded. Same machine and dependency cohort. Small CI timings do not measure out-of-RAM storage performance. Deadline is cooperative between calls; ordinary portable runner has process supervision. Both variants request packed-real. Class selection is outside the timer; all returned PSD/NSD bytes must agree.",
+  "cases": [
+    {
+      "n": 100000000,
+      "method": "fftw",
+      "signal": "white",
+      "point_factor": 1,
+      "base_target_points": 1000,
+      "base_actual_points": 704,
+      "target_points": 1000,
+      "requested_output_points": 704,
+      "actual_points": 704,
+      "point_count_resolved": true,
+      "status": "completed",
+      "input_sha256": "a86b1f35424c011a5cd7f37a89630d4ebb1869f93464fef3cdfb218d5d94b099",
+      "pairs": [
+        {
+          "repeat": 0,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 10.30351842600794,
+              "cpu_s": 11.150878281,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004566639006952755,
+                "window_and_normalization_s": 0.6346595509967301,
+                "input_validation_copy_mean_window_s": 2.6124923979950836,
+                "time_energy_diagnostic_s": 0.0738038109993795,
+                "blocked_fftw_s": 4.743094229997951,
+                "ordered_one_sided_power_s": 2.1288358170131687,
+                "frequency_energy_diagnostic_s": 0.01672524398600217,
+                "logarithmic_grouping_and_outputs_s": 0.019572775010601617,
+                "workspace_cleanup_s": 0.06932275999861304
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 7.278979758993955,
+              "cpu_s": 8.137840503000001,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.0046614409948233515,
+                "window_and_normalization_s": 0.5829649100051029,
+                "input_validation_copy_mean_window_s": 3.1414234059921,
+                "time_energy_diagnostic_s": 0.02983282200875692,
+                "blocked_fftw_s": 1.827996369000175,
+                "ordered_one_sided_power_s": 1.5880168939911528,
+                "frequency_energy_diagnostic_s": 0.015760835012770258,
+                "logarithmic_grouping_and_outputs_s": 0.018228405999252573,
+                "workspace_cleanup_s": 0.06970413599628955
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 1,
+          "order": [
+            "packed-real",
+            "legacy-phase"
+          ],
+          "samples": {
+            "packed-real": {
+              "wall_s": 10.213963098998647,
+              "cpu_s": 10.965170134000001,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004035538004245609,
+                "window_and_normalization_s": 0.5952853830094682,
+                "input_validation_copy_mean_window_s": 4.375628454989055,
+                "time_energy_diagnostic_s": 0.025561137998010963,
+                "blocked_fftw_s": 1.8236379600130022,
+                "ordered_one_sided_power_s": 3.148144170991145,
+                "frequency_energy_diagnostic_s": 0.05569507399923168,
+                "logarithmic_grouping_and_outputs_s": 0.05542846099706367,
+                "workspace_cleanup_s": 0.13012786699982826
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "legacy-phase": {
+              "wall_s": 9.653073173001758,
+              "cpu_s": 10.437662056,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.0038492960011353716,
+                "window_and_normalization_s": 0.5871421279880451,
+                "input_validation_copy_mean_window_s": 3.9341742469987366,
+                "time_energy_diagnostic_s": 0.02588535701215733,
+                "blocked_fftw_s": 1.8487396819982678,
+                "ordered_one_sided_power_s": 3.1449562280031387,
+                "frequency_energy_diagnostic_s": 0.016219575991271995,
+                "logarithmic_grouping_and_outputs_s": 0.01969513000221923,
+                "workspace_cleanup_s": 0.07202351299929433
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 9.46475814000587,
+              "cpu_s": 10.317080679,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004043669992825016,
+                "window_and_normalization_s": 0.6355547639977885,
+                "input_validation_copy_mean_window_s": 3.3267768430087017,
+                "time_energy_diagnostic_s": 0.08788915499462746,
+                "blocked_fftw_s": 2.075479457009351,
+                "ordered_one_sided_power_s": 3.223007324995706,
+                "frequency_energy_diagnostic_s": 0.01616431299771648,
+                "logarithmic_grouping_and_outputs_s": 0.02006454700313043,
+                "workspace_cleanup_s": 0.07534688500163611
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 7.800404595996952,
+              "cpu_s": 8.582342216999997,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004215569002553821,
+                "window_and_normalization_s": 0.604802515998017,
+                "input_validation_copy_mean_window_s": 3.2832706839981256,
+                "time_energy_diagnostic_s": 0.026174992002779618,
+                "blocked_fftw_s": 1.7641262149991235,
+                "ordered_one_sided_power_s": 2.006147099993541,
+                "frequency_energy_diagnostic_s": 0.0165822080016369,
+                "logarithmic_grouping_and_outputs_s": 0.01880907300801482,
+                "workspace_cleanup_s": 0.07588390698947478
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            }
+          },
+          "passed": true
+        }
+      ],
+      "median_wall_s": {
+        "legacy-phase": 9.653073173001758,
+        "packed-real": 7.800404595996952
+      },
+      "median_cpu_s": {
+        "legacy-phase": 10.437662056,
+        "packed-real": 8.582342216999997
+      },
+      "ratio_of_wall_medians": 1.237509292525104
+    },
+    {
+      "n": 100000000,
+      "method": "fftw",
+      "signal": "white",
+      "point_factor": 2,
+      "base_target_points": 1000,
+      "base_actual_points": 704,
+      "target_points": 2130,
+      "requested_output_points": 1408,
+      "actual_points": 1408,
+      "point_count_resolved": true,
+      "status": "completed",
+      "input_sha256": "a86b1f35424c011a5cd7f37a89630d4ebb1869f93464fef3cdfb218d5d94b099",
+      "pairs": [
+        {
+          "repeat": 0,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 8.378391782011022,
+              "cpu_s": 9.167363027999997,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.005068875994766131,
+                "window_and_normalization_s": 0.5986223840009188,
+                "input_validation_copy_mean_window_s": 2.319548636005493,
+                "time_energy_diagnostic_s": 0.02502489899052307,
+                "blocked_fftw_s": 2.109279415002675,
+                "ordered_one_sided_power_s": 3.210957198010874,
+                "frequency_energy_diagnostic_s": 0.015866683999774978,
+                "logarithmic_grouping_and_outputs_s": 0.021730358988861553,
+                "workspace_cleanup_s": 0.07185710300109349
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 8.643614276006701,
+              "cpu_s": 9.509706647000002,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004895064004813321,
+                "window_and_normalization_s": 0.5943220909975935,
+                "input_validation_copy_mean_window_s": 4.130019913995056,
+                "time_energy_diagnostic_s": 0.026094672008184716,
+                "blocked_fftw_s": 1.7614038989995606,
+                "ordered_one_sided_power_s": 2.012934471000335,
+                "frequency_energy_diagnostic_s": 0.015716347988927737,
+                "logarithmic_grouping_and_outputs_s": 0.022271605004789308,
+                "workspace_cleanup_s": 0.07552179599588271
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 1,
+          "order": [
+            "packed-real",
+            "legacy-phase"
+          ],
+          "samples": {
+            "packed-real": {
+              "wall_s": 6.704807078989688,
+              "cpu_s": 7.57345814,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004646939996746369,
+                "window_and_normalization_s": 0.5831469090044266,
+                "input_validation_copy_mean_window_s": 2.5910086119984044,
+                "time_energy_diagnostic_s": 0.03705837100278586,
+                "blocked_fftw_s": 1.74277884500043,
+                "ordered_one_sided_power_s": 1.6332776609924622,
+                "frequency_energy_diagnostic_s": 0.015915929005132057,
+                "logarithmic_grouping_and_outputs_s": 0.023297113002627157,
+                "workspace_cleanup_s": 0.07322946398926433
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "legacy-phase": {
+              "wall_s": 8.49032582998916,
+              "cpu_s": 9.269027322,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004888593990472145,
+                "window_and_normalization_s": 0.6062985489988932,
+                "input_validation_copy_mean_window_s": 3.6527601380075794,
+                "time_energy_diagnostic_s": 0.036673362003057264,
+                "blocked_fftw_s": 1.9265003529872047,
+                "ordered_one_sided_power_s": 2.145221211001626,
+                "frequency_energy_diagnostic_s": 0.016109891002997756,
+                "logarithmic_grouping_and_outputs_s": 0.022504717999254353,
+                "workspace_cleanup_s": 0.07888794800965115
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 9.291321026990772,
+              "cpu_s": 10.091864862000008,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.0050878149922937155,
+                "window_and_normalization_s": 0.6219443560112268,
+                "input_validation_copy_mean_window_s": 3.329897618998075,
+                "time_energy_diagnostic_s": 0.02636233599332627,
+                "blocked_fftw_s": 1.833928478998132,
+                "ordered_one_sided_power_s": 3.36489325700677,
+                "frequency_energy_diagnostic_s": 0.015280969993909821,
+                "logarithmic_grouping_and_outputs_s": 0.021364487998653203,
+                "workspace_cleanup_s": 0.07211981000727974
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 8.530403479002416,
+              "cpu_s": 9.313157202999989,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004829644996789284,
+                "window_and_normalization_s": 0.5759576999989804,
+                "input_validation_copy_mean_window_s": 4.136893789007445,
+                "time_energy_diagnostic_s": 0.02657702099531889,
+                "blocked_fftw_s": 1.9059740910015535,
+                "ordered_one_sided_power_s": 1.7713870279985713,
+                "frequency_energy_diagnostic_s": 0.016095510000013746,
+                "logarithmic_grouping_and_outputs_s": 0.021356735000154004,
+                "workspace_cleanup_s": 0.0708726779994322
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            }
+          },
+          "passed": true
+        }
+      ],
+      "median_wall_s": {
+        "legacy-phase": 8.49032582998916,
+        "packed-real": 8.530403479002416
+      },
+      "median_cpu_s": {
+        "legacy-phase": 9.269027322,
+        "packed-real": 9.313157202999989
+      },
+      "ratio_of_wall_medians": 0.9953017874111223
+    },
+    {
+      "n": 100000000,
+      "method": "matched",
+      "signal": "white",
+      "point_factor": 1,
+      "base_target_points": 1000,
+      "base_actual_points": 704,
+      "target_points": 1000,
+      "requested_output_points": 704,
+      "actual_points": 704,
+      "point_count_resolved": true,
+      "status": "completed",
+      "input_sha256": "a86b1f35424c011a5cd7f37a89630d4ebb1869f93464fef3cdfb218d5d94b099",
+      "pairs": [
+        {
+          "repeat": 0,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 22.25240446900716,
+              "cpu_s": 71.50157297,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004021405999083072,
+                "window_and_normalization_s": 1.4250205069984077,
+                "input_validation_copy_mean_window_s": 3.5940159510064404,
+                "time_energy_diagnostic_s": 0.026903759004198946,
+                "blocked_fftw_s": 1.8496193289902294,
+                "ordered_one_sided_power_s": 3.422487693009316,
+                "frequency_energy_diagnostic_s": 0.015668544991058297,
+                "matched_frequency_smoothing_s": 4.686970377006219,
+                "release_fft_before_low_lpsd_s": 0.08194613199157175,
+                "low_lpsd_and_outputs_s": 7.145179049010039,
+                "workspace_cleanup_s": 0.00011721700138878077
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 21.897921387993847,
+              "cpu_s": 71.874829587,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.005357011003070511,
+                "window_and_normalization_s": 1.5432567949901568,
+                "input_validation_copy_mean_window_s": 3.003128120006295,
+                "time_energy_diagnostic_s": 0.09223357199516613,
+                "blocked_fftw_s": 1.9892858759994851,
+                "ordered_one_sided_power_s": 2.8547285810054746,
+                "frequency_energy_diagnostic_s": 0.01645930799713824,
+                "matched_frequency_smoothing_s": 5.721186712005874,
+                "release_fft_before_low_lpsd_s": 0.07381079999322537,
+                "low_lpsd_and_outputs_s": 6.5978719539998565,
+                "workspace_cleanup_s": 0.00010443700011819601
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 1,
+          "order": [
+            "packed-real",
+            "legacy-phase"
+          ],
+          "samples": {
+            "packed-real": {
+              "wall_s": 20.567872510000598,
+              "cpu_s": 67.85367908400002,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004086574001121335,
+                "window_and_normalization_s": 1.4260971340117976,
+                "input_validation_copy_mean_window_s": 2.5942325689975405,
+                "time_energy_diagnostic_s": 0.026377950998721644,
+                "blocked_fftw_s": 1.6889972789940657,
+                "ordered_one_sided_power_s": 3.3824220030073775,
+                "frequency_energy_diagnostic_s": 0.01642673899186775,
+                "matched_frequency_smoothing_s": 4.655351282999618,
+                "release_fft_before_low_lpsd_s": 0.07148840800800826,
+                "low_lpsd_and_outputs_s": 6.701715328003047,
+                "workspace_cleanup_s": 0.00014285599172580987
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "legacy-phase": {
+              "wall_s": 20.73852098300995,
+              "cpu_s": 67.89315814000003,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004257802997017279,
+                "window_and_normalization_s": 1.5155274360004114,
+                "input_validation_copy_mean_window_s": 2.8570902490027947,
+                "time_energy_diagnostic_s": 0.026356738002505153,
+                "blocked_fftw_s": 1.6624912160041276,
+                "ordered_one_sided_power_s": 3.3597502619959414,
+                "frequency_energy_diagnostic_s": 0.01532109199615661,
+                "matched_frequency_smoothing_s": 4.572686505009187,
+                "release_fft_before_low_lpsd_s": 0.07562380499439314,
+                "low_lpsd_and_outputs_s": 6.648741330005578,
+                "workspace_cleanup_s": 0.00013873899297323078
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 22.299868301008246,
+              "cpu_s": 70.439306692,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004460698997718282,
+                "window_and_normalization_s": 1.5019331390067236,
+                "input_validation_copy_mean_window_s": 4.524509348993888,
+                "time_energy_diagnostic_s": 0.02645530700101517,
+                "blocked_fftw_s": 1.7037937849963782,
+                "ordered_one_sided_power_s": 2.6237583620095393,
+                "frequency_energy_diagnostic_s": 0.015747153986012563,
+                "matched_frequency_smoothing_s": 4.599170997011242,
+                "release_fft_before_low_lpsd_s": 0.07500439199793618,
+                "low_lpsd_and_outputs_s": 7.224421341001289,
+                "workspace_cleanup_s": 0.00012104299094062299
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 22.2410241960024,
+              "cpu_s": 71.38866409099995,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004072462994372472,
+                "window_and_normalization_s": 1.4387763480044669,
+                "input_validation_copy_mean_window_s": 2.454864893006743,
+                "time_energy_diagnostic_s": 0.08629153999208938,
+                "blocked_fftw_s": 2.542331599004683,
+                "ordered_one_sided_power_s": 3.726591593993362,
+                "frequency_energy_diagnostic_s": 0.015320951002649963,
+                "matched_frequency_smoothing_s": 4.727873932002694,
+                "release_fft_before_low_lpsd_s": 0.08352056999865454,
+                "low_lpsd_and_outputs_s": 7.160717685997952,
+                "workspace_cleanup_s": 0.0001518990029580891
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 704
+            }
+          },
+          "passed": true
+        }
+      ],
+      "median_wall_s": {
+        "legacy-phase": 22.25240446900716,
+        "packed-real": 21.897921387993847
+      },
+      "median_cpu_s": {
+        "legacy-phase": 70.439306692,
+        "packed-real": 71.38866409099995
+      },
+      "ratio_of_wall_medians": 1.0161879785177999
+    },
+    {
+      "n": 100000000,
+      "method": "matched",
+      "signal": "white",
+      "point_factor": 2,
+      "base_target_points": 1000,
+      "base_actual_points": 704,
+      "target_points": 2130,
+      "requested_output_points": 1408,
+      "actual_points": 1408,
+      "point_count_resolved": true,
+      "status": "completed",
+      "input_sha256": "a86b1f35424c011a5cd7f37a89630d4ebb1869f93464fef3cdfb218d5d94b099",
+      "pairs": [
+        {
+          "repeat": 0,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 34.05854787900171,
+              "cpu_s": 131.18932438600007,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.006928902002982795,
+                "window_and_normalization_s": 1.4418030759989051,
+                "input_validation_copy_mean_window_s": 4.831466529998579,
+                "time_energy_diagnostic_s": 0.030626051011495292,
+                "blocked_fftw_s": 1.8747880699957022,
+                "ordered_one_sided_power_s": 4.442483043996617,
+                "frequency_energy_diagnostic_s": 0.017425455996999517,
+                "matched_frequency_smoothing_s": 5.110302624001633,
+                "release_fft_before_low_lpsd_s": 0.09042699400743004,
+                "low_lpsd_and_outputs_s": 16.211609505000524,
+                "workspace_cleanup_s": 0.00011319099576212466
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 34.31188824601122,
+              "cpu_s": 134.62489947899996,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.004943778010783717,
+                "window_and_normalization_s": 1.5485130140004912,
+                "input_validation_copy_mean_window_s": 3.7294627349911025,
+                "time_energy_diagnostic_s": 0.029447029999573715,
+                "blocked_fftw_s": 1.8948968350014184,
+                "ordered_one_sided_power_s": 2.939514405996306,
+                "frequency_energy_diagnostic_s": 0.016388181000365876,
+                "matched_frequency_smoothing_s": 4.522805808999692,
+                "release_fft_before_low_lpsd_s": 0.09671021001122426,
+                "low_lpsd_and_outputs_s": 19.528252951000468,
+                "workspace_cleanup_s": 0.00020627099729608744
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 1,
+          "order": [
+            "packed-real",
+            "legacy-phase"
+          ],
+          "samples": {
+            "packed-real": {
+              "wall_s": 29.657589420996374,
+              "cpu_s": 116.46152169600009,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.00474921400018502,
+                "window_and_normalization_s": 1.468523315998027,
+                "input_validation_copy_mean_window_s": 3.086872713000048,
+                "time_energy_diagnostic_s": 0.026566654996713623,
+                "blocked_fftw_s": 1.7397037030023057,
+                "ordered_one_sided_power_s": 3.6743461410078453,
+                "frequency_energy_diagnostic_s": 0.017721222990076058,
+                "matched_frequency_smoothing_s": 4.7031706210109405,
+                "release_fft_before_low_lpsd_s": 0.07236107499920763,
+                "low_lpsd_and_outputs_s": 14.862882405999699,
+                "workspace_cleanup_s": 0.0001067409903043881
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "legacy-phase": {
+              "wall_s": 33.12019131000852,
+              "cpu_s": 124.09217575000002,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.00480562899610959,
+                "window_and_normalization_s": 1.3997816990013234,
+                "input_validation_copy_mean_window_s": 5.119617435004329,
+                "time_energy_diagnostic_s": 0.026375690998975188,
+                "blocked_fftw_s": 1.6535111859993776,
+                "ordered_one_sided_power_s": 3.2697288769995794,
+                "frequency_energy_diagnostic_s": 0.014800356002524495,
+                "matched_frequency_smoothing_s": 4.772885465994477,
+                "release_fft_before_low_lpsd_s": 0.0957453100127168,
+                "low_lpsd_and_outputs_s": 16.761942807992455,
+                "workspace_cleanup_s": 9.976000001188368e-05
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            }
+          },
+          "passed": true
+        },
+        {
+          "repeat": 2,
+          "order": [
+            "legacy-phase",
+            "packed-real"
+          ],
+          "samples": {
+            "legacy-phase": {
+              "wall_s": 30.489318010993884,
+              "cpu_s": 118.15349248100006,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.005697865010006353,
+                "window_and_normalization_s": 1.5827488979994087,
+                "input_validation_copy_mean_window_s": 2.892209494995768,
+                "time_energy_diagnostic_s": 0.025401246995897964,
+                "blocked_fftw_s": 1.6192044290073682,
+                "ordered_one_sided_power_s": 3.245282004994806,
+                "frequency_energy_diagnostic_s": 0.015821196007891558,
+                "matched_frequency_smoothing_s": 4.965185606997693,
+                "release_fft_before_low_lpsd_s": 0.0900481260032393,
+                "low_lpsd_and_outputs_s": 16.046959486993728,
+                "workspace_cleanup_s": 0.00011242899927310646
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            },
+            "packed-real": {
+              "wall_s": 30.061363300002995,
+              "cpu_s": 121.51691371800007,
+              "phases": {
+                "workspace_and_fftw_planning_s": 0.005565625993767753,
+                "window_and_normalization_s": 1.5159118239971576,
+                "input_validation_copy_mean_window_s": 2.3873102520010434,
+                "time_energy_diagnostic_s": 0.027180760996998288,
+                "blocked_fftw_s": 1.8067662609973922,
+                "ordered_one_sided_power_s": 2.8367489770025713,
+                "frequency_energy_diagnostic_s": 0.01604329200927168,
+                "matched_frequency_smoothing_s": 4.996468222991098,
+                "release_fft_before_low_lpsd_s": 0.11206964901066385,
+                "low_lpsd_and_outputs_s": 16.35642490698956,
+                "workspace_cleanup_s": 0.00010712099901866168
+              },
+              "disk_fft_algorithm": "packed-real",
+              "fft_inner_n": 50000000,
+              "fft_factors": [
+                6250,
+                8000
+              ]
+            }
+          },
+          "identical_frequency_grid": true,
+          "comparison": {
+            "psd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            },
+            "nsd": {
+              "passed": true,
+              "user_relative_limit": 0.01,
+              "absolute_tolerance": 0.0,
+              "strict_3ppm_passed": true,
+              "bit_identical": true,
+              "maximum_absolute_error": 0.0,
+              "maximum_relative_error_nonzero": 0.0,
+              "reference_zero_mismatches": 0,
+              "points": 1408
+            }
+          },
+          "passed": true
+        }
+      ],
+      "median_wall_s": {
+        "legacy-phase": 33.12019131000852,
+        "packed-real": 30.061363300002995
+      },
+      "median_cpu_s": {
+        "legacy-phase": 124.09217575000002,
+        "packed-real": 121.51691371800007
+      },
+      "ratio_of_wall_medians": 1.1017528040721034
+    }
+  ],
+  "comparison_reference": {
+    "commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+    "file": "benchmarks/_fftw_packed_real.py",
+    "method": "PackedRealDiskFFT._tile",
+    "method_sha256": "8bb729171b0bf4c6a2e300fc6e1882172b8f58b039e4f29a40424c099578f938",
+    "scope": "Frozen method subclass of current packed FFT. Only reconstruction differs; all other code, buffers and settings are shared."
+  },
+  "admitted_native_workers": 8,
+  "finished_utc": "2026-10-12T10:45:38.246249+00:00"
+}
