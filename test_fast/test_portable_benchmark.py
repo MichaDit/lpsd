@@ -533,7 +533,9 @@ def test_case_heartbeat_uses_watchdog_clock_without_changing_deadline(tmp_path, 
     assert sleeps == [30., 30., 30., 30., 30., 5.]
     assert stopped == [(process, 155.)]
     assert result == {"status": "timeout", "reason": "time_limit", "rss_measurement": "sampled",
-                      "process_wall_s": 155., "peak_rss_bytes": 17, "time_limit_s": 240.}
+                      "process_wall_s": 155., "peak_rss_bytes": 17, "time_limit_s": 240.,
+                      "live_memory_observed": True, "live_memory_samples": 6,
+                      "live_memory_missing_samples": 0, "live_memory_rss_fallback_samples": 0}
 
 
 def test_timeout_kills_owned_process_and_is_not_a_completed_timing(tmp_path):

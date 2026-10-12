@@ -1280,3 +1280,4 @@ LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, con
 #include "fftw_ops.h"
 #include "fftw_smoothing.h"
 #include "fftw_bluestein_ops.h"
+#include "fftw_direct_log_power.c"
