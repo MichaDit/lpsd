@@ -1,7 +1,11 @@
 # Native LPSD kernels
 
-These sources implement the LPSD 1.0.6 estimator. They keep its frequency
-plan, valid segment starts, normalization and legacy mean/variance recurrence.
+These sources keep LPSD 1.0.6's frequency plan, valid segment starts and
+normalization. The existing exports retain its legacy mean/variance recurrence.
+Additive `*_corrected` exports average all actual segments and accumulate the
+real sample variance when requested; these support the current Python default
+`statistics='corrected'`. The numerical computation mode is independent of
+this statistics choice. See the [statistics contract](../../docs/statistics.md).
 The polynomial routines are included directly from the unchanged original
 `lpsd/c_sources/polyreg.c`; there is no second maintained copy.
 
@@ -59,8 +63,12 @@ memory; it does not allocate a billion-sample signal.
 
 The original statistics have two known defects: the mean update uses the
 zero-based segment index as divisor, and M2 is overwritten rather than
-accumulated. These rules are preserved for compatibility; the returned
-standard-deviation columns are not validated statistical uncertainties.
+accumulated. The legacy exports preserve these rules for compatibility.
+Corrected exports use the actual count `ii + 1` and accumulate M2. The Python
+caller converts corrected sample variance into a nominal SEM; for CSD this is
+a real RMS complex error. A single segment has a valid mean and undefined
+sample variance (`NaN`). No correlation correction for overlapping segments
+or colored noise is applied, so SEM is not a validated measurement uncertainty.
 
 ## Preparation and profiling exports
 
@@ -83,6 +91,12 @@ standard-deviation columns are not validated statistical uncertainties.
   saving two length-L double buffers (16L bytes) per active frequency. It
   never changes the input samples. Variance outputs may be NULL when not
   requested; supplied variance outputs are then NAN.
+- `fast_dft_selected_corrected` has the same signature as
+  `fast_dft_selected_bounded`, including the input bound and optional timers.
+  `fast_dft_boxcar_corrected`, `fast_dft_prepared_order0_corrected` and
+  `fast_dft_kaiser_streaming_corrected` have the same argument contracts as
+  their legacy counterparts. These exports select the corrected recurrence;
+  the existing symbols and original prepared ABI version remain unchanged.
 - Selected modes 2/3 PSD share coefficient loads across four segments when
   L is at least 2048. On x86-64, AVX-512 uses eight segments for lengths
   128..255 or at least 1024, followed by four-way and single-segment
@@ -98,7 +112,9 @@ standard-deviation columns are not validated statistical uncertainties.
   floating-point contraction or statistics reassociation is enabled.
 - Only the final assignment to the legacy M2 is computed, since earlier
   M2 assignments are overwritten. This speeds up full-output calls too;
-  it deliberately preserves the original variance defect.
+  it deliberately preserves the original variance defect. Corrected full
+  outputs accumulate every M2 contribution. Both modes skip M2 entirely
+  when no deviation column is requested.
 - `generate_coefficients_blocked` is an optional faster coefficient path.
   It directly evaluates one phase per 64-sample block and rotates a short
   offset table with SIMD. A per-sample correction recovers the independently

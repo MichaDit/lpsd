@@ -12,6 +12,17 @@ inputs. These remain benchmark experiments. The report
 below retains the earlier EPYC container's inventory and proposed design;
 its statements about unavailable devices apply to that environment.
 
+**Fast.10 statistics compatibility:** the CUDA, OpenCL and packed GPU LPSD
+prototypes deliberately retain the historical segment-mean recurrence. Their
+CPU comparisons and CPU fallback paths now request `statistics='legacy'`
+explicitly, because the public `lpsd_fast` default is corrected. The existing
+GPU timing and accuracy reports remain evidence for that legacy estimator.
+No corrected-statistics GPU implementation has been qualified or enabled by
+this revision. See the [current statistics contract](statistics.md) and the
+prototype's [host aggregation bridge](../benchmarks/experiments/cuda_segments/bridge.c).
+In the packed benchmark, `--legacy` selects an additional older GPU adapter
+for comparison; both GPU adapters still use legacy statistics.
+
 Assessment date: 2026-10-08. The workload counts below use the unchanged
 LPSD frequency planner and Kaiser PSLL 200 defaults. The hardware inventory
 was collected in the same CPU-only execution environment used for this
@@ -93,11 +104,13 @@ output contract. A suitable candidate has the following design:
    multiple segments to a block so that coefficients can be reused. For
    long segments, use chunked parallel reductions with bounded scratch
    memory. Keep reads within a segment contiguous.
-5. Initially return segment powers for the existing host mean update.
-   Move aggregation to the device only after its numerical contract is
-   independently checked. The inherited averaging recurrence has observable
-   behavior; blindly replacing it with an ordinary average of all segments
-   changes the estimator.
+5. For the historical prototype, return segment powers for the inherited
+   host mean update. Its legacy behavior is part of the archived comparison.
+   A future corrected GPU implementation must independently validate the
+   all-segment mean against an explicitly corrected CPU reference, together
+   with any requested deviation outputs. Move aggregation to the device only
+   after that selected statistical contract is checked; the two estimators
+   must not be mixed in one numerical or speed comparison.
 6. Reuse device buffers and prepared plans for repeated records. Consider
    graph capture after measuring launch overhead. CUDA graphs can amortize
    repeated work submission, but graph construction/instantiation belongs
@@ -244,13 +257,14 @@ python -m benchmarks.probe_accelerators --probe-commands --sizes 10000000 300000
 On the **same machine and exact checkout** used for a future GPU candidate,
 build the normal native libraries and collect the CPU comparator. Choose
 the worker count for the actual CPU quota; eight is the historical case,
-not a universal best setting.
+not a universal best setting. The current experimental GPU adapters require
+an explicitly legacy CPU comparator, even on a current CPU checkout:
 
 ```bash
 python build_native.py
 python -m lpsd_fast.build --native
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m benchmarks.bench_lpsd \
-  --backend fast --kernel fast --outputs psd --n 10000000 --workers 8 \
+  --backend fast --kernel fast --statistics legacy --outputs psd --n 10000000 --workers 8 \
   --n-frequencies 1000 --n-averages 100 --window kaiser --psll 200 --order 0 \
   --max-working-mb 4096 --full-length-warmup --warmups 1 --repeats 7 \
   --profile --output cpu-current-10m.json
@@ -307,7 +321,9 @@ aggregation, D2H and synchronization costs without mixing profiling
 overhead into ordinary repetitions.
 
 Use identical input arrays, seeds, lengths, output frequency labels,
-window/overlap, detrending, precision/output dtype, and number of segments.
+window/overlap, detrending, precision/output dtype, number of segments and
+statistics mode. The supplied GPU comparison harnesses select the legacy
+CPU mode explicitly; their results do not qualify the corrected CPU/GPU pair.
 Alternate CPU and GPU measurements where practical, report every repetition
 and medians/ranges, and include the realistic number of records/channels.
 Record the GPU model, driver/runtime, selected device, FP64 capability,

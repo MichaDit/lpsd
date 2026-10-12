@@ -2,8 +2,10 @@
 """Experimental FP64 PSD/NSD adapter. No production GPU dispatch is enabled.
 
 One input copy, host projected coefficients and exact starts per frequency,
-GPU segment powers, inherited host recurrence. Order 1+ is an explicit CPU
-fallback. Requires optional CuPy/CUDA and a separately built bridge.
+GPU segment powers, inherited host recurrence. This isolated experiment remains
+legacy-only; its CPU fallbacks and comparison harnesses select legacy explicitly.
+Order 1+ is an explicit CPU fallback. Requires optional CuPy/CUDA and a separately
+built bridge; fast.10 does not qualify a corrected-statistics GPU backend.
 """
 import ctypes as ct
 import os
@@ -111,7 +113,7 @@ class CUDAEstimator:
             result=cpu_lpsd(data,sample_rate=sample_rate,n_frequencies=n_frequencies,
                             n_averages=n_averages,detrending_order=detrending_order,
                             window_function=window_function,overlap=overlap,psll=psll,
-                            workers=1,kernel='fast',outputs=outputs)
+                            workers=1,kernel='fast',outputs=outputs,statistics='legacy')
             result.attrs['cuda_experiment']={'executed':'CPU fallback','reason':'Order 1+ not implemented on GPU'}
             return result
         if tuple(outputs) not in (('psd',),('psd','nsd')): raise ValueError('Experimental PSD or PSD/NSD only')
@@ -150,6 +152,7 @@ class CUDAEstimator:
         self.synchronize()
         self.last_profile=dict(stages,wall_s=time.perf_counter()-started)
         result.attrs['cuda_experiment']={'executed':'FP64 GPU segments with CPU preparation/initial projections/aggregation',
+                                         'statistics':'legacy',
                                          'strategy':self.strategy,'threads':self.threads,'fma':False,
                                          'pool_limit_bytes':self.pool_limit,
                                          'profile':self.last_profile if profile else None}

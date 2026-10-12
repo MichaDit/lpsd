@@ -335,8 +335,10 @@ class DiskLPSDSubset:
     Unlike the public API's optional single-worker FMA optimization, this
     adapter deliberately calls the ordinary selected kernel used by the
     eight-frequency-worker comparison. Local anchors, native segment starts,
-    projection, legacy first-segment recurrence and float32 PSD rounding are
-    unchanged. NSD uses the existing complex64 square root after that rounding.
+    projection and float32 PSD rounding are unchanged. The default
+    ``statistics='corrected'`` averages every segment; ``'legacy'`` explicitly
+    reproduces the frozen upstream recurrence. NSD uses the existing complex64
+    square root after PSD rounding.
 
     ``compute(values, workspace, ...)`` validates the entire input in bounded
     blocks and returns an independent DataFrame. No input/workspace reference
@@ -380,12 +382,15 @@ class DiskLPSDSubset:
                  n_min_bins=1, min_segment_length=0, workers=8, max_working_mb=2048,
                  validation_chunk_size=262144, progress=None, progress_interval_s=15.0,
                  streaming="auto", streaming_block_samples=131072,
-                 streaming_max_segments=256):
+                 streaming_max_segments=256, statistics="corrected"):
         started = time.perf_counter()
         self._lock = threading.RLock()
         self._closed = False
         self.last_profile = None
         self._last_storage_metadata = None
+        if not isinstance(statistics, str) or statistics not in ("corrected", "legacy"):
+            raise ValueError("statistics must be 'corrected' or 'legacy'.")
+        self.statistics = statistics
         if progress is not None and not callable(progress):
             raise TypeError("progress must be callable or None.")
         self._progress = progress
@@ -446,7 +451,9 @@ class DiskLPSDSubset:
         self.streaming_max_segments = _positive_integer(streaming_max_segments, "streaming_max_segments")
         if self.streaming_max_segments > 256:
             raise ValueError("streaming_max_segments must be at most 256.")
-        self._streaming_fn = getattr(self._lib, "fast_dft_kaiser_streaming", None)
+        streaming_symbol = ("fast_dft_kaiser_streaming_corrected" if self.statistics == "corrected"
+                            else "fast_dft_kaiser_streaming")
+        self._streaming_fn = getattr(self._lib, streaming_symbol, None)
         if streaming == "on" and self._streaming_fn is None:
             raise RuntimeError("Rebuild the native library to enable bounded Kaiser streaming.")
         if self._streaming_fn is not None:
@@ -479,14 +486,16 @@ class DiskLPSDSubset:
         self._metadata = {
             "adapter": "benchmarks._lpsd_disk.DiskLPSDSubset",
             "benchmark_category": "file_backed_complete_call",
-            "lpsd_fast_version": __version__, "estimator": "lpsd-1.0.6",
+            "lpsd_fast_version": __version__,
+            "estimator": "lpsd-corrected" if self.statistics == "corrected" else "lpsd-1.0.6",
+            "statistics": self.statistics,
             "kernel": "fast", "window": "kaiser", "psll": self.psll,
             "kaiser_beta": self.beta, "overlap": self.overlap,
             "detrending_order": 0, "statistics_computed": False,
             "native_mode": self._mode,
             "native_long_double_mantissa_bits": self._mantissa_bits,
             "bounded_segment_fma_enabled": False,
-            "legacy_first_segment_recurrence": True,
+            "legacy_first_segment_recurrence": self.statistics == "legacy",
             "n": self.n, "sample_rate": self.sample_rate,
             "workers": self.workers, "effective_workers": self.effective_workers,
             "frequencies": len(self.frequencies),
@@ -683,7 +692,8 @@ class DiskLPSDSubset:
             validation_s = time.perf_counter() - validation_started
             doubles = workspace.view(np.float64)
             xp = api._pointer(values)
-            fn = self._lib.fast_dft_selected_profile if profile else self._lib.fast_dft_selected
+            fn = (self._lib.fast_dft_selected_corrected if self.statistics == "corrected" else
+                  self._lib.fast_dft_selected_profile if profile else self._lib.fast_dft_selected)
             density = np.empty(len(self.frequencies), dtype=np.complex64)
             rows = [None] * len(self.frequencies) if profile else []
             totals = {name: 0.0 for name in _STAGES}
@@ -758,6 +768,11 @@ class DiskLPSDSubset:
                             crp, cip, crp, length, float(self.plan[2][j])), "Fourier coefficient generation")
                         t3 = time.perf_counter()
                         extra = (ct.byref(prep_s), ct.byref(segments_s)) if profile else ()
+                        if self.statistics == "corrected":
+                            # Keep the mapped path's non-FMA arithmetic; the
+                            # added ABI selects the corrected recurrence only.
+                            extra = (math.inf, ct.byref(prep_s) if profile else None,
+                                     ct.byref(segments_s) if profile else None, None)
                         # The ordinary mapped path retains the previous
                         # non-FMA selected kernel and its arithmetic.
                         _check_status(fn(ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi),

@@ -36,9 +36,9 @@ def test_flattop_public_spectra(window, coefficients):
                   min_segment_length=16, overlap=.5)
     original = lpsd.lpsd(data, window_function=window, **kwargs)
     scalar = lpsd_fast.lpsd(data, window_function=window.__name__,
-                            kernel="scalar", workers=1, **kwargs)
+                            kernel="scalar", workers=1, statistics="legacy", **kwargs)
     fast = lpsd_fast.lpsd(data, window_function=window,
-                          kernel="auto", workers=2, **kwargs)
+                          kernel="auto", workers=2, statistics="legacy", **kwargs)
     compare(scalar, original, exact=True)
     compare(fast, original, columns=PRIMARY)
     assert fast.attrs["lpsd_fast"]["native_window"]

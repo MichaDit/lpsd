@@ -102,14 +102,14 @@ def main():
     plan=PreparedPlan(gpu,args.n,not args.cpu_only)
     result=plan.cpu_call(x,args.workers) if args.cpu_only else plan.gpu_call(x)
     first=time.perf_counter()-t
-    reference=lpsd(x,sample_rate=1.,workers=args.workers,kernel='fast',outputs=('psd','asd'),max_working_mb=4096)
+    reference=lpsd(x,sample_rate=1.,workers=args.workers,kernel='fast',outputs=('psd','asd'),max_working_mb=4096,statistics='legacy')
     report=dict(created_utc=datetime.now(timezone.utc).isoformat(),n=args.n,workers=args.workers,
                 build_reports=build_evidence(),pool_limit_bytes=gpu.pool_limit,
                 resident_payload_bytes=plan.payload_bytes,host_preparation_s=plan.host_preparation_s,
                 host_plan_bytes=plan.host_plan_bytes,cpu_only=args.cpu_only,
                 device_plan_construction_s=plan.device_plan_s,first_complete_with_plan_s=first,calls=[],completed=False,
                 scope='Prepared CPU/GPU use exactly the same projected coefficients, starts and CPU initial projections; GPU returns powers for host inherited aggregation; public CPU regenerates its plan')
-    functions={'public_cpu':lambda:lpsd(x,sample_rate=1.,workers=args.workers,kernel='fast',outputs=('psd','nsd'),max_working_mb=4096),
+    functions={'public_cpu':lambda:lpsd(x,sample_rate=1.,workers=args.workers,kernel='fast',outputs=('psd','nsd'),max_working_mb=4096,statistics='legacy'),
                'prepared_cpu':lambda:plan.cpu_call(x,args.workers),
                'prepared_gpu_host':lambda:plan.gpu_call(x),
                'prepared_gpu_resident_input':lambda:plan.gpu_call(x,False)}

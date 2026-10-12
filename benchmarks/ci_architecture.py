@@ -63,6 +63,7 @@ def revision_comparison(root, baseline_root, output, sizes, workers):
     report = {
         "schema_version": 1,
         "kind": "same_runner_alternating_revision_comparison",
+        "statistics": "legacy",
         "state": "running",
         "revisions": {name: _revision_evidence(path) for name, path in roots.items()},
         "input": "seeded float64 standard-normal samples; seed 20261008",
@@ -100,6 +101,8 @@ def revision_comparison(root, baseline_root, output, sizes, workers):
                         subprocess.run(command, cwd=roots[variant], env=environment,
                                        check=True, timeout=180, capture_output=True, text=True)
                         measured = json.loads(destination.read_text())
+                        if measured.get("statistics") != "legacy":
+                            raise RuntimeError("Revision comparison requires the same legacy estimator")
                         # Mandatory verified build evidence prevents unnoticed
                         # lazy/system backends from turning this into another comparison.
                         build = measured.get("build_reports", {}).get("fast")

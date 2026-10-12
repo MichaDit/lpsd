@@ -83,7 +83,10 @@ def run(name, kernel=None, workers=1):
     data = case.data.copy(deep=True)
     if kernel is None:
         return lpsd.lpsd(data, use_c_core=True, **case.kwargs)
-    return lpsd_fast.lpsd(data, kernel=kernel, workers=workers, **case.kwargs)
+    # This helper compares with the frozen upstream estimator. The corrected
+    # default has independent mathematical-reference tests in test_statistics.
+    return lpsd_fast.lpsd(data, kernel=kernel, workers=workers,
+                          statistics="legacy", **case.kwargs)
 
 
 def compare(actual, expected, *, exact=False, columns=COLUMNS):

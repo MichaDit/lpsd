@@ -212,7 +212,8 @@ def scalar_anchor():
     values = pd.Series(np.random.default_rng(177).standard_normal(257))
     kwargs = dict(sample_rate=50., n_frequencies=32, n_averages=4)
     original = lpsd.lpsd(values, use_c_core=True, **kwargs)
-    reference = lpsd_fast.lpsd(values, kernel="scalar", workers=1, **kwargs)
+    reference = lpsd_fast.lpsd(values, kernel="scalar", workers=1,
+                              statistics="legacy", **kwargs)
     same = tuple(original.columns) == tuple(reference.columns)
     same = same and digest(original.index.to_numpy()) == digest(reference.index.to_numpy())
     same = same and all(digest(original[name].to_numpy()) == digest(reference[name].to_numpy()) for name in original)
@@ -231,6 +232,7 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=20261008)
     parser.add_argument("--kernel", default="auto", help="Candidate kernel; reference is always scalar.")
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--statistics", choices=("corrected", "legacy"), default="corrected")
     parser.add_argument("--cases", nargs="+", choices=tuple(CASES))
     parser.add_argument("--relative-limit", type=float, default=.01)
     parser.add_argument("--psd-absolute-limit", type=float, default=0.,
@@ -256,6 +258,7 @@ def main(argv=None):
         parser.error("Case names must not be repeated.")
     report = {
         "schema_version": 1, "label": args.label,
+        "statistics": args.statistics,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "reference": {"kernel": "scalar", "workers": 1, "outputs": "all", "nsd_reference_column": "asd"},
         "candidate": {"kernel": args.kernel, "workers": args.workers, "outputs": ["psd", "nsd"]},
@@ -281,7 +284,7 @@ def main(argv=None):
             "--fail-on-limit uses the combined criterion when an absolute allowance is set; with zero allowances it retains the strict criterion.",
             "The saved absolute-only and combined-failure points are sorted by decreasing absolute error.",
             "The 1% default is strict: exactly 1% does not pass. Both > and >= counts are recorded.",
-            "Native scalar uses the strict coefficient/window path; an independent small original-C anchor gates it.",
+            "A small original-C anchor checks scalar legacy compatibility; corrected statistics are separately gated by mathematical-reference tests.",
             "Source and binary fingerprints are recorded before the audit; do not rebuild during the run.",
             "A finite synthetic audit cannot establish a universal guarantee, especially at spectral nulls.",
             "These calls are not controlled wall-time benchmarks; use bench_lpsd.py for speed comparisons.",
@@ -295,7 +298,8 @@ def main(argv=None):
         order = 1 if kind == "ramp_nanovolt" else None if kind in ("offbin_tone", "onbin_tone") else 0
         kwargs = dict(sample_rate=args.sample_rate, n_frequencies=args.n_frequencies,
                       n_averages=args.n_averages, detrending_order=order,
-                      window_function=function, overlap=overlap, psll=psll)
+                      window_function=function, overlap=overlap, psll=psll,
+                      statistics=args.statistics)
         data = pd.Series(values, copy=False)
         reference = lpsd_fast.lpsd(data, kernel="scalar", workers=1, **kwargs)
         if reference.attrs["lpsd_fast"]["native_mode"] != 0:

@@ -1,4 +1,4 @@
-"""Mandatory error bounds plus two narrow, visible, strict known limitations."""
+"""Mandatory rounding bounds and explicit corrected/legacy statistics checks."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -48,6 +48,10 @@ def test_known_offbin_tone_uniform_relative_accuracy():
                                run("offbin_tone").psd, rtol=RTOL, atol=0)
 
 
+def test_offbin_scalar_legacy_matches_original_exactly():
+    compare(run("offbin_tone", "scalar"), run("offbin_tone"), exact=True)
+
+
 def impulse_window(length):
     window = np.zeros(length)
     window[0] = 1.0
@@ -61,7 +65,8 @@ def two_segment_result():
     kwargs = dict(sample_rate=1., n_frequencies=1, n_averages=1, overlap=0.,
                   detrending_order=None, window_function=impulse_window)
     original = lpsd.lpsd(data, **kwargs)
-    actual = lpsd_fast.lpsd(data, kernel="auto", workers=1, **kwargs)
+    actual = lpsd_fast.lpsd(data, kernel="auto", workers=1,
+                           statistics="legacy", **kwargs)
     return original, actual
 
 
@@ -73,12 +78,12 @@ def test_legacy_two_segment_statistics_are_preserved(two_segment_result):
     assert actual.psd_std.iloc[-1] == 0.0
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    "Preserved upstream C estimator defect: K=2 gives zero variance instead of "
-    "the standard error of the two periodograms. This optimization does not correct statistics."
-))
-def test_known_legacy_standard_error_is_not_statistically_correct(two_segment_result):
-    _, actual = two_segment_result
+def test_corrected_default_uses_both_periodograms_and_standard_error():
+    data = pd.Series([1., 0, 0, 0, 2., 0, 0, 0])
+    actual = lpsd_fast.lpsd(data, sample_rate=1., n_frequencies=1,
+                           n_averages=1, overlap=0., detrending_order=None,
+                           window_function=impulse_window, workers=1)
     # One-sided periodograms are [2, 8]; sample std / sqrt(2) equals 3.
     expected = np.std([2., 8.], ddof=1) / np.sqrt(2)
+    assert actual.psd.iloc[-1] == pytest.approx(5.)
     assert actual.psd_std.iloc[-1] == pytest.approx(expected)

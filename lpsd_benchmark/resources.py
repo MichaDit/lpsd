@@ -487,6 +487,12 @@ def calibration_matches(case, row):
     if (row.get("status") != "completed" or row.get("method") != case["method"]
             or row.get("signal") != case["signal"]):
         return False
+    if case["method"] in ("lpsd", "matched"):
+        # Reports predating the selector used the frozen upstream recurrence.
+        # A corrected estimator must calibrate from corrected observations.
+        modes = [value.get("statistics", "legacy") for value in (case, row)]
+        if modes[0] != modes[1] or modes[0] not in ("corrected", "legacy"):
+            return False
     if case["method"] != "lpsd":
         # Retain historical full RAM-to-disk forecasts, but an explicitly
         # packed disk transform must be calibrated from that same route.

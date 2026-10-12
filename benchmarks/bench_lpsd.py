@@ -153,6 +153,9 @@ def main(argv=None):
     parser.add_argument("--psll", type=float, default=200.)
     parser.add_argument("--n", type=int, default=1_000_000)
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--statistics", choices=("corrected", "legacy"), default="legacy",
+                        help="Default legacy keeps upstream/revision comparisons equivalent; "
+                             "select corrected explicitly for the repaired estimator")
     parser.add_argument(
         "--kernel", choices=("auto", "fast", "scalar", "simd", "projected"), default="auto"
     )
@@ -204,6 +207,8 @@ def main(argv=None):
         parser.error("--entry-point lnsd requires --backend fast and cannot be combined with --outputs.")
     if args.backend == "original" and args.outputs not in (None, ["all"]):
         parser.error("Selected outputs require --backend fast; original always computes all outputs.")
+    if args.backend == "original" and args.statistics != "legacy":
+        parser.error("The frozen original backend only implements legacy statistics.")
     if args.backend == "original" and (
         args.profile or args.workers != 1 or args.max_working_mb is not None
     ):
@@ -245,6 +250,14 @@ def main(argv=None):
     }
     if args.backend == "fast" and args.outputs is not None:
         extra["outputs"] = args.outputs[0] if len(args.outputs) == 1 else args.outputs
+    if args.backend == "fast":
+        # The shared harness also measures older, pinned revisions that predate
+        # the selector. Only their actual legacy behavior may be requested.
+        import inspect
+        if "statistics" in inspect.signature(fast_lpsd).parameters:
+            extra["statistics"] = args.statistics
+        elif args.statistics != "legacy":
+            parser.error("This source revision does not implement corrected statistics.")
     warmup_start = time.perf_counter()
     warmup_kwargs = dict(common, n_frequencies=(
         args.n_frequencies if args.full_length_warmup else min(args.n_frequencies, 100)
@@ -273,6 +286,7 @@ def main(argv=None):
     report = {
         "schema_version": 1,
         "backend": args.backend,
+        "statistics": args.statistics,
         "entry_point": args.entry_point,
         "parameters": dict(common, window_function=args.window,
                            n=args.n, seed=args.seed, **extra),

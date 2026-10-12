@@ -301,8 +301,8 @@ def test_native_failure_before_or_after_retirement_releases_all_reservations(
             def __getattr__(self, name):
                 return getattr(real_lib, name)
 
-            def fast_dft_selected_profile(self, *args):
-                return 3 if args[8] == failed_length else real_lib.fast_dft_selected_profile(*args)
+            def fast_dft_selected_corrected(self, *args):
+                return 3 if args[8] == failed_length else real_lib.fast_dft_selected_corrected(*args)
 
         method._lib = Failure()
         with _mapped_input(tmp_path, values) as data:

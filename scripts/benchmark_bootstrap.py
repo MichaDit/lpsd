@@ -102,91 +102,198 @@ def stop_process(process):
         pass
 
 
-def setup_process_memory():
-    """Resident memory of this bootstrap and its descendants; no identifiers saved."""
-    entries = {}
-    own_pid = os.getpid()
-    if os.name == "nt":
-        from ctypes import wintypes
-        class Entry(ctypes.Structure):
-            _fields_ = [("size", wintypes.DWORD), ("usage", wintypes.DWORD),
-                        ("pid", wintypes.DWORD), ("heap", ctypes.c_size_t),
-                        ("module", wintypes.DWORD), ("threads", wintypes.DWORD),
-                        ("parent", wintypes.DWORD), ("priority", wintypes.LONG),
-                        ("flags", wintypes.DWORD), ("executable", wintypes.WCHAR * 260)]
-        class Counters(ctypes.Structure):
-            _fields_ = [("size", wintypes.DWORD), ("faults", wintypes.DWORD)] + [
-                (name, ctypes.c_size_t) for name in (
-                    "peak_rss", "rss", "peak_paged", "paged", "peak_nonpaged",
-                    "nonpaged", "pagefile", "peak_pagefile")]
-        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-        psapi = ctypes.WinDLL("psapi", use_last_error=True)
-        kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
-        kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-        kernel.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(Entry)]
-        kernel.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(Entry)]
-        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-        kernel.OpenProcess.restype = wintypes.HANDLE
-        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
-        psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
-        snapshot = kernel.CreateToolhelp32Snapshot(2, 0)
-        if snapshot == ctypes.c_void_p(-1).value:
-            return None
-        try:
-            entry = Entry(); entry.size = ctypes.sizeof(entry)
-            valid = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
-            while valid:
-                entries[int(entry.pid)] = [int(entry.parent), 0]
-                valid = kernel.Process32NextW(snapshot, ctypes.byref(entry))
-        finally:
-            kernel.CloseHandle(snapshot)
-    elif sys.platform.startswith("linux"):
-        # /proc can be mounted in an ancestor PID namespace. Its visible
-        # numeric directories then differ from os.getpid()/Popen.pid.
-        try:
-            own_status = Path("/proc/self/status").read_text().splitlines()
-            own_pid = next(int(line.split()[1]) for line in own_status if line.startswith("Pid:"))
-        except (OSError, ValueError, StopIteration):
-            return None
-        for directory in Path("/proc").glob("[0-9]*"):
-            try:
-                fields = {}
-                for line in (directory / "status").read_text().splitlines():
-                    parts = line.split()
-                    if parts and parts[0] in ("PPid:", "VmRSS:"):
-                        fields[parts[0]] = int(parts[1])
-                entries[int(directory.name)] = [fields.get("PPid:", 0), fields.get("VmRSS:", 0) * 1024]
-            except (OSError, ValueError):
-                continue
-    else:
-        try:
-            probe = subprocess.run(["ps", "-axo", "pid=,ppid=,rss="],
-                                   capture_output=True, text=True, timeout=2, check=True)
-            for line in probe.stdout.splitlines():
-                pid, parent, rss = map(int, line.split())
-                entries[pid] = [parent, rss * 1024]
-        except (OSError, ValueError, subprocess.SubprocessError):
-            return None
-    if own_pid not in entries:
+def _setup_descendants(parents, own_pid):
+    """Traverse one inventory in O(processes + descendants), including self."""
+    if own_pid not in parents:
         return None
-    descendants = {own_pid}
-    while True:
-        expanded = descendants | {pid for pid, (parent, _) in entries.items() if parent in descendants}
-        if expanded == descendants:
-            break
-        descendants = expanded
-    if os.name == "nt":
-        for pid in descendants:
-            handle = kernel.OpenProcess(0x0400 | 0x0010, False, pid)
-            if not handle:
-                continue  # A process may have exited since the snapshot.
+    children = {}
+    for pid, parent in parents.items():
+        children.setdefault(parent, []).append(pid)
+    pending, found = [own_pid], set()
+    while pending:
+        pid = pending.pop()
+        if pid not in found:
+            found.add(pid)
+            pending.extend(children.get(pid, ()))
+    return found
+
+
+def _linux_setup_status(path):
+    fields = {}
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        items = line.split()
+        if not items:
+            continue
+        name = items[0][:-1]
+        if name in ("Pid", "PPid", "Threads", "VmRSS", "State", "NSpid"):
+            if len(items) < 2:
+                raise ValueError("Incomplete process status")
+            if name == "State":
+                fields[name] = items[1]
+            elif name == "NSpid":
+                fields[name] = tuple(map(int, items[1:]))
+            else:
+                fields[name] = int(items[1])
+                if name == "VmRSS":
+                    if len(items) != 3 or items[2] != "kB":
+                        raise ValueError("Unknown process memory unit")
+                    fields[name] *= 1024
+    return fields
+
+
+def _linux_setup_memory(proc_root=Path("/proc")):
+    # Resolve our visible PID through self, not os.getpid(): procfs may be
+    # mounted in an ancestor PID namespace. A single global inventory also
+    # works on kernels without the optional /proc/PID/task/TID/children files.
+    try:
+        owner = _linux_setup_status(proc_root / "self" / "status")
+        own_pid = owner["Pid"]
+        nested = owner.get("NSpid", ())
+        if own_pid <= 0 or (nested and (nested[0] != own_pid or nested[-1] != os.getpid())):
+            return None
+        entries = {}
+        for directory in proc_root.iterdir():
+            if not directory.name.isdecimal():
+                continue
+            pid = int(directory.name)
             try:
-                counters = Counters(); counters.size = ctypes.sizeof(counters)
-                if psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.size):
-                    entries[pid][1] = int(counters.rss)
-            finally:
-                kernel.CloseHandle(handle)
-    return sum(entries[pid][1] for pid in descendants)
+                fields = _linux_setup_status(directory / "status")
+            except OSError:
+                # Only a confirmed disappearance is an exit race. An
+                # unreadable process could own a live descendant; a partial
+                # inventory must never become a positive complete-tree sum.
+                try:
+                    directory.stat()
+                except (FileNotFoundError, ProcessLookupError):
+                    continue
+                return None
+            if (fields.get("Pid") != pid or "PPid" not in fields
+                    or fields["PPid"] < 0 or fields["PPid"] == pid):
+                return None
+            entries[pid] = fields
+        descendants = _setup_descendants({pid: row["PPid"] for pid, row in entries.items()}, own_pid)
+        if descendants is None:
+            return None
+        total = 0
+        for pid in descendants:
+            fields = entries[pid]
+            child_nested = fields.get("NSpid", ())
+            if child_nested and (child_nested[0] != pid or len(child_nested) < len(nested)
+                                 or any(value <= 0 for value in child_nested)):
+                return None
+            if fields.get("State") in ("Z", "X", "x"):
+                # pthread_exit can leave a zombie group leader with live
+                # threads and an address space. Only a single-task zombie is
+                # known to have released its user memory.
+                if fields.get("Threads") != 1 or pid == own_pid:
+                    return None
+                continue
+            if "State" not in fields or "VmRSS" not in fields or fields["VmRSS"] < 0:
+                return None
+            total += fields["VmRSS"]
+        return total
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _windows_setup_snapshot(kernel, entry_type):
+    snapshot = kernel.CreateToolhelp32Snapshot(2, 0)
+    if not snapshot or snapshot == ctypes.c_void_p(-1).value:
+        return None
+    try:
+        entries = {}
+        entry = entry_type(); entry.size = ctypes.sizeof(entry)
+        ctypes.set_last_error(0)
+        valid = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
+        while valid:
+            entries[int(entry.pid)] = int(entry.parent)
+            ctypes.set_last_error(0)
+            valid = kernel.Process32NextW(snapshot, ctypes.byref(entry))
+        # FALSE also signals enumeration failure, not just end-of-list.
+        return entries if ctypes.get_last_error() == 18 else None  # ERROR_NO_MORE_FILES
+    finally:
+        kernel.CloseHandle(snapshot)
+
+
+def _windows_setup_memory():
+    from ctypes import wintypes
+    class Entry(ctypes.Structure):
+        _fields_ = [("size", wintypes.DWORD), ("usage", wintypes.DWORD),
+                    ("pid", wintypes.DWORD), ("heap", ctypes.c_size_t),
+                    ("module", wintypes.DWORD), ("threads", wintypes.DWORD),
+                    ("parent", wintypes.DWORD), ("priority", wintypes.LONG),
+                    ("flags", wintypes.DWORD), ("executable", wintypes.WCHAR * 260)]
+    class Counters(ctypes.Structure):
+        _fields_ = [("size", wintypes.DWORD), ("faults", wintypes.DWORD)] + [
+            (name, ctypes.c_size_t) for name in (
+                "peak_rss", "rss", "peak_paged", "paged", "peak_nonpaged",
+                "nonpaged", "pagefile", "peak_pagefile")]
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    kernel.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(Entry)]
+    kernel.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(Entry)]
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+    own_pid = os.getpid()
+    entries = _windows_setup_snapshot(kernel, Entry)
+    descendants = _setup_descendants(entries, own_pid) if entries is not None else None
+    if descendants is None:
+        return None
+    total, refreshed = 0, None
+    for pid in descendants:
+        # Supported Python/Windows versions allow both queries with limited
+        # information access; unnecessary VM_READ rights can deny a probe.
+        handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            if pid == own_pid:
+                return None
+            if refreshed is None:
+                refreshed = _windows_setup_snapshot(kernel, Entry)
+            if refreshed is None or pid in refreshed:
+                return None
+            continue  # A complete fresh inventory confirmed that it exited.
+        try:
+            counters = Counters(); counters.size = ctypes.sizeof(counters)
+            if psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.size):
+                total += int(counters.rss)
+            else:
+                exit_code = wintypes.DWORD()
+                if (pid == own_pid or not kernel.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+                        or exit_code.value == 259):  # STILL_ACTIVE (also ambiguous as an exit code)
+                    return None
+        finally:
+            kernel.CloseHandle(handle)
+    return total
+
+
+def setup_process_memory():
+    """Complete sampled tree RSS, or None when unavailable; no identifiers saved.
+
+    Inventories and memory reads are not atomic. Verified exit races may be
+    omitted, but a live unreadable process must never count as zero bytes.
+    """
+    try:
+        if os.name == "nt":
+            return _windows_setup_memory()
+        if sys.platform.startswith("linux"):
+            return _linux_setup_memory()
+        entries = {}
+        probe = subprocess.run(["ps", "-axo", "pid=,ppid=,rss="],
+                               capture_output=True, text=True, timeout=2, check=True)
+        for line in probe.stdout.splitlines():
+            pid, parent, rss = map(int, line.split())
+            if min(pid, parent, rss) < 0:
+                return None
+            entries[pid] = (parent, rss * 1024)
+        descendants = _setup_descendants({pid: row[0] for pid, row in entries.items()}, os.getpid())
+        return sum(entries[pid][1] for pid in descendants) if descendants is not None else None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
 
 
 class Budget:

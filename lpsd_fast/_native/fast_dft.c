@@ -6,9 +6,10 @@
  * Polynomial detrending: Gerhard Heinzel, AEI, 2008-01-17.
  *
  * This derivative preserves the supplied frequencies and coefficients,
- * valid segment starts, long-double polynomial detrending, and the original
- * mean/variance recurrence, INCLUDING its known 1.0.6 defects. Correcting
- * that recurrence is a separate estimator change, not a speed optimization.
+ * valid segment starts and long-double polynomial detrending. The original
+ * exported functions retain the 1.0.6 mean/variance recurrence, including its
+ * known defects. Additive corrected exports average every segment and return
+ * the accumulated sample variance; that is an explicit estimator correction.
  *
  * Build with -O3 -fopenmp-simd -ffp-contract=off. -march=native is optional.
  * Do not use global -ffast-math. There is no internal thread parallelism.
@@ -643,6 +644,66 @@ static LPSD_ALWAYS_INLINE void update_original_statistics(long int ii,
     }
 }
 
+/* Welford's mean and accumulated squared distance for real or complex
+ * periodograms. Complex variance is E[|Z-E[Z]|^2], not E[(Z-E[Z])^2].
+ * The caller performs no M2 work when deviation columns are not requested.
+ * Keep the legacy helper above untouched, including its operation order. */
+static LPSD_ALWAYS_INLINE void update_corrected_statistics(long int ii,
+                                        double rxsum1, double ixsum1,
+                                        double rxsum2, double ixsum2,
+                                        bool statistics,
+                                        double *Mr_r, double *Mr_i,
+                                        double *M2_r, double *M2_i)
+{
+    ixsum2 = -1.0 * ixsum2;
+    const double Xr_r = rxsum1 * rxsum2 - ixsum2 * ixsum1;
+    const double Xr_i = rxsum1 * ixsum2 + ixsum1 * rxsum2;
+    if (ii == 0) {
+        *Mr_r = Xr_r;
+        *Mr_i = Xr_i;
+    } else {
+        const double count = (double)(ii + 1);
+        const double Qr_r = Xr_r - *Mr_r;
+        const double Qr_i = Xr_i - *Mr_i;
+        /* Finite opposite-sign CSD values can overflow their difference
+         * while their convex mean remains representable. */
+        if (!isfinite(Qr_r) && isfinite(Xr_r) && isfinite(*Mr_r)) {
+            *Mr_r = *Mr_r * ((double)ii / count) + Xr_r / count;
+        } else {
+            *Mr_r += Qr_r / count;
+        }
+        if (!isfinite(Qr_i) && isfinite(Xr_i) && isfinite(*Mr_i)) {
+            *Mr_i = *Mr_i * ((double)ii / count) + Xr_i / count;
+        } else {
+            *Mr_i += Qr_i / count;
+        }
+        if (statistics) {
+            const double XM_diff_r = Xr_r - *Mr_r;
+            const double XM_diff_i = Xr_i - *Mr_i;
+            *M2_r += Qr_r * XM_diff_r + Qr_i * XM_diff_i;
+        }
+    }
+    (void)M2_i;  /* Corrected complex variance has no imaginary component. */
+}
+
+static LPSD_ALWAYS_INLINE void update_statistics(long int ii, long int navg,
+                                        double rxsum1, double ixsum1,
+                                        double rxsum2, double ixsum2,
+                                        bool statistics, bool corrected,
+                                        double *Mr_r, double *Mr_i,
+                                        double *M2_r, double *M2_i)
+{
+    if (corrected) {
+        update_corrected_statistics(ii, rxsum1, ixsum1, rxsum2, ixsum2,
+                                    statistics, Mr_r, Mr_i, M2_r, M2_i);
+    } else {
+        /* Only the last assignment to the overwritten legacy M2 is visible. */
+        update_original_statistics(ii, rxsum1, ixsum1, rxsum2, ixsum2,
+                                   statistics && ii == navg - 1,
+                                   Mr_r, Mr_i, M2_r, M2_i);
+    }
+}
+
 static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
                          long int *Navs,
                          const double *x1data, const double *x2data,
@@ -653,7 +714,7 @@ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, do
                          double *inplace_r, double *inplace_i,
                          double *preparation_seconds, double *segments_seconds,
                          double input_peak, long int *fused_batches,
-                         bool coefficients_prepared)
+                         bool coefficients_prepared, bool corrected_statistics)
 {
     if (fused_batches != NULL) {
         *fused_batches = 0;
@@ -839,9 +900,9 @@ restart_csd_segments:
                     allow_csd_batches = false;
                     goto restart_csd_segments;
                 }
-                update_original_statistics(
-                    ii + b, rr[2*b], ri[2*b], rr[2*b+1], ri[2*b+1],
-                    statistics && ii + b == navg - 1,
+                update_statistics(
+                    ii + b, navg, rr[2*b], ri[2*b], rr[2*b+1], ri[2*b+1],
+                    statistics, corrected_statistics,
                     &Mr_r, &Mr_i, &M2_r, &M2_i);
             }
             ii += csd_batch - 1;
@@ -881,8 +942,8 @@ restart_csd_segments:
                     projected_r, projected_i, segLen, rr, ri);
             }
             for (int b = 0; b < 8; ++b) {
-                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
-                                             statistics && ii + b == navg - 1,
+                update_statistics(ii + b, navg, rr[b], ri[b], rr[b], ri[b],
+                                             statistics, corrected_statistics,
                                              &Mr_r, &Mr_i, &M2_r, &M2_i);
             }
             if (fused_batches != NULL) {
@@ -916,8 +977,8 @@ restart_csd_segments:
                 segments[4], segments[5], segments[6], segments[7],
                 projected_r, projected_i, segLen, rr, ri);
             for (int b = 0; b < 8; ++b) {
-                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
-                                             statistics && ii + b == navg - 1,
+                update_statistics(ii + b, navg, rr[b], ri[b], rr[b], ri[b],
+                                             statistics, corrected_statistics,
                                              &Mr_r, &Mr_i, &M2_r, &M2_i);
             }
             ii += 7;
@@ -947,10 +1008,8 @@ restart_csd_segments:
                                        segments[2], segments[3],
                                        projected_r, projected_i, segLen, rr, ri);
             for (int b = 0; b < 4; ++b) {
-                /* Legacy M2 is overwritten, so only its final assignment
-                 * can affect the output. Every mean update is retained. */
-                update_original_statistics(ii + b, rr[b], ri[b], rr[b], ri[b],
-                                             statistics && ii + b == navg - 1,
+                update_statistics(ii + b, navg, rr[b], ri[b], rr[b], ri[b],
+                                             statistics, corrected_statistics,
                                              &Mr_r, &Mr_i,
                                              &M2_r, &M2_i);
             }
@@ -1022,9 +1081,8 @@ restart_csd_segments:
             goto restart_csd_segments;
         }
 
-        /* Only the final (overwriting) legacy M2 value is observable. */
-        update_original_statistics(ii, rxsum1, ixsum1, rxsum2, ixsum2,
-                                     statistics && ii == navg - 1,
+        update_statistics(ii, navg, rxsum1, ixsum1, rxsum2, ixsum2,
+                                     statistics, corrected_statistics,
                                      &Mr_r, &Mr_i, &M2_r, &M2_i);
     }
 
@@ -1040,7 +1098,10 @@ restart_csd_segments:
     *Pr_r = Mr_r;
     *Pr_i = Mr_i;
     if (statistics) {
-        if (navg == 1) {
+        if (corrected_statistics) {
+            *Vr_r = navg == 1 ? NAN : M2_r / (navg - 1);
+            *Vr_i = 0.0;
+        } else if (navg == 1) {
             *Vr_r = Mr_r * Mr_r - Mr_i * Mr_i;
             *Vr_i = 2.0 * Mr_i * Mr_r;
         } else {
@@ -1068,7 +1129,7 @@ static LPSD_ALWAYS_INLINE int fast_dft_impl(double *Pr_r, double *Pr_i,
     return fast_dft_impl_ready(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
         x1data, x2data, nData, segLen, Cr, Ci, olap, order, csd, mode,
         statistics, batched, inplace_r, inplace_i,
-        preparation_seconds, segments_seconds, input_peak, fused_batches, false);
+        preparation_seconds, segments_seconds, input_peak, fused_batches, false, false);
 }
 
 /* Additive prepared order-0 auto-spectrum ABI, bound in prepared.py.
@@ -1116,7 +1177,29 @@ int fast_dft_prepared_order0(double *Pr_r, double *Pr_i, long int *Navs,
     return fast_dft_impl_ready(Pr_r, Pr_i, NULL, NULL, Navs,
         x, x, nData, segLen, Qr, Qi, olap, 0, false, mode, false, true,
         NULL, NULL, preparation_seconds, segments_seconds,
-        input_peak, fused_batches, true);
+        input_peak, fused_batches, true, false);
+}
+
+/* Corrected PSD-only prepared counterpart; the original prepared ABI and
+ * its version continue to identify the legacy recurrence. */
+int fast_dft_prepared_order0_corrected(double *Pr_r, double *Pr_i, long int *Navs,
+                            const double *x, long int nData, long int segLen,
+                            const double *Qr, const double *Qi,
+                            double olap, int mode, double input_peak,
+                            double *preparation_seconds, double *segments_seconds,
+                            long int *fused_batches)
+{
+    if ((preparation_seconds == NULL) != (segments_seconds == NULL) ||
+        (!isnan(input_peak) && input_peak < 0.0)) {
+        return 1;
+    }
+    if (preparation_seconds != NULL) {
+        *preparation_seconds = *segments_seconds = NAN;
+    }
+    return fast_dft_impl_ready(Pr_r, Pr_i, NULL, NULL, Navs,
+        x, x, nData, segLen, Qr, Qi, olap, 0, false, mode, false, true,
+        NULL, NULL, preparation_seconds, segments_seconds,
+        input_peak, fused_batches, true, true);
 }
 
 int fast_dft(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
@@ -1208,6 +1291,33 @@ int fast_dft_selected_bounded(double *Pr_r, double *Pr_i,
                           inplace ? Cr : NULL, inplace ? Ci : NULL,
                           preparation_seconds, segments_seconds,
                           input_peak, fused_batches);
+}
+
+/* Additive corrected entry point. Infinity disables optional fused dots;
+ * optional timers and variance outputs follow the selected/bounded contract.
+ * The variance is real sample variance across ALL segment periodograms. */
+int fast_dft_selected_corrected(double *Pr_r, double *Pr_i,
+                              double *Vr_r, double *Vr_i, long int *Navs,
+                              const double *x1data, const double *x2data,
+                              long int nData, long int segLen,
+                              double *Cr, double *Ci,
+                              double olap, int order, bool csd, int mode,
+                              bool statistics, bool inplace, double input_peak,
+                              double *preparation_seconds, double *segments_seconds,
+                              long int *fused_batches)
+{
+    if (!(input_peak >= 0.0) ||
+        ((preparation_seconds == NULL) != (segments_seconds == NULL))) {
+        return 1;
+    }
+    if (preparation_seconds != NULL) {
+        *preparation_seconds = *segments_seconds = NAN;
+    }
+    return fast_dft_impl_ready(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+        x1data, x2data, nData, segLen, Cr, Ci, olap, order, csd, mode,
+        statistics, true, inplace ? Cr : NULL, inplace ? Ci : NULL,
+        preparation_seconds, segments_seconds, input_peak, fused_batches,
+        false, true);
 }
 
 #include "rolling_boxcar.c"

@@ -8,6 +8,7 @@ on the complete input and alternates baseline/candidate then candidate/baseline
 timing order. Profiles are separate instrumented calls, never speed samples.
 """
 import argparse
+import inspect
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
@@ -110,6 +111,7 @@ def main():
         "platform": platform.platform(), "python": sys.version, "numpy": np.__version__,
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "baseline": evidence(baseline), "candidate": evidence(candidate),
+        "estimator_statistics": "legacy",
         "methodology": {
             "seed": 20261008, "signal": "float64 standard normal, resident in RAM",
             "sample_rate": 1., "warmup": "one complete call per implementation per case",
@@ -130,8 +132,13 @@ def main():
                               kernel="fast", workers=workers, max_working_mb=4096,
                               outputs="psd")
                 modules = {"baseline": baseline, "candidate": candidate}
-                for module in modules.values():
-                    module.lpsd(values, **kwargs)
+                # Resolve before timing so both revisions measure the same
+                # legacy estimator without per-call signature inspection.
+                call_options = {name: (dict(kwargs, statistics="legacy")
+                    if "statistics" in inspect.signature(module.lpsd).parameters else kwargs)
+                    for name, module in modules.items()}
+                for name, module in modules.items():
+                    module.lpsd(values, **call_options[name])
                 repetitions = {name: [] for name in modules}
                 observed_order = []
                 spectra = {}
@@ -139,10 +146,10 @@ def main():
                     order = ("baseline", "candidate") if repetition % 2 == 0 else ("candidate", "baseline")
                     for name in order:
                         started = time.perf_counter()
-                        spectra[name] = modules[name].lpsd(values, **kwargs)
+                        spectra[name] = modules[name].lpsd(values, **call_options[name])
                         repetitions[name].append(time.perf_counter()-started)
                         observed_order.append(name)
-                profiles = {name: module.lpsd(values, **kwargs, profile=True).attrs["lpsd_profile"]
+                profiles = {name: module.lpsd(values, **call_options[name], profile=True).attrs["lpsd_profile"]
                             for name, module in modules.items()}
                 baseline_median = statistics.median(repetitions["baseline"])
                 candidate_median = statistics.median(repetitions["candidate"])

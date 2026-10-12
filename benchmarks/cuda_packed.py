@@ -145,7 +145,7 @@ class PackedCUDAEstimator(CUDAEstimator):
             from lpsd_fast import lpsd
             result=lpsd(data,sample_rate=sample_rate,n_frequencies=n_frequencies,n_averages=n_averages,
                 detrending_order=detrending_order,window_function=window_function,overlap=overlap,psll=psll,
-                outputs=outputs,workers=self.workers,kernel='auto')
+                outputs=outputs,workers=self.workers,kernel='auto',statistics='legacy')
             result.attrs['cuda_experiment']=dict(executed='CPU fallback',
                 reason='Order 1+ not implemented on GPU',workers=self.workers,kernel='auto')
             return result
@@ -158,7 +158,7 @@ class PackedCUDAEstimator(CUDAEstimator):
             from lpsd_fast import lpsd
             result=lpsd(x,sample_rate=sample_rate,n_frequencies=n_frequencies,n_averages=n_averages,
                 detrending_order=0,window_function=window_function,overlap=overlap,psll=psll,
-                outputs=outputs,workers=self.workers,kernel='auto')
+                outputs=outputs,workers=self.workers,kernel='auto',statistics='legacy')
             result.attrs['cuda_experiment']=dict(executed='CPU auto residual fallback',
                 reason='Projected coefficients cannot reproduce reference residual rounding for DC-dominated input',
                 guard='range <= 1e-6 * peak')
@@ -210,6 +210,7 @@ class PackedCUDAEstimator(CUDAEstimator):
         self.last_profile=dict(phases,wall_s=time.perf_counter()-started,batches=len(batches))
         result=self.frame(values,plan[0],outputs)
         result.attrs['cuda_experiment']=dict(executed='Packed '+self.precision+' GPU segments; CPU preparation/initial/aggregation',
+            statistics='legacy',
             workers=self.workers,batch_mb=self.batch_mb,fma=self.fma,profile=self.last_profile if profile else None)
         return result
 

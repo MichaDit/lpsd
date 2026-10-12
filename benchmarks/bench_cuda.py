@@ -59,7 +59,7 @@ def main():
         gpu=estimator()
         result=gpu(x,**kwargs)
         report['first_complete_gpu_host_call_s']=time.perf_counter()-t
-        reference=lpsd(x,workers=args.workers,kernel='fast',max_working_mb=4096,**kwargs)
+        reference=lpsd(x,workers=args.workers,kernel='fast',max_working_mb=4096,statistics='legacy',**kwargs)
         reference_for_accuracy=reference.rename(columns={'nsd':'asd'})
         report['first_call_accuracy']=compare_outputs(reference_for_accuracy,result,psd_absolute_limit=1e-24,nsd_absolute_limit=1e-12)
         gpu(x,**kwargs)
@@ -67,7 +67,7 @@ def main():
             names=['cpu','gpu'] if repeat%2==0 else ['gpu','cpu']
             for name in names:
                 t=time.perf_counter()
-                result=gpu(x,**kwargs) if name=='gpu' else lpsd(x,workers=args.workers,kernel='fast',max_working_mb=4096,**kwargs)
+                result=gpu(x,**kwargs) if name=='gpu' else lpsd(x,workers=args.workers,kernel='fast',max_working_mb=4096,statistics='legacy',**kwargs)
                 wall=time.perf_counter()-t
                 accuracy=compare_outputs(reference_for_accuracy,result,psd_absolute_limit=1e-24,nsd_absolute_limit=1e-12)
                 item=dict(name=name,repeat=repeat,wall_s=wall,output_sha256=fingerprint(result),accuracy=accuracy)
@@ -104,7 +104,7 @@ def main():
             order=1 if kind=='ramp_nanovolt' else None if kind in ('offbin_tone','onbin_tone') else 0
             kwargs=dict(sample_rate=50.,n_frequencies=96,n_averages=16,detrending_order=order,
                         window_function=function,overlap=overlap,psll=psll)
-            reference=lpsd(x,workers=1,kernel='scalar',**kwargs)
+            reference=lpsd(x,workers=1,kernel='scalar',statistics='legacy',**kwargs)
             result=gpu(x,**kwargs)
             row=compare_outputs(reference,result,psd_absolute_limit=1e-24,nsd_absolute_limit=1e-12)
             row.update(name=name,input_sha256=digest(x),execution=result.attrs['cuda_experiment'])

@@ -7,7 +7,8 @@ from lpsd_fast import lpsd
 
 
 PARAMETERS = dict(sample_rate=50., n_frequencies=96, n_averages=100,
-                  min_segment_length=256, overlap=.9, kernel="fast", workers=1)
+                  min_segment_length=256, overlap=.9, kernel="fast", workers=1,
+                  statistics="legacy")
 
 
 def direct_boxcar(length):

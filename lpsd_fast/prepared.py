@@ -2,11 +2,12 @@
 
 The original five-array frequency plan is supplied by the caller. Preparation
 can retain the projected Fourier coefficients and window normalizations; every
-call still evaluates the original input segments, local anchors and legacy
-power recurrence. No samples, frequencies or averages are removed.
+call still evaluates the original input segments and local anchors. Corrected
+all-segment averaging is the default; legacy recurrence is explicitly selectable.
+No samples, frequencies or averages are removed.
 
-Only an auto-spectrum PSD is exposed here. The existing public LPSD API and its
-statistics are unchanged. GPL-3.0-or-later; see LICENSE and docs/provenance.md.
+Only an auto-spectrum PSD is exposed here, so no variance is computed.
+GPL-3.0-or-later; see LICENSE and docs/provenance.md.
 """
 from concurrent.futures import ThreadPoolExecutor
 import ctypes as ct
@@ -42,6 +43,7 @@ def _native_prepared():
                 version = lib.fast_dft_prepared_version
                 prepare = lib.fast_dft_prepare_order0
                 compute = lib.fast_dft_prepared_order0
+                corrected = lib.fast_dft_prepared_order0_corrected
             except AttributeError as exc:
                 raise RuntimeError('Prepared LPSD native symbols are missing. Run: '
                                    'python -m lpsd_fast.build --native') from exc
@@ -57,6 +59,8 @@ def _native_prepared():
                                dp, dp, ct.c_double, ct.c_int, ct.c_double,
                                dp, dp, lp]
             compute.restype = ct.c_int
+            corrected.argtypes = compute.argtypes
+            corrected.restype = ct.c_int
             _BOUND_LIB = lib
         return lib
 
@@ -134,6 +138,10 @@ class PreparedLPSDSubset:
     float32 PSD vector in that order, including the original rounding point.
     Caller input is never changed or retained after the call.
 
+    ``statistics='corrected'`` averages every segment periodogram, as in the
+    public API. ``statistics='legacy'`` explicitly retains the original
+    recurrence. Both paths are PSD-only and perform no variance work.
+
     ``max_cache_mb`` bounds persistent projected-vector storage. Points are
     admitted in plan order; points that do not fit are prepared during each
     computation. ``max_working_mb`` separately limits concurrent temporary
@@ -146,13 +154,15 @@ class PreparedLPSDSubset:
     """
 
     def __init__(self, n, sample_rate, plan, psll=200, overlap=None,
-                 workers=8, max_cache_mb=512, max_working_mb=2048):
+                 workers=8, max_cache_mb=512, max_working_mb=2048, *,
+                 statistics='corrected'):
         started = time.perf_counter()
         self._lock = threading.RLock()
         self._closed = False
         self._pool = None
         self._points = []
         self.last_profile = None
+        self._statistics_mode = api._validate_statistics(statistics)
         self.n = _positive_integer(n, 'n')
         self.sample_rate = _finite_number(sample_rate, 'sample_rate')
         if self.sample_rate <= 0:
@@ -178,6 +188,9 @@ class PreparedLPSDSubset:
         nf = len(self.frequencies)
         self.effective_workers = min(self.workers, nf)
         self._lib = _native_prepared()
+        self._compute_fn = (self._lib.fast_dft_prepared_order0_corrected
+                            if self._statistics_mode == 'corrected'
+                            else self._lib.fast_dft_prepared_order0)
         self._mantissa_bits = self._lib.native_long_double_mantissa_bits()
         self._mode = 3 if self._mantissa_bits > 64 else 2
         self._use_bounded = (self.effective_workers == 1
@@ -216,7 +229,12 @@ class PreparedLPSDSubset:
         cache_wall = time.perf_counter() - cache_started
         self._tasks, task_costs = self._frequency_tasks()
         self._metadata = {
-            'native_prepared_abi': 1, 'estimator': 'lpsd-1.0.6',
+            'native_prepared_abi': 1,
+            'estimator': ('lpsd-corrected' if self._statistics_mode == 'corrected'
+                          else 'lpsd-1.0.6'),
+            'statistics': self._statistics_mode,
+            'legacy_statistics': self._statistics_mode == 'legacy',
+            'variance_computed': False,
             'kernel': 'fast', 'window': 'kaiser', 'psll': self.psll,
             'kaiser_beta': self.beta, 'overlap': self.overlap,
             'detrending_order': 0, 'outputs': 'psd', 'dtype': 'float32',
@@ -243,13 +261,13 @@ class PreparedLPSDSubset:
             'cache_policy': 'Greedy admission in supplied plan order; no eviction.',
             'prepared_data': 'Read-only projected q_r/q_i and window S1/S2; no input samples.',
             'compute_scope': 'Input validation, optional input bound, uncached preparation, '
-                             'all original segment projections and power updates, PSD rounding.',
+                             'all original segment projections, selected mean recurrence, PSD rounding.',
             'validated_compute_scope': 'Private _compute_validated requires finite aligned '
                                        'contiguous float64 input checked by its caller; '
                                        'the full input validation pass is omitted there.',
             'working_budget_note': 'Concurrent temporary reservations only; a larger point '
                                    'runs alone. Input and persistent cache are separate.',
-            'legacy_first_segment_recurrence': True,
+            'legacy_first_segment_recurrence': self._statistics_mode == 'legacy',
         }
 
     @property
@@ -384,7 +402,7 @@ class PreparedLPSDSubset:
                     if profile:
                         prep_s, segment_s, fused_batches = ct.c_double(), ct.c_double(), ct.c_long()
                     kernel_started = time.perf_counter() if profile else 0.0
-                    status = self._lib.fast_dft_prepared_order0(
+                    status = self._compute_fn(
                         ct.byref(pr), ct.byref(pi), ct.byref(navg), xp,
                         self.n, length, point.qr_pointer, point.qi_pointer,
                         self.overlap * 100.0, self._mode, input_peak,

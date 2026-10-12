@@ -1,11 +1,19 @@
 # Numerical behavior and compatibility
 
 `lpsd_fast` preserves the intended LPSD frequency plan, segment starts,
-window definition, normalization and default output layout. It also deliberately
-preserves the original C core's mean/variance recurrence, including the
-defects described below. The original `lpsd` module and its defaults remain
-available unchanged. Faster arithmetic is selected through the separate
-`lpsd_fast` API.
+window definition, normalization and output column names. Its current default,
+`statistics='corrected'`, averages every segment and accumulates the sample
+variance. `statistics='legacy'` explicitly preserves the original C core's
+defective recurrence. The [statistics contract](statistics.md) defines nominal
+SEM, single-segment NaN errors, complex CSD RMS errors and the lack of a
+correlation adjustment. Corrected CSD deviation columns are real float32.
+The original `lpsd` module and all original native entry points remain
+available unchanged.
+
+Kernel choice and statistics choice are independent. The earlier fast.1–fast.9
+measurements and historical audits below retain their legacy statistics;
+they do not quantify the corrected estimator. New corrected numerical tests
+use independent individual periodograms and accumulated squared distances.
 
 ## Choosing a kernel
 
@@ -19,7 +27,7 @@ available unchanged. Faster arithmetic is selected through the separate
 
 `fast` is an explicit arithmetic choice, not an accuracy target. It does not
 compare results against a tolerance or rerun suspect frequencies with
-`scalar`. Use `scalar` for the closest reproduction of upstream rounding,
+`scalar`. Use `scalar` with `statistics='legacy'` to reproduce upstream rounding,
 or compare the chosen faster mode with that reference using both relative
 and application-specific absolute limits. None of the faster modes has a
 universal 1% relative-error guarantee for arbitrary signals and spectral nulls.
@@ -217,12 +225,11 @@ skips the native second-moment calculation. Requested amplitude outputs still
 derive from the same rounded PSD. An `enbw`-only request needs window
 normalization but no Fourier coefficients or segment DFTs.
 
-Full-output calls also avoid the earlier second-moment assignments that the
-original code overwrites. Only the final such assignment affects its returned
-variance, so computing it once preserves the original behavior. Consequently,
-selecting PSD/NSD alone does not remove an entire per-sample calculation;
-the main Fourier work remains. Neither optimization repairs the inherited
-statistical defects below.
+Corrected full-output calls accumulate a second-moment contribution for every
+segment after the first. Legacy calls retain the optimization that evaluates
+only the final overwritten second-moment assignment. Neither selected-output
+path removes the actual segment Fourier work. The statistics correction and
+the work saved by requesting fewer output columns are separate changes.
 
 ## Auditing relative and absolute error
 
@@ -393,7 +400,7 @@ three memory-layout failures in `auto` were also confined to those uncertainty
 columns. Use `scalar` when matching the original rounding is the requirement;
 assess both absolute and relative errors when extremely small sidelobes matter.
 
-## Inherited statistical defects
+## Historical recurrence retained by explicit legacy mode
 
 The original native recurrence initializes the mean from segment zero. For
 subsequent zero-based segment index `ii`, it updates the mean with
@@ -404,13 +411,15 @@ remaining segments. Floating-point cancellation can leave additional effects.
 
 The [original core](../lpsd/ltpda_dft.c) also assigns the new second-moment term
 to `M2` rather than accumulating it with `+=`. The returned variance
-consequently does not implement the usual running sample variance. All
-optimized modes retain the mean recurrence and the final M2 result;
-intermediate M2 assignments can be omitted
-because they are overwritten. `ps_std` and `psd_std` must therefore not be
-treated as independently validated statistical uncertainties. Correcting
-these recurrences would change the estimator and
-requires a separately selected, validated behavior change.
+consequently does not implement the usual running sample variance.
+`statistics='legacy'` retains this mean recurrence and the final M2 result;
+intermediate M2 assignments are omitted because they are overwritten. Its
+`ps_std` and `psd_std` must not be treated as validated uncertainties.
+The current `statistics='corrected'` default is a separately tested estimator
+correction: divide the mean update by `ii+1`, accumulate all squared-distance
+terms, and report a real nominal SEM with single-segment errors left undefined.
+Its SEM still requires an independence assumption; overlap and colored-noise
+correlation are not silently corrected. See [the complete contract](statistics.md).
 
 The output precision is also inherited: most real PSD columns are exposed
 as float32 after the upstream complex64 storage step, `enbw` remains complex64,

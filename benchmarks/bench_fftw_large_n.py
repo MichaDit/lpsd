@@ -179,6 +179,7 @@ def run_child(args):
         common = dict(sample_rate=args.sample_rate, psll=args.psll,
                       n_frequencies=args.n_frequencies, n_averages=args.n_averages)
         matched_options = dict(**common, window_provider=provider, workers=args.workers,
+                               statistics=getattr(args, "statistics", "corrected"),
                                max_working_mb=2048, total_cache_mb=args.total_cache_mb,
                                max_kernel_cache_mb=1536, window_cache_mb=None,
                                smoothing_workers=args.smoothing_workers, weight_dtype="float32",
@@ -195,6 +196,7 @@ def run_child(args):
             selected = ("psd", "nsd") if output == "both" else output
             if method == "lpsd":
                 return api.lpsd(x, **common, window_function="kaiser", detrending_order=0,
+                                statistics=getattr(args, "statistics", "corrected"),
                                 workers=args.workers, kernel="fast", max_working_mb=4096,
                                 window_cache_mb=128, outputs=selected)
             backend.forget_wisdom()
@@ -273,6 +275,7 @@ def run_child(args):
         if method == "lpsd":
             # A separate instrumented call is explicitly not a timing median.
             profiled = api.lpsd(x, **common, window_function="kaiser", detrending_order=0,
+                               statistics=getattr(args, "statistics", "corrected"),
                                workers=args.workers, kernel="fast", max_working_mb=4096,
                                window_cache_mb=128, outputs="nsd", profile=True)
             validate_frame(profiled, references, frequencies)
@@ -306,6 +309,7 @@ def main():
     parser.add_argument("--threads-library", type=Path, required=True)
     parser.add_argument("--fftw-threads", type=int, default=8)
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--statistics", choices=("corrected", "legacy"), default="corrected")
     parser.add_argument("--smoothing-workers", type=int, default=4)
     parser.add_argument("--total-cache-mb", type=float, default=1024)
     parser.add_argument("--sample-rate", type=float, default=50.0)
@@ -382,6 +386,7 @@ def main():
                        "--fftw-library", str(args.fftw_library), "--threads-library", str(args.threads_library),
                        "--repeats", str(args.repeats), "--fftw-threads", str(args.fftw_threads),
                        "--workers", str(args.workers), "--smoothing-workers", str(args.smoothing_workers),
+                       "--statistics", args.statistics,
                        "--total-cache-mb", str(args.total_cache_mb), "--sample-rate", str(args.sample_rate),
                        "--n-frequencies", str(args.n_frequencies),
                        "--n-averages", str(args.n_averages), "--psll", str(args.psll),

@@ -6,7 +6,7 @@ import sys
 
 from setuptools import Distribution, setup
 from setuptools.command.build_py import build_py
-from wheel.bdist_wheel import bdist_wheel
+from setuptools.command.bdist_wheel import bdist_wheel
 
 
 def load_build_module(path, name):

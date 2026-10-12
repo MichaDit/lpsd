@@ -38,7 +38,8 @@ def _signal(n, kind):
 def _reference(x, plan, workers):
     return api._run_channel(
         x, x, FS, plan, np.kaiser, 200, OVERLAP, 0,
-        min(workers, len(plan[0])), 'fast', 64, 0, False, ('psd',), False
+        min(workers, len(plan[0])), 'fast', 64, 0, False, ('psd',), False,
+        statistics='corrected'
     ).psd.to_numpy()
 
 
@@ -61,7 +62,8 @@ def test_prepared_psd_preserves_reference_and_rounding(workers, cache_mb, kind):
         metadata = prepared.metadata
         assert metadata['cached_coefficient_bytes'] <= metadata['cache_limit_bytes']
         assert metadata['cached_frequencies'] + metadata['uncached_frequencies'] == len(plan[0])
-        assert metadata['legacy_first_segment_recurrence']
+        assert metadata['statistics'] == 'corrected'
+        assert metadata['legacy_first_segment_recurrence'] is False
         json.dumps(metadata, allow_nan=False)
 
 

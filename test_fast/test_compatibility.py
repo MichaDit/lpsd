@@ -57,7 +57,8 @@ def test_auto_uses_stable_linear_detrending_for_large_ramp():
 def test_lcsd_alias_and_version_metadata():
     case = CASES["csd"]
     kwargs = {key: value for key, value in case.kwargs.items() if key != "csd"}
-    actual = lpsd_fast.lcsd(case.data, workers=1, kernel="scalar", **kwargs)
+    actual = lpsd_fast.lcsd(case.data, workers=1, kernel="scalar",
+                           statistics="legacy", **kwargs)
     compare(actual, lpsd.lcsd(case.data, **kwargs), exact=True)
     assert actual.attrs["lpsd_fast"]["version"] == lpsd_fast.__version__
     assert actual.attrs["lpsd_fast"]["legacy_statistics"] is True

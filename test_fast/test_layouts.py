@@ -28,7 +28,8 @@ def test_array_layout_and_no_mutation(layout, kernel):
     original = data.copy()
     flags = (data.flags.writeable, data.strides, data.ctypes.data)
     expected = lpsd.lpsd(pd.Series(original.copy()), **DEFAULTS)
-    actual = lpsd_fast.lpsd(data, workers=2, kernel=kernel, **DEFAULTS)
+    actual = lpsd_fast.lpsd(data, workers=2, kernel=kernel,
+                           statistics="legacy", **DEFAULTS)
     np.testing.assert_array_equal(data, original)
     assert flags == (data.flags.writeable, data.strides, data.ctypes.data)
     compare(actual, expected, exact=kernel == "scalar", columns=PRIMARY if kernel == "auto" else tuple(expected.columns))

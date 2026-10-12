@@ -73,19 +73,31 @@ def main():
     data = pd.Series(np.random.default_rng(20261008).standard_normal(257))
     kwargs = dict(sample_rate=50., n_frequencies=24, n_averages=4)
     original = lpsd.lpsd(data, **kwargs)
-    scalar = lpsd_fast.lpsd(data, workers=1, kernel="scalar", **kwargs)
-    auto = lpsd_fast.lpsd(data.to_numpy(), workers=2, **kwargs)
+    scalar = lpsd_fast.lpsd(data, workers=1, kernel="scalar", statistics="legacy", **kwargs)
+    auto = lpsd_fast.lpsd(data.to_numpy(), workers=2, statistics="legacy", **kwargs)
     pd.testing.assert_frame_equal(scalar, original, check_exact=True)
     for column in ("ps", "psd", "enbw", "asd", "asdrms"):
         np.testing.assert_allclose(auto[column], original[column], rtol=2e-6, atol=0)
-    selected = lpsd_fast.lpsd(data, workers=2, kernel="fast", outputs=("psd", "nsd"), **kwargs)
-    density = lpsd_fast.lnsd(data, workers=1, kernel="fast", **kwargs)
+    selected = lpsd_fast.lpsd(data, workers=2, kernel="fast", outputs=("psd", "nsd"),
+                               statistics="legacy", **kwargs)
+    density = lpsd_fast.lnsd(data, workers=1, kernel="fast", statistics="legacy", **kwargs)
     np.testing.assert_allclose(selected.psd, original.psd, rtol=.01, atol=0)
     np.testing.assert_array_equal(selected.nsd, np.sqrt(selected.psd))
     np.testing.assert_array_equal(density.nsd, selected.nsd)
     bits = selected.attrs["lpsd_fast"]["native_long_double_mantissa_bits"]
     assert selected.attrs["lpsd_fast"]["native_mode"] == (3 if bits > 64 else 2)
-    print(f"Installed wheel {version('lpsd')}: both native backends, scalar equality auto, fast and selected PSD/NSD passed")
+    # Independent analytic two-segment gate for the repaired public default.
+    def impulse_window(length):
+        window = np.zeros(length)
+        window[0] = 1.
+        return window
+    corrected = lpsd_fast.lpsd(np.array([1., 0., 0., 0., 2., 0., 0., 0.]),
+        sample_rate=1., n_frequencies=1, n_averages=1, overlap=0.,
+        detrending_order=None, window_function=impulse_window, workers=2)
+    assert corrected.psd.iloc[-1] == 5.
+    assert corrected.psd_std.iloc[-1] == 3.
+    assert corrected.attrs["lpsd_fast"]["statistics"] == "corrected"
+    print(f"Installed wheel {version('lpsd')}: legacy equality, selected PSD/NSD and corrected segment statistics passed")
 
 
 if __name__ == "__main__":

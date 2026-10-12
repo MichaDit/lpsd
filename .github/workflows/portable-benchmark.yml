@@ -38,7 +38,7 @@ jobs:
         run: >-
           sh scripts/run_benchmark.sh --revision "$GITHUB_SHA"
           --source-dir "$GITHUB_WORKSPACE" --max-hours 0.25
-          --sizes 100000 --threads 2 --profile performance --compiler zig
+          --sizes 100000 --threads 2 --storage both --profile performance --compiler zig
       - name: Fresh private PowerShell bootstrap and numerical smoke
         if: runner.os == 'Windows'
         env:
@@ -46,7 +46,7 @@ jobs:
         shell: pwsh
         run: |
           & ./test_fast/check_bootstrap_budget.ps1
-          & ./scripts/run_benchmark.ps1 -Revision $env:GITHUB_SHA -BenchmarkArgs @('--source-dir', $env:GITHUB_WORKSPACE, '--max-hours', '0.25', '--sizes', '100000', '--threads', '2', '--profile', 'performance', '--compiler', 'zig')
+          & ./scripts/run_benchmark.ps1 -Revision $env:GITHUB_SHA -BenchmarkArgs @('--source-dir', $env:GITHUB_WORKSPACE, '--max-hours', '0.25', '--sizes', '100000', '--threads', '2', '--storage', 'both', '--profile', 'performance', '--compiler', 'zig')
       - name: Require all methods and both actual point counts on POSIX
         if: runner.os != 'Windows'
         shell: bash
@@ -67,7 +67,7 @@ jobs:
           # Exercise the memory-saving route explicitly on every platform;
           # the normal small bootstrap above correctly selects a full window.
           cd "$directory/source"
-          "$python_bin" -m lpsd_benchmark run --sizes 100000 --threads 2 --smoothing-workers 8 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output "$directory/bounded-results.json"
+          "$python_bin" -m lpsd_benchmark run --sizes 100000 --threads 2 --storage both --smoothing-workers 8 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output "$directory/bounded-results.json"
           "$python_bin" "$GITHUB_WORKSPACE/test_fast/check_portable_smoke.py" "$directory/bounded-results.json" fft_input_then_blocked 8
           "$python_bin" benchmarks/bench_disk_algorithms.py --sizes 100000 1000000 --threads 2 --repeats 3 --point-factors 1 2 --max-seconds 600 --output "$directory/disk-algorithm-pairs.json"
           "$python_bin" benchmarks/bench_disk_algorithms.py --compare-packed-phase --sizes 1000000 --threads 2 --repeats 3 --point-factors 1 2 --max-seconds 300 --output "$directory/packed-phase-pairs.json"
@@ -101,7 +101,7 @@ jobs:
           try {
             $memoryProbe | & $python -
             if ($LASTEXITCODE -ne 0) { throw 'Native Windows RAM query failed' }
-            & $python -m lpsd_benchmark run --sizes 100000 --threads 2 --smoothing-workers 8 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output $boundedReport
+            & $python -m lpsd_benchmark run --sizes 100000 --threads 2 --storage both --smoothing-workers 8 --profile performance --max-hours 0.10 --window-storage fft_input_then_blocked --output $boundedReport
             if ($LASTEXITCODE -ne 0) { throw 'Bounded window smoke failed' }
             & $python benchmarks/bench_disk_algorithms.py --sizes 100000 1000000 --threads 2 --repeats 3 --point-factors 1 2 --max-seconds 600 --output $diskReport
             if ($LASTEXITCODE -ne 0) { throw 'Packed real FFT comparison failed' }
@@ -132,22 +132,25 @@ jobs:
             $privateToolchain = $privateToolchainJson | ConvertFrom-Json -ErrorAction Stop
             $env:LPSD_TEST_FFTW_LIBRARY = $privateToolchain.fftw_library
             $env:CC = $privateToolchain.compiler
-            & $python -m pytest -o addopts='' -q test_fast/test_bootstrap.py test_fast/test_smoothing_controls.py test_fast/test_csd_batches.py test_fast/test_csd_extreme_fallback.py test_fast/test_matched_smoothing.py --junitxml $deviceTestReport
+            & $python -m pytest -o addopts='' -q test_fast/test_bootstrap.py test_fast/test_bootstrap_memory_tree.py test_fast/test_portable_diagnostics.py test_fast/test_statistics.py test_fast/test_smoothing_controls.py test_fast/test_csd_batches.py test_fast/test_csd_extreme_fallback.py test_fast/test_matched_smoothing.py --junitxml $deviceTestReport
             if ($LASTEXITCODE -ne 0) { throw 'Windows device regression contracts failed' }
             $deviceGate = @'
           import sys
           import xml.etree.ElementTree as ET
           cases = list(ET.parse(sys.argv[1]).iter("testcase"))
           groups = (
-              ("frozen estimator comparisons", 24, lambda c: c.get("name", "").startswith("test_all_six_signals_match_frozen_estimator[")),
-              ("Bluestein comparison", 1, lambda c: c.get("name") == "test_measured_bluestein_hybrid_retains_original_density"),
-              ("CSD fallback route", 28, lambda c: c.get("classname", "").endswith("test_csd_extreme_fallback")),
+              ("corrected statistics", 103, True, lambda c: c.get("classname", "").endswith("test_statistics")),
+              ("failure and thread diagnostics", 15, True, lambda c: c.get("classname", "").endswith("test_portable_diagnostics")),
+              ("frozen estimator comparisons", 24, False, lambda c: c.get("name", "").startswith("test_all_six_signals_match_frozen_estimator[")),
+              ("Bluestein comparison", 1, False, lambda c: c.get("name") == "test_measured_bluestein_hybrid_retains_original_density"),
+              ("CSD fallback route", 28, False, lambda c: c.get("classname", "").endswith("test_csd_extreme_fallback")),
           )
-          for label, count, match in groups:
+          for label, count, minimum, match in groups:
               selected = [case for case in cases if match(case)]
-              if len(selected) != count or any(len(case) for case in selected):
-                  raise RuntimeError(f"{label}: expected {count} executed, passing tests")
-              print(f"{label}: {count} executed and passed")
+              wrong_count = len(selected) < count if minimum else len(selected) != count
+              if wrong_count or any(len(case) for case in selected):
+                  raise RuntimeError(f"{label}: expected {'at least ' if minimum else ''}{count} executed, passing tests")
+              print(f"{label}: {len(selected)} executed and passed")
           '@
             & $python -c $deviceGate $deviceTestReport
             if ($LASTEXITCODE -ne 0) { throw 'Windows numerical tests were not executed completely' }

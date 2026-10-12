@@ -1,4 +1,4 @@
-"""Shared-input, memory-budgeted parallel LPSD with compatible statistics.
+"""Shared-input, memory-budgeted parallel LPSD with explicit statistics.
 
 Derived from lpsd 1.0.6, with unchanged planning and normalization formulas.
 No reduction of the number of frequencies, segments, or input samples.
@@ -148,6 +148,15 @@ def _native():
             _LIB.fast_dft_selected_bounded.argtypes = selected.argtypes + [
                 ct.c_double, dp, dp, ct.POINTER(ct.c_long)]
             _LIB.fast_dft_selected_bounded.restype = ct.c_int
+            try:
+                corrected = _LIB.fast_dft_selected_corrected
+                corrected_boxcar = _LIB.fast_dft_boxcar_corrected
+            except AttributeError as exc:
+                _LIB = None
+                raise RuntimeError('Corrected-statistics native symbols are missing. Run: '
+                                   'python -m lpsd_fast.build --native') from exc
+            corrected.argtypes = _LIB.fast_dft_selected_bounded.argtypes
+            corrected.restype = ct.c_int
             _LIB.native_segment_fma_supported.argtypes = []
             _LIB.native_segment_fma_supported.restype = ct.c_int
             _LIB.fast_dft_boxcar.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
@@ -155,6 +164,8 @@ def _native():
                                             ct.c_double, ct.c_double, ct.c_int, ct.c_bool,
                                             dp, dp, ct.POINTER(ct.c_long)]
             _LIB.fast_dft_boxcar.restype = ct.c_int
+            corrected_boxcar.argtypes = _LIB.fast_dft_boxcar.argtypes
+            corrected_boxcar.restype = ct.c_int
             _LIB.window_sums.argtypes = [dp, ct.c_long, dp, dp]
             _LIB.window_sums.restype = ct.c_int
             _LIB.generate_kaiser.argtypes = [dp, ct.c_long, ct.c_double]
@@ -178,6 +189,12 @@ def _native():
 
 def _pointer(x):
     return x.ctypes.data_as(ct.POINTER(ct.c_double))
+
+
+def _validate_statistics(statistics):
+    if not isinstance(statistics, str) or statistics not in ('corrected', 'legacy'):
+        raise ValueError("statistics must be 'corrected' or 'legacy'.")
+    return statistics
 
 
 class _MemoryGate:
@@ -301,8 +318,13 @@ def _array(data):
 
 
 def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
-                 workers, kernel, max_working_mb, window_cache_mb, profile, outputs, csd):
+                 workers, kernel, max_working_mb, window_cache_mb, profile, outputs, csd,
+                 statistics='legacy'):
     start_all = time.perf_counter()
+    # Internal callers in frozen benchmark references retain their historical
+    # default. Public calls always pass their explicitly resolved mode.
+    statistics_mode = _validate_statistics(statistics)
+    corrected_statistics = statistics_mode == 'corrected'
     _native()
     fn = _LIB.fast_dft_selected_profile if profile else _LIB.fast_dft_selected
     f, r, m, lengths, counts = plan
@@ -435,16 +457,20 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                 rebase_count = ct.c_long(-1)
                 if (kernel == 'fast' and window_kind == 5 and not csd and order == 0
                         and overlap >= .8 and length >= 256 and counts[j] >= 32):
-                    status = _LIB.fast_dft_boxcar(
+                    boxcar_fn = (_LIB.fast_dft_boxcar_corrected if corrected_statistics
+                                 else _LIB.fast_dft_boxcar)
+                    status = boxcar_fn(
                         ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
                         x1p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
                         m[j], mode, statistics,
                         ct.byref(prep_s) if profile else None,
                         ct.byref(segments_s) if profile else None, ct.byref(rebase_count))
                     rolling_boxcar[j] = rebase_count.value >= 0
-                elif use_bounded:
+                elif use_bounded or corrected_statistics:
                     fused_batches = ct.c_long()
-                    status = _LIB.fast_dft_selected_bounded(
+                    selected_fn = (_LIB.fast_dft_selected_corrected if corrected_statistics
+                                   else _LIB.fast_dft_selected_bounded)
+                    status = selected_fn(
                         ct.byref(pr), ct.byref(pi), ct.byref(vr), ct.byref(vi), ct.byref(navg),
                         x1p, x2p, n, length, _pointer(cr), _pointer(ci), overlap * 100,
                         order, csd, mode, statistics, True, input_peak,
@@ -464,7 +490,11 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                 t2 = t3 = t1
             a2 = 2.0 * complex(pr.value, pi.value)
             s12 = s1 * s1
-            b2 = 4.0 * complex(vr.value, vi.value) / navg.value if statistics else None
+            if statistics:
+                variance = vr.value if corrected_statistics else complex(vr.value, vi.value)
+                b2 = 4.0 * variance / navg.value
+            else:
+                b2 = None
             values = []
             for name in base_names:
                 if name == 'ps':
@@ -515,12 +545,26 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     if spectrum and not np.iscomplex(columns['psd']).any():
         columns = {name: values if name == 'enbw' else values.real
                    for name, values in columns.items()}
+    if corrected_statistics:
+        # Complex CSD has a real RMS error, from E[|Z-E[Z]|^2]. Expose
+        # float32 deviation columns even when its PSD remains complex64.
+        for name in ('ps_std', 'psd_std'):
+            if name in columns:
+                columns[name] = columns[name].real
     result = pd.DataFrame({name: columns[name] for name in outputs}, index=f)
     result.index.name = 'frequency'
     result.attrs['lpsd_fast'] = {'version': __version__, 'kernel': kernel, 'workers': workers,
-                                'native_mode': mode, 'estimator': 'lpsd-1.0.6',
-                                'legacy_statistics': True, 'outputs': list(outputs),
+                                'native_mode': mode,
+                                'estimator': ('lpsd-corrected' if corrected_statistics
+                                              else 'lpsd-1.0.6'),
+                                'statistics': statistics_mode,
+                                'legacy_statistics': not corrected_statistics,
+                                'outputs': list(outputs),
                                 'variance_computed': statistics,
+                                'sem_kind': ('nominal_independent_segments'
+                                             if corrected_statistics else 'legacy_not_validated'),
+                                'sem_correlation_adjusted': False,
+                                'csd_sem': 'rms_complex_error' if corrected_statistics and csd else None,
                                 'inline_mean_residual': inline_mean,
                                 'rolling_boxcar_frequencies': sum(rolling_boxcar),
                                 'fused_segment_batches': sum(fused_counts),
@@ -545,14 +589,26 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
          detrending_order=0, n_frequencies=1000, n_averages=100, n_min_bins=1,
          min_segment_length=0, psll=200, use_c_core=True, csd=False, *,
          workers=None, kernel='auto', max_working_mb=None, window_cache_mb=128,
-         profile=False, outputs=None):
-    """Compute the original LPSD estimator faster, with parallel frequencies.
+         profile=False, outputs=None, statistics='corrected'):
+    """Compute logarithmic spectra with parallel frequencies and explicit statistics.
 
     Pandas input and upstream spectral parameters are supported. A real NumPy
     vector (including a memory map) is also accepted with an explicit sample
-    rate. By default, result column names/dtypes retain the upstream API.
+    rate. The original output column names and spectral rounding are retained.
     Inputs are never changed. Nonfinite inputs and unsafe overlap
     configurations are rejected.
+
+    ``statistics='corrected'`` (default) averages all actual segment
+    periodograms and accumulates their sample variance. ``ps_std`` and
+    ``psd_std`` report nominal standard errors, sample deviation/sqrt(K),
+    under an independent-segment assumption. Overlap and temporal correlation
+    are not corrected or asserted absent. K=1 has a valid spectrum and NaN
+    standard errors. For complex CSD the error is the real RMS complex error
+    based on |Z-mean(Z)|^2; deviation columns always have float32 dtype.
+    ``statistics='legacy'`` reproduces the original mean/variance recurrence,
+    including its dropped-first-periodogram and overwritten-variance defects.
+    It also retains the original CSD deviation dtypes. Numerical kernel choice
+    is independent of this statistics choice.
 
     ``outputs='psd'``, ``outputs='nsd'`` or a sequence of names computes only
     the requested columns and their dependencies. ``None`` and ``'all'``
@@ -601,6 +657,7 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
     They preserve the mathematical estimator, not bitwise rounding results.
     """
     started = time.perf_counter()
+    statistics = _validate_statistics(statistics)
     outputs = _requested_outputs(outputs, csd)
     window_function = _resolve_window(window_function)
     if not use_c_core:
@@ -646,19 +703,19 @@ def lpsd(data, sample_rate=None, window_function=np.kaiser, overlap=None,
             raise ValueError('CSD requires a DataFrame with exactly two channels.')
         x1, x2 = (_array(data.iloc[:, j]) for j in range(2))
         conversion_s = time.perf_counter() - conversion_started
-        result = _run_channel(x1, x2, *worker_args, True)
+        result = _run_channel(x1, x2, *worker_args, True, statistics)
     elif isinstance(data, pd.DataFrame) and data.shape[1] > 1:
         result = {}
         for name in data.columns:
             x = _array(data[name])
-            result[name] = _run_channel(x, x, *worker_args, False)
+            result[name] = _run_channel(x, x, *worker_args, False, statistics)
         conversion_s = None
     else:
         if isinstance(data, pd.DataFrame):
             data = data.iloc[:, 0]
         x = _array(data)
         conversion_s = time.perf_counter() - conversion_started
-        result = _run_channel(x, x, *worker_args, False)
+        result = _run_channel(x, x, *worker_args, False, statistics)
     if profile:
         results = result.values() if isinstance(result, dict) else [result]
         for item in results:

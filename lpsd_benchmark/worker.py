@@ -17,7 +17,7 @@ import sys
 import time
 from types import SimpleNamespace
 
-from .privacy import integer
+from .privacy import integer, number
 from .resources import MIB, native_working_budget, smoothing_controls
 
 
@@ -92,48 +92,160 @@ def isolated_tone_metrics(signal_name, frequencies, psd, tones):
     return tone_metrics(frequencies, psd, tone["frequency_hz"], tone["rms_v"])
 
 
+class _FFTWUnavailable(ImportError):
+    def __init__(self, diagnostics):
+        super().__init__("FFTW double-precision runtime unavailable")
+        self.diagnostics = diagnostics
+
+
 def _load_fftw(bf, requested_threads, explicit=None, explicit_threads=None):
     """Load genuine FFTW symbols, from system libraries or a pyFFTW wheel.
 
     Loading a wheel does not replace FFTW by NumPy's FFT. Some wheels bundle
     the threading symbols in the main DLL, others in a separate library.
-    A missing threading runtime is recorded as a single-thread execution.
+    Keep failures as closed categories, never exception text or library paths.
+    Search pthread and OpenMP runtimes, and keep wheel companions with their
+    own core instead of combining independent system and wheel FFTW builds.
     """
     candidates = []
     if explicit:
-        candidates.append(str(explicit))
+        candidates.append((str(explicit), "explicit"))
     else:
         system = ctypes.util.find_library("fftw3")
         if system:
-            candidates.append(system)
+            candidates.append((system, "system"))
         try:
             distribution = metadata.distribution("pyfftw")
             for entry in distribution.files or ():
                 name = Path(entry).name.lower()
                 if (re.match(r"(?:lib)?fftw3[-._]", name)
                         and any(marker in name for marker in (".so", ".dylib", ".dll"))):
-                    candidates.append(str(distribution.locate_file(entry)))
+                    candidates.append((str(distribution.locate_file(entry)), "wheel"))
         except metadata.PackageNotFoundError:
             pass
     candidates = list(dict.fromkeys(candidates))
-    system_threads = ctypes.util.find_library("fftw3_threads")
-    thread_candidates = [str(explicit_threads)] if explicit_threads else [system_threads]
-    thread_candidates += [name for name in candidates if "threads" in Path(name).name or "omp" in Path(name).name]
-    primary = [name for name in candidates if "threads" not in Path(name).name and "omp" not in Path(name).name]
-    for name in primary:
-        for thread_library in list(dict.fromkeys(thread_candidates + [name])):
-            if not thread_library:
-                continue
-            try:
-                return bf.FFTWLibrary(name, thread_library, requested_threads)
-            except (OSError, RuntimeError, AttributeError, ValueError):
-                continue
-    for name in primary:
+    def is_thread_library(name):
+        base = Path(name).name.lower()
+        return "threads" in base or "omp" in base
+
+    # An explicit core path can have any filename, including "compiled".
+    # Its exported double-precision symbols decide whether it is usable.
+    primary = [(name, source) for name, source in candidates
+               if source == "explicit" or not is_thread_library(name)]
+    companions = [(name, source) for name, source in candidates if is_thread_library(name)]
+    system_threads = []
+    if requested_threads > 1:
+        for runtime in ("fftw3_threads", "fftw3_omp"):
+            found = ctypes.util.find_library(runtime)
+            if found:
+                system_threads.append((found, "system"))
+    failures = {}
+    diagnostics = {"requested": requested_threads, "actual": 0, "status": "unavailable",
+                   "main_candidates": len(primary), "thread_attempts": 0, "failures": failures}
+    fallback = None
+
+    def fail(category):
+        failures[category] = failures.get(category, 0) + 1
+
+    def select(backend, source, thread_source, status, runtime="none"):
+        backend.threading_diagnostics = {
+            **diagnostics, "actual": backend.threads, "status": status,
+            "main_source": source, "thread_source": thread_source, "thread_runtime": runtime,
+            "failures": dict(failures)}
+        return backend
+
+    for name, source in primary:
+        # Validate the core once so a later missing symbol or init failure can
+        # be attributed to the threading attempt, without parsing exceptions.
         try:
-            return bf.FFTWLibrary(name, None, 1)
-        except (OSError, RuntimeError, AttributeError, ValueError):
-            pass
-    raise ImportError("FFTW double-precision runtime unavailable")
+            core = bf.FFTWLibrary(name, None, 1)
+        except OSError:
+            fail("main_load_failed")
+            continue
+        except AttributeError:
+            fail("main_symbols_missing")
+            continue
+        except (RuntimeError, ValueError):
+            fail("main_runtime_rejected")
+            continue
+        if requested_threads == 1:
+            return select(core, source, "none", "single_thread_requested")
+        if fallback is None:
+            fallback = core, source
+        thread_candidates = [(str(explicit_threads), "explicit")] if explicit_threads else []
+        if source == "wheel":
+            thread_candidates.extend((library, origin) for library, origin in companions
+                                     if Path(library).parent == Path(name).parent)
+        elif source == "system":
+            thread_candidates.extend(system_threads)
+        # Integrated threading symbols are common in Windows wheels. For an
+        # explicit core, prefer its own runtime before system companions.
+        thread_candidates.append((name, "main_library"))
+        if source == "explicit":
+            thread_candidates.extend(system_threads)
+        for thread_library, thread_source in dict.fromkeys(thread_candidates):
+            diagnostics["thread_attempts"] += 1
+            try:
+                backend = bf.FFTWLibrary(name, thread_library, requested_threads)
+            except OSError:
+                fail("thread_load_failed")
+            except AttributeError:
+                fail("thread_symbols_missing")
+            except RuntimeError:
+                fail("thread_init_failed")
+            except ValueError:
+                fail("thread_runtime_rejected")
+            else:
+                runtime = ("integrated" if thread_library == name else "openmp"
+                           if "omp" in Path(thread_library).name.lower() else "pthreads"
+                           if "threads" in Path(thread_library).name.lower() else "unspecified")
+                return select(backend, source, thread_source, "enabled", runtime)
+    if fallback is not None:
+        return select(*fallback, "none", "fallback_single_thread")
+    raise _FFTWUnavailable(diagnostics)
+
+
+def _result_validation(bf, values, fingerprint, frequencies, psd, nsd, expected_f):
+    """Retain every output check and bounded aggregate diagnostics on failure."""
+    import numpy as np
+    with np.errstate(all="ignore"):
+        expected_nsd = np.sqrt(psd.astype(np.complex64)).real
+        fields = {
+            "finite": bool(np.isfinite(psd).all() and np.isfinite(nsd).all()),
+            "psd_nonnegative": bool((psd >= 0).all()),
+            "nsd_matches_sqrt_psd": bool(np.array_equal(nsd, expected_nsd)),
+            "frequency_matches_plan": bool(np.array_equal(frequencies, expected_f)),
+            "input_unchanged": bf.digest_array(values) == fingerprint,
+        }
+        details = {
+            "expected_frequency_points": int(expected_f.size),
+            "frequency_points": int(frequencies.size), "psd_points": int(psd.size),
+            "nsd_points": int(nsd.size),
+            "nonfinite_psd_points": int(np.count_nonzero(~np.isfinite(psd))),
+            "nonfinite_nsd_points": int(np.count_nonzero(~np.isfinite(nsd))),
+            "negative_psd_points": int(np.count_nonzero(psd < 0)),
+        }
+        for label, actual, expected in (("nsd_sqrt", nsd, expected_nsd),
+                                        ("frequency", frequencies, expected_f)):
+            if actual.shape != expected.shape:
+                continue
+            details[label + "_mismatch_points"] = int(np.count_nonzero(actual != expected))
+            finite_pairs = np.isfinite(actual) & np.isfinite(expected)
+            if not finite_pairs.any():
+                continue
+            difference = np.abs(actual[finite_pairs].astype(np.float64)
+                                - expected[finite_pairs].astype(np.float64))
+            maximum = number(float(np.max(difference)))
+            if maximum is not None:
+                details["maximum_" + label + "_absolute_error"] = maximum
+            if label == "nsd_sqrt":
+                nonzero = expected[finite_pairs] != 0
+                if nonzero.any():
+                    relative = difference[nonzero] / np.abs(expected[finite_pairs][nonzero])
+                    maximum = number(float(np.max(relative)))
+                    if maximum is not None:
+                        details["maximum_nsd_sqrt_relative_error"] = maximum
+    return {**fields, "validation": details}
 
 
 def resolve_point_plan(api, n, fs, base_points, factor, explicit_points, averages):
@@ -419,6 +531,16 @@ def _disk_power_result_fields(case, details):
 
 
 def run(case, directory):
+    requested_statistics = case.get("requested_statistics", case.get("statistics", "legacy"))
+    if requested_statistics == "not_applicable" and case["method"] == "fftw":
+        requested_statistics = "legacy"
+    if requested_statistics not in ("corrected", "legacy"):
+        raise ValueError("Invalid statistics mode")
+    statistics = (case.get("statistics", requested_statistics)
+                  if case["method"] != "fftw" else "not_applicable")
+    if case["method"] != "fftw" and statistics not in ("corrected", "legacy"):
+        raise ValueError("Invalid statistics mode")
+    statistics_fields = {"statistics": statistics, "requested_statistics": requested_statistics}
     algorithm = case.get("disk_fft_algorithm", "full")
     if algorithm not in ("full", "packed-real", "not_applicable"):
         raise ValueError("Invalid disk FFT algorithm")
@@ -428,7 +550,7 @@ def run(case, directory):
     applied_algorithm = algorithm if needs_fft else "not_applicable"
     reduction = _case_disk_power_reduction(case)
     if reduction == "direct-log" and not _direct_power_profile_supported(case):
-        return {"status": "skipped", "reason": "unsupported",
+        return {**statistics_fields, "status": "skipped", "reason": "unsupported",
                 "disk_fft_algorithm": applied_algorithm, "disk_power_reduction": reduction}
     controls = _case_smoothing_controls(case)
     case.update(controls)
@@ -450,7 +572,7 @@ def run(case, directory):
                                         case["target_points"], case["n_averages"])
     case.update(resolved)
     n, method = case["n"], case["method"]
-    result = {**resolved, **controls, **native_controls,
+    result = {**resolved, **controls, **native_controls, **statistics_fields,
               "disk_fft_algorithm": applied_algorithm, "disk_power_reduction": reduction}
     if reduction == "direct-log":
         from benchmarks._fftw_direct_power import DirectLibrary, MAX_GROUPS
@@ -484,8 +606,14 @@ def run(case, directory):
     result["source_sha256"] = source.hexdigest()
     backend = None
     if method != "lpsd":
-        backend = _load_fftw(bf, case["requested_threads"], case.get("fftw_library"),
-                             case.get("threads_library"))
+        try:
+            backend = _load_fftw(bf, case["requested_threads"], case.get("fftw_library"),
+                                 case.get("threads_library"))
+        except _FFTWUnavailable as error:
+            return {**result, "status": "skipped", "reason": "dependency_unavailable",
+                    "fftw_threading": error.diagnostics}
+        if hasattr(backend, "threading_diagnostics"):
+            result["fftw_threading"] = backend.threading_diagnostics
         result["fftw_sha256"] = backend.evidence.get("binary_sha256")
         found_version = re.search(r"fftw-([0-9]+(?:\.[0-9]+){1,3})", backend.version)
         if found_version:
@@ -500,7 +628,7 @@ def run(case, directory):
         from benchmarks._lpsd_disk import DiskLPSDSubset
         bounded_options = dict(sample_rate=case["sample_rate_hz"], n_frequencies=case["target_points"],
                                n_averages=case["n_averages"], psll=200., workers=case["requested_threads"],
-                               max_working_mb=working_mb, streaming="auto")
+                               max_working_mb=working_mb, streaming="auto", statistics=statistics)
         if method == "matched":
             lengths = np.asarray(plan[3])
             preview = DiskLPSDSubset(n, **bounded_options, plan=plan,
@@ -583,6 +711,7 @@ def run(case, directory):
                                       fft_memory_mb=case["fft_memory_mb"], power_storage=power_storage,
                                       disk_fft_algorithm=algorithm if needs_fft else "full",
                                       disk_power_reduction=reduction if method == "fftw" else "materialized",
+                                      statistics=statistics,
                                       workers=case["requested_threads"],
                                       smoothing_workers=controls["smoothing_workers_limit"],
                                       low_working_mb=(working_mb if bounded_options is not None
@@ -614,7 +743,8 @@ def run(case, directory):
                                   smoothing_workers=controls["smoothing_workers_limit"],
                                   weight_dtype="float32", operations_backend="native",
                                   smoothing_backend="native", planner="estimate", fft_in_place=in_place,
-                                  low_frequency_backend="bounded", window_storage=window_storage)
+                                  low_frequency_backend="bounded", window_storage=window_storage,
+                                  statistics=statistics)
             window_metadata = frame.attrs["matched_smoothing_once"]
         result.update(compute_wall_s=time.perf_counter() - wall, compute_cpu_s=time.process_time() - cpu)
         result.update(_smoothing_result_fields(case, window_metadata, disk_details))
@@ -631,11 +761,13 @@ def run(case, directory):
         f = frame.index.to_numpy(dtype=np.float64)
         psd, nsd = frame.psd.to_numpy(), frame.nsd.to_numpy()
         expected_f = np.asarray(plan[0], dtype=np.float64)
-        finite = bool(np.isfinite(psd).all() and np.isfinite(nsd).all())
-        nonnegative = bool((psd >= 0).all())
-        sqrt_matches = bool(np.array_equal(nsd, np.sqrt(psd.astype(np.complex64)).real))
-        input_unchanged = bf.digest_array(values) == fingerprint
-        if not (finite and nonnegative and sqrt_matches and input_unchanged and np.array_equal(f, expected_f)):
+        checks = _result_validation(bf, values, fingerprint, f, psd, nsd, expected_f)
+        result.update(checks)
+        result.update(actual_points=len(f), frequency_sha256=bf.digest_array(f),
+                      psd_sha256=bf.digest_array(psd), nsd_sha256=bf.digest_array(nsd),
+                      phases=phases, peak_rss_bytes=bf.max_rss_bytes())
+        if not all(checks[key] for key in ("finite", "psd_nonnegative", "nsd_matches_sqrt_psd",
+                                           "input_unchanged", "frequency_matches_plan")):
             return {**result, "status": "failed", "reason": "invalid_result"}
         source_psd = theory(case["signal"], f, case["sample_rate_hz"])
         excluded = None
@@ -646,14 +778,10 @@ def run(case, directory):
         noise = (summarize_noise(f, nsd, source_psd, exclude=excluded)["overall"]
                  if source_psd is not None else {})
         tone = isolated_tone_metrics(case["signal"], f, psd, tones)
-        result.update(status="completed", reason="", finite=finite, psd_nonnegative=nonnegative,
-                      nsd_matches_sqrt_psd=sqrt_matches, input_unchanged=input_unchanged,
-                      actual_points=len(f), frequency_sha256=bf.digest_array(f),
-                      psd_sha256=bf.digest_array(psd), nsd_sha256=bf.digest_array(nsd),
+        result.update(status="completed", reason="",
                       minimum_frequency_hz=float(f[0]), maximum_frequency_hz=float(f[-1]),
                       sample_iterations=sum(int(length) * int(count) for length, count in zip(plan[3], plan[4])),
-                      noise=noise, tone=tone, phases=phases,
-                      peak_rss_bytes=bf.max_rss_bytes(),
+                      noise=noise, tone=tone,
                       _spectrum={"frequency_hz": f.tolist(), "psd": psd.tolist(), "nsd": nsd.tolist()})
         return result
     finally:

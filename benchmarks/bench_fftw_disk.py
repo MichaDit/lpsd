@@ -191,6 +191,12 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
             and not fft_class.memory_estimate(n, args.fft_memory_mb)["workspace_power_supported"]):
         raise ValueError("Workspace power storage requires an even B factor; choose --power-storage external")
     phases, metadata = {}, {}
+    statistics_mode = getattr(args, "statistics", "corrected")
+    if method == "fftw" and statistics_mode == "not_applicable":
+        statistics_mode = "corrected"  # No native segment reduction is used.
+    if not isinstance(statistics_mode, str) or statistics_mode not in ("corrected", "legacy"):
+        raise ValueError("statistics must be corrected or legacy")
+    metadata["statistics"] = statistics_mode if method in ("lpsd", "matched") else "not_applicable"
     metadata["disk_fft_algorithm"] = fft_algorithm if method != "lpsd" else None
     metadata["disk_power_reduction"] = reduction if method == "fftw" else "not_applicable"
     metadata["power_storage"] = {
@@ -239,6 +245,7 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
     if method == "lpsd":
         with DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=psll,
                             overlap=overlap, workers=args.workers,
+                            statistics=statistics_mode,
                             max_working_mb=args.low_working_mb,
                             progress=lpsd_progress,
                             progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0)) as estimator:
@@ -371,6 +378,7 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
             mark("release_fft_before_low_lpsd_s")
             with DiskLPSDSubset(n, args.sample_rate, plan=plan, psll=psll,
                                 overlap=overlap, plan_mask=low_mask,
+                                statistics=statistics_mode,
                                 workers=args.workers, max_working_mb=args.low_working_mb,
                                 progress=lpsd_progress,
                                 progress_interval_s=getattr(args, "lpsd_progress_interval_s", 15.0)) as estimator:
@@ -493,6 +501,8 @@ def main():
     parser.add_argument("--threads-library", type=Path, required=True)
     parser.add_argument("--fftw-threads", type=int, default=8)
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--statistics", choices=("corrected", "legacy"), default="corrected",
+                        help="Native LPSD segment mean, including the matched low-frequency subset")
     parser.add_argument("--smoothing-workers", type=int, default=4)
     parser.add_argument("--fft-memory-mb", type=float, default=128)
     parser.add_argument("--disk-fft-algorithm", choices=DISK_FFT_ALGORITHMS, default="full",
@@ -593,6 +603,7 @@ def main():
                                "--fftw-library", str(args.fftw_library), "--threads-library", str(args.threads_library),
                                "--fftw-threads", str(args.fftw_threads), "--workers", str(args.workers),
                                "--smoothing-workers", str(args.smoothing_workers), "--fft-memory-mb", str(args.fft_memory_mb),
+                               "--statistics", args.statistics,
                                "--disk-fft-algorithm", args.disk_fft_algorithm,
                                "--disk-power-reduction", args.disk_power_reduction,
                                "--low-working-mb", str(args.low_working_mb), "--sample-rate", str(args.sample_rate),

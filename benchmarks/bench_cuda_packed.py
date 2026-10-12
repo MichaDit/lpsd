@@ -72,7 +72,7 @@ def main():
             order=1 if kind=='ramp_nanovolt' else None if kind in ('offbin_tone','onbin_tone') else 0
             kwargs=dict(sample_rate=50.,n_frequencies=96,n_averages=16,detrending_order=order,
                         window_function=function,overlap=overlap,psll=psll)
-            reference=lpsd(x,workers=1,kernel='scalar',**kwargs)
+            reference=lpsd(x,workers=1,kernel='scalar',statistics='legacy',**kwargs)
             actual=gpu(x,**kwargs)
             row=compare_outputs(reference,actual,psd_absolute_limit=1e-24,nsd_absolute_limit=1e-12)
             row.update(name=name,execution=actual.attrs['cuda_experiment'],input_sha256=digest(x))
@@ -82,7 +82,7 @@ def main():
     else:
         x=np.random.default_rng(20261008).normal(size=args.n)
         report['input_sha256']=digest(x)
-        def public(): return lpsd(x,sample_rate=1.,workers=args.workers,kernel='fast',max_working_mb=4096,outputs=('psd','nsd'))
+        def public(): return lpsd(x,sample_rate=1.,workers=args.workers,kernel='fast',max_working_mb=4096,outputs=('psd','nsd'),statistics='legacy')
         reference=public().rename(columns={'nsd':'asd'})
         functions={'public_cpu':public,'packed_gpu':lambda:gpu(x)}
         if args.legacy:

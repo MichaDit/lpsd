@@ -47,6 +47,7 @@ format checks. Unknown fields and arbitrary text are not carried through.
 | Available CPU/thread counts, CPU quota, total RAM and admitted budgets | Explain resource constraints without collecting the CPU marketing name |
 | Restricted Python/NumPy/pandas/SciPy/pyFFTW/LPSD and actual FFTW versions | Keep dependencies and runtime libraries distinguishable |
 | Synthetic preset, sample count, seed, sample rate, window/averaging settings | Reproduce the benchmark input and estimator configuration |
+| Closed requested/native/reference statistics modes | Keep corrected and historical native estimators in separate comparison groups; plain FFTW records the native mode as not applicable |
 | Requested and achieved point counts, storage/FFT layout, thread counts | Describe the work actually performed |
 | Explicit smoothing request, admitted limit, executor capacity, task-range/point counts and closed backend/policy enums | Identify the selected matched-FFTW execution configuration without claiming measured active-thread counts |
 | Smoothing runtime-reserve bytes and a closed empirical model identifier | Explain extra headroom charged inside the existing allocation budget; not measured RSS |
@@ -54,14 +55,18 @@ format checks. Unknown fields and arbitrary text are not carried through.
 | Wall/CPU times, available phases, input setup, process memory and numeric working-set metadata | Compare completed work and resource use |
 | Native scratch-pool initial/final/peak byte capacities, a replacement Boolean and actual plan indices | Describe observed buffer lifecycle without including policy text or claiming RSS savings |
 | Closed disk power-reduction option, native ABI, bounded group/energy/endpoint counts and state bytes | Identify the experimental Direct-log route without exposing the FFT matrix or power arrays |
-| Live-memory observation Boolean and bounded sample/missing-sample/RSS-fallback counts | Distinguish actual live observations from a later process high-water mark and explicitly count macOS disk probes that conservatively use RSS; one observed sample does not imply continuous coverage or an observed private-memory value |
+| Live-memory observation Boolean and bounded sample/missing-sample/RSS-fallback counts | Distinguish actual live observations from a later process high-water mark and count conservative RSS fallback samples; one observed sample does not imply continuous coverage or an observed private-memory value |
 | Closed status/reason categories, forecasts and timeouts | Preserve incomplete or infeasible cases without disclosing exception text |
+| Output-validation Booleans, bounded failure counts and finite aggregate error maxima | Explain a rejected result without including individual frequencies, spectral values or input samples |
+| Requested and selected FFTW thread settings, closed source/runtime/status categories and bounded discovery-failure counts | Distinguish an enabled thread configuration from a single-thread fallback without exposing library paths |
+| Sampled process-tree guard limits, last/peak/trigger bytes, closed metric/source categories and bounded process counts | Identify the measurement that stopped a case while keeping guard values separate from process RSS high-water marks |
 | Numeric quality checks, noise roughness, peak widths, comparison summaries and spectrum hashes | Check whether speed results remain numerically comparable |
 
 **Excluded** are hostname, username, account names, email, serial numbers,
 machine UUIDs, network addresses, IP/MAC addresses, exact OS build strings,
-file/directory names and paths, environment variables, access tokens, command
-history, raw logs, exception messages, arbitrary hardware descriptions and
+file/directory names and paths, process/thread identifiers and thread names,
+environment variables, access tokens, command history, raw logs, exception
+messages, arbitrary hardware descriptions and
 user-supplied measurement data. Raw sample arrays and optional saved spectra
 are also excluded. Hashes refer to project code, loaded numerical libraries
 and synthetic data; the program does not hash private identity values as a
@@ -80,12 +85,74 @@ smoothing fields keep them absent; the sanitizer does not infer that four
 workers were actually used in an older measurement. These fields extend the
 existing allowlist without changing its schema identifier or upload consent.
 
-The macOS `live_memory_rss_fallback_samples` field is retained only when both
+The `live_memory_rss_fallback_samples` field is retained only when both
 it and `live_memory_samples` are valid bounded integers and the fallback
 count does not exceed the live count. Missing or malformed coverage is not
 converted to zero or treated as evidence of continuous monitoring. Direct-log
 metadata likewise contains only the selected route, ABI, counts, state bytes
 and power-vector Boolean, without FFT or spectral arrays.
+
+### Structured diagnostics for failures and resource guards
+
+The optional `validation` object records expected and observed point counts,
+counts of nonfinite PSD/NSD values and negative PSD values, and counts of
+NSD-square-root or frequency-plan mismatches. Its error maxima use only finite
+pairs; relative NSD errors additionally require a nonzero reference value.
+If array shapes differ, the point counts remain available but elementwise
+mismatch/error fields are absent. Missing diagnostics are not replaced with
+zero errors. An `invalid_result` detected by the normal output checks retains
+all five check Booleans, available timing/hash metadata and these aggregates.
+It remains a failed case, not a valid speed comparison. Unexpected worker
+exceptions still produce only a closed reason category, without exception
+text or invented validation details.
+
+The optional `fftw_threading` object distinguishes the requested FFTW thread
+setting from the selected setting. Its status is one of `enabled`,
+`single_thread_requested`, `fallback_single_thread` or `unavailable`; the last
+has `actual=0`. These are runtime/plan configuration results, not measurements
+of simultaneously active threads. Library origins are categories such as
+`system`, `wheel` and `explicit`, never filenames. Runtime categories distinguish
+pthreads, OpenMP, integrated threading, an unspecified runtime and no threading.
+Bounded candidate/attempt counts and load, symbol, initialization or runtime
+failure counts explain why discovery fell back or failed. A failed candidate
+can precede a successful selection; those counts do not by themselves mean
+that the benchmark case failed.
+
+The parent runner constructs the optional `memory_guard` object from its own
+live probes. It records the admitted byte limit, the last and largest observed
+guard values and their metrics, elapsed time of the last sample, and available
+proof that a particular sample covered the process tree. Sources are restricted
+to `proc_children`, `proc_ppid_scan` or `psutil`; only process counts are retained.
+Neither identifiers nor a process listing enter the report. A last sample's
+tree-completeness fields apply to that sample alone. Sampling and process
+creation/exits are not atomic, and a complete sample is not proof of continuous
+coverage.
+
+Guard metrics distinguish RSS, anonymous RSS, private bytes and USS. A Linux
+disk sample that substitutes RSS for unavailable per-process anonymous counters
+uses `anonymous_rss_with_rss_fallback`; a macOS disk sample using RSS when USS
+is unavailable uses `rss_fallback`. Both cases increment the bounded fallback
+sample count. This explains the measured quantity without increasing the
+admitted RAM limit. `peak_rss_bytes` may also include the worker's later RSS
+high-water mark; it must not be substituted for the guard's `peak_bytes` or
+for the value that triggered termination.
+
+The guard termination category is `none`, `limit_exceeded` or
+`measurement_unavailable`. For `limit_exceeded`, the public schema requires
+`trigger_bytes` to equal the final measured guard value, exceed `limit_bytes`
+and agree with the failed case's `memory_limit` reason. Persistent unavailable
+measurement has its own reason and does not fabricate a zero-byte sample.
+`none` means that this guard did not stop the case; it does not assert continuous
+measurement or successful completion. These diagnostics do not extend deadlines.
+Older reports without these objects retain their missing evidence.
+
+Statistics provenance uses closed `corrected`, `legacy` and `unknown` values.
+Older native reports without a statistics field are interpreted as `legacy`,
+not relabelled with the current default. Plain FFTW uses `not_applicable` for
+its own native-statistics field while retaining the requested comparison mode.
+Comparison summaries identify `reference_statistics` and are formed only within
+the same selected native mode. See the [statistics contract](statistics.md)
+and the [diagnostic regression tests](../test_fast/test_portable_diagnostics.py).
 
 Hardware class, timing and software combinations can still be distinctive,
 especially when associated with a public account or information posted

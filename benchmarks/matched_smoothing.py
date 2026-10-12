@@ -285,7 +285,11 @@ class MatchedSmoothing:
                  defer_normalization=False, total_cache_mb=None,
                  fft_algorithm="native", fft_convolution_length=None,
                  time_limit=None, fft_in_place=False,
-                 low_frequency_backend="prepared", window_storage="full"):
+                 low_frequency_backend="prepared", window_storage="full",
+                 statistics="corrected"):
+        if not isinstance(statistics, str) or statistics not in ("corrected", "legacy"):
+            raise ValueError("statistics must be 'corrected' or 'legacy'")
+        self.statistics = statistics
         if low_frequency_backend not in ("prepared", "bounded"):
             raise ValueError("low_frequency_backend must be 'prepared' or 'bounded'")
         self.low_frequency_backend = low_frequency_backend
@@ -487,12 +491,14 @@ class MatchedSmoothing:
                     self._low_prepared = DiskLPSDSubset(
                         self.n, self.sample_rate, plan=self._low_plan, psll=self.psll,
                         overlap=self.overlap, workers=min(self.workers, int(self.low_mask.sum())),
-                        max_working_mb=self.max_working_mb, streaming="auto")
+                        max_working_mb=self.max_working_mb, streaming="auto",
+                        statistics=self.statistics)
                 else:
                     self._low_prepared = PreparedLPSDSubset(
                         self.n, self.sample_rate, self._low_plan, psll=self.psll,
                         overlap=self.overlap, workers=min(self.workers, int(self.low_mask.sum())),
-                        max_cache_mb=self.window_cache_mb, max_working_mb=self.max_working_mb)
+                        max_cache_mb=self.window_cache_mb, max_working_mb=self.max_working_mb,
+                        statistics=self.statistics)
                 self._last_low_metadata = self._low_prepared.metadata
             phases["low_frequency_lpsd_preparation_s"] = time.perf_counter() - tick
             if self.beta:
@@ -543,6 +549,8 @@ class MatchedSmoothing:
                 "exact_low_frequency_points": int(self.low_mask.sum()),
                 "exact_low_frequency_max_hz": float(self.frequencies[self.low_mask].max()) if np.any(self.low_mask) else None,
                 "low_frequency_backend": low_frequency_backend,
+                "statistics": self.statistics,
+                "statistics_scope": "native low-frequency segment mean; FFT smoothing unchanged",
                 "exact_low_frequency_method": (
                     "Bounded native coefficients, with streamed large windows and stored smaller windows on the unchanged subset; no file or persistent coefficient cache"
                     if low_frequency_backend == "bounded" else

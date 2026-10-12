@@ -163,13 +163,14 @@ LPSD_TARGET_CLONES int generate_kaiser_coefficients_range(
     return 0;
 }
 
-LPSD_TARGET_CLONES int fast_dft_kaiser_streaming(
+static LPSD_TARGET_CLONES int fast_dft_kaiser_streaming_impl(
     double *Pr_r, double *Pr_i, long int *Navs,
     const double *samples, long int nData, long int segLen,
     double beta, double frequency_bin, double olap, int mode,
     long int block_length, long int max_segments,
     double *sum_window, double *sum_squares,
-    double *preparation_seconds, double *segments_seconds)
+    double *preparation_seconds, double *segments_seconds,
+    bool corrected_statistics)
 {
     if (Pr_r == NULL || Pr_i == NULL || Navs == NULL || samples == NULL ||
         sum_window == NULL || sum_squares == NULL ||
@@ -311,8 +312,9 @@ LPSD_TARGET_CLONES int fast_dft_kaiser_streaming(
     double Mr_r = 0.0, Mr_i = 0.0, unused_r = 0.0, unused_i = 0.0;
     for (long int segment = 0; segment < navg; ++segment) {
         const double rr = (double)projections_r[segment], ri = (double)projections_i[segment];
-        update_original_statistics(segment, rr, ri, rr, ri, false,
-                                   &Mr_r, &Mr_i, &unused_r, &unused_i);
+        update_statistics(segment, navg, rr, ri, rr, ri, false,
+                          corrected_statistics,
+                          &Mr_r, &Mr_i, &unused_r, &unused_i);
     }
     *segments_seconds = monotonic_seconds() - segments_started;
     free(buffer);
@@ -322,4 +324,32 @@ LPSD_TARGET_CLONES int fast_dft_kaiser_streaming(
     *sum_window = s1;
     *sum_squares = s2;
     return 0;
+}
+
+LPSD_TARGET_CLONES int fast_dft_kaiser_streaming(
+    double *Pr_r, double *Pr_i, long int *Navs,
+    const double *samples, long int nData, long int segLen,
+    double beta, double frequency_bin, double olap, int mode,
+    long int block_length, long int max_segments,
+    double *sum_window, double *sum_squares,
+    double *preparation_seconds, double *segments_seconds)
+{
+    return fast_dft_kaiser_streaming_impl(Pr_r, Pr_i, Navs,
+        samples, nData, segLen, beta, frequency_bin, olap, mode,
+        block_length, max_segments, sum_window, sum_squares,
+        preparation_seconds, segments_seconds, false);
+}
+
+LPSD_TARGET_CLONES int fast_dft_kaiser_streaming_corrected(
+    double *Pr_r, double *Pr_i, long int *Navs,
+    const double *samples, long int nData, long int segLen,
+    double beta, double frequency_bin, double olap, int mode,
+    long int block_length, long int max_segments,
+    double *sum_window, double *sum_squares,
+    double *preparation_seconds, double *segments_seconds)
+{
+    return fast_dft_kaiser_streaming_impl(Pr_r, Pr_i, Navs,
+        samples, nData, segLen, beta, frequency_bin, olap, mode,
+        block_length, max_segments, sum_window, sum_squares,
+        preparation_seconds, segments_seconds, true);
 }

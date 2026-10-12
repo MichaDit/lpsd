@@ -37,6 +37,9 @@ OPERATING_SYSTEMS = ("Linux", "Windows", "Darwin", "Android", "Other")
 VERSIONS = ("python", "numpy", "pandas", "scipy", "pyfftw", "lpsd")
 HASHES = ("input_sha256", "frequency_sha256", "psd_sha256", "nsd_sha256",
           "native_sha256", "fftw_sha256", "fftw_threads_sha256", "source_sha256")
+STATISTICS = ("corrected", "legacy", "unknown")
+MEMORY_METRICS = ("rss", "anonymous_rss", "private_bytes", "uss", "rss_fallback",
+                  "anonymous_rss_with_rss_fallback")
 
 
 def number(value, low=0., high=1e20):
@@ -113,6 +116,108 @@ def _native_working_fields(source, *, settings=False):
     return result
 
 
+def _validation_fields(source):
+    if not isinstance(source, dict):
+        return {}
+    result = {}
+    for key in ("expected_frequency_points", "frequency_points", "psd_points", "nsd_points",
+                "nonfinite_psd_points", "nonfinite_nsd_points", "negative_psd_points",
+                "nsd_sqrt_mismatch_points", "frequency_mismatch_points"):
+        value = integer(source.get(key), 0, 65536)
+        if value is not None:
+            result[key] = value
+    result.update(_numbers(source, ("maximum_nsd_sqrt_absolute_error",
+                                    "maximum_nsd_sqrt_relative_error",
+                                    "maximum_frequency_absolute_error")))
+    return result
+
+
+def _fftw_threading_fields(source):
+    if not isinstance(source, dict):
+        return {}
+    requested = integer(source.get("requested"), 1, 2 ** 31 - 1)
+    actual = integer(source.get("actual"), 0, requested if requested is not None else 0)
+    status = source.get("status")
+    if requested is None or actual is None or not (
+        (status == "enabled" and actual == requested and requested > 1)
+        or (status == "single_thread_requested" and actual == requested == 1)
+        or (status == "fallback_single_thread" and actual == 1 and requested > 1)
+        or (status == "unavailable" and actual == 0)
+    ):
+        return {}
+    result = {"requested": requested, "actual": actual, "status": status}
+    for key, choices in (("main_source", ("explicit", "system", "wheel")),
+                          ("thread_source", ("explicit", "system", "wheel", "main_library", "none")),
+                          ("thread_runtime", ("pthreads", "openmp", "integrated", "unspecified", "none"))):
+        value = source.get(key)
+        if isinstance(value, str) and value in choices:
+            result[key] = value
+    for key in ("main_candidates", "thread_attempts"):
+        value = integer(source.get(key), 0, 65536)
+        if value is not None:
+            result[key] = value
+    failures = source.get("failures")
+    if isinstance(failures, dict):
+        result["failures"] = {}
+        for key in ("main_load_failed", "main_symbols_missing", "main_runtime_rejected",
+                    "thread_load_failed", "thread_symbols_missing", "thread_init_failed",
+                    "thread_runtime_rejected"):
+            value = integer(failures.get(key), 0, 65536)
+            if value is not None:
+                result["failures"][key] = value
+    return result
+
+
+def _memory_guard_fields(source, row):
+    if not isinstance(source, dict):
+        return {}
+    limit = integer(source.get("limit_bytes"))
+    termination = source.get("termination")
+    if (source.get("scope") != "process_tree" or source.get("measurement") != "sampled"
+            or limit is None or termination not in ("none", "limit_exceeded", "measurement_unavailable")):
+        return {}
+    result = {"scope": "process_tree", "measurement": "sampled",
+              "limit_bytes": limit, "termination": termination}
+    live = integer(row.get("live_memory_samples"))
+    for key in ("complete_tree_samples", "rss_fallback_samples"):
+        value = integer(source.get(key), 0, live if live is not None else 0)
+        if value is not None and live is not None:
+            result[key] = value
+    for prefix in ("last", "peak"):
+        value = integer(source.get(prefix + "_bytes"))
+        metric = source.get(prefix + "_metric")
+        if (value is not None and isinstance(metric, str) and metric in MEMORY_METRICS
+                and live is not None and live > 0):
+            result[prefix + "_bytes"] = value
+            result[prefix + "_metric"] = metric
+    if result.get("peak_bytes", 0) < result.get("last_bytes", 0):
+        return {}
+    if result.get("complete_tree_samples", 0) > 0:
+        value = integer(source.get("peak_processes"), 1, 2 ** 31 - 1)
+        if value is not None:
+            result["peak_processes"] = value
+    if "last_bytes" in result:
+        result.update(_numbers(source, ("last_sample_elapsed_s",)))
+        if source.get("last_sample_tree_complete") is True and result.get("complete_tree_samples", 0) > 0:
+            result["last_sample_tree_complete"] = True
+            value = integer(source.get("last_processes"), 1, 2 ** 31 - 1)
+            if value is not None:
+                result["last_processes"] = value
+            if source.get("last_source") in ("proc_children", "proc_ppid_scan", "psutil"):
+                result["last_source"] = source["last_source"]
+    if termination == "limit_exceeded":
+        trigger = integer(source.get("trigger_bytes"), limit + 1)
+        metric = source.get("trigger_metric")
+        if (trigger is None or metric not in MEMORY_METRICS or trigger != result.get("last_bytes")
+                or metric != result.get("last_metric") or row.get("reason") != "memory_limit"
+                or row.get("status") != "failed"):
+            return {}
+        result.update(trigger_bytes=trigger, trigger_metric=metric)
+    elif termination == "measurement_unavailable" and row.get("reason") != "memory_measurement_unavailable":
+        return {}
+    return result
+
+
 def sanitize(report):
     """Construct a new report from a closed schema, never delete-list redact.
 
@@ -141,6 +246,7 @@ def sanitize(report):
             **_numbers(environment, ("logical_cpus_available", "cpu_quota", "ram_total_mib")),
         },
         "settings": {
+            "requested_statistics": _enum(settings.get("requested_statistics", "legacy"), STATISTICS, "unknown"),
             **_smoothing_fields(settings, settings=True),
             **_native_working_fields(settings, settings=True),
             **_numbers(settings, ("max_seconds", "bootstrap_remaining_seconds", "ram_budget_mib",
@@ -190,6 +296,10 @@ def sanitize(report):
             **_native_working_fields(row),
             "n": row["n"], "target_points": row["target_points"],
             "method": row["method"], "signal": row["signal"],
+            "statistics": (_enum(row.get("statistics", "legacy"), STATISTICS, "unknown")
+                           if row["method"] != "fftw" else "not_applicable"),
+            "requested_statistics": _enum(row.get("requested_statistics", row.get("statistics",
+                                            clean["settings"]["requested_statistics"])), STATISTICS, "unknown"),
             "storage": _enum(row.get("storage"), ("ram", "disk"), "ram"),
             "fft_layout": _enum(row.get("fft_layout"), ("out-of-place", "in-place", "blocked", "not_applicable"), "not_applicable"),
             "window_storage": _enum(row.get("window_storage"), ("full", "fft_input_then_blocked", "blocked", "not_applicable"), "not_applicable"),
@@ -249,9 +359,15 @@ def sanitize(report):
             value = row.get(key)
             if isinstance(value, str) and re.fullmatch(r"[0-9]{1,3}(?:\.[0-9]{1,4}){1,3}(?:\+fast\.[0-9]{1,3})?", value):
                 result[key] = value
-        for key in ("finite", "psd_nonnegative", "nsd_matches_sqrt_psd", "input_unchanged", "point_count_resolved", "one_shot_window"):
+        for key in ("finite", "psd_nonnegative", "nsd_matches_sqrt_psd", "input_unchanged", "frequency_matches_plan",
+                    "point_count_resolved", "one_shot_window"):
             if isinstance(row.get(key), bool):
                 result[key] = row[key]
+        for key, fields in (("validation", _validation_fields(row.get("validation"))),
+                            ("fftw_threading", _fftw_threading_fields(row.get("fftw_threading"))),
+                            ("memory_guard", _memory_guard_fields(row.get("memory_guard"), row))):
+            if fields:
+                result[key] = fields
         if row.get("rss_measurement") in ("process_high_water_mark", "sampled", "unavailable"):
             result["rss_measurement"] = row["rss_measurement"]
         for key in ("live_memory_samples", "live_memory_missing_samples"):
@@ -273,6 +389,10 @@ def sanitize(report):
             "center_hz", "peak_psd", "peak_nsd", "peak_label_hz", "psd_fwhm_hz", "nsd_fwhm_hz"))
         result["comparison"] = _numbers(row.get("comparison"), (
             "points", "rms_relative_nsd_difference", "maximum_relative_nsd_difference"))
+        comparison = row.get("comparison")
+        if isinstance(comparison, dict) and result["comparison"]:
+            result["comparison"]["reference_statistics"] = _enum(
+                comparison.get("reference_statistics", "legacy"), STATISTICS, "unknown")
         result["phases"] = _numbers(row.get("phases"), (
             "workspace_and_plan_s", "workspace_and_fftw_planning_s", "window_and_normalization_s",
             "input_validation_copy_mean_window_s", "blocked_fftw_s", "ordered_one_sided_power_s",

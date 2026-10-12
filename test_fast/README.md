@@ -47,19 +47,24 @@ frequency/dtype and absolute ASD roundoff gates. The latter use window norms,
 input magnitude and the usual floating-point dot-product error factor; they
 are not a confidence interval or a statistical accuracy claim.
 
-Exactly two narrow `xfail(strict=True, raises=AssertionError)` tests expose known
-limitations. They are visible with `-ra`, and an unexpected pass fails CI so that
-changed behavior is reviewed:
+One narrow `xfail(strict=True, raises=AssertionError)` exposes the remaining
+relative-only rounding limit. It is visible with `-ra`, and an unexpected pass
+fails CI so that changed behavior is reviewed:
 
 1. An off-bin pure tone does not satisfy a uniform relative PSD tolerance of
    `2e-6` in its vanishing sidelobes. Its absolute ASD error is independently
    checked by a mandatory test; the whole tone suite is never marked xfail.
-2. The original C recurrence gives zero standard error for a constructed pair
-   of periodograms `[2, 8]`, whose usual sample standard error is 3. A separate
-   passing test requires fast and original outputs to preserve this exact
-   legacy behavior. Statistical corrections are a separate estimator change.
 
-The general auto comparison excludes `ps_std` and `psd_std`: the inherited
+The former statistical expected failure is now a mandatory passing test of
+the corrected default: periodograms `[2, 8]` produce PSD 5 and nominal SEM 3.
+A separate explicit-legacy test preserves the original PSD 8 and SEM 0.
+`test_statistics.py` independently constructs segment Fourier projections,
+means and sample variances, and checks corrected scalar/auto/fast, windows,
+detrending, complex CSD, actual K=1/2/3, selected outputs, workers, prepared,
+streaming and disk paths. The original C reference is never edited to make
+these corrected comparisons pass.
+
+The historical, explicitly legacy auto comparison excludes `ps_std` and `psd_std`: the inherited
 recurrence has cancellation-sensitive artifacts, especially at two segments.
 Those columns remain gated bitwise in scalar and parallel determinism tests;
 the analytical fixture documents the statistical limitation explicitly.

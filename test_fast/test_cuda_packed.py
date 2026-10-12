@@ -73,13 +73,13 @@ def test_variable_frequency_packing_and_workspace_reuse(gpu):
 
 def test_full_batched_call_and_dc_fallback(gpu):
     x=np.random.default_rng(8).normal(size=32769)
-    reference=lpsd(x,sample_rate=1.,workers=4,kernel='fast',outputs=('psd','nsd'))
+    reference=lpsd(x,sample_rate=1.,workers=4,kernel='fast',outputs=('psd','nsd'),statistics='legacy')
     actual=gpu(x)
     np.testing.assert_array_equal(actual.index,reference.index)
     np.testing.assert_allclose(actual,reference,rtol=1e-6,atol=1e-24)
     assert gpu.last_profile['batches']>1
     x=10+1e-9*x
-    reference=lpsd(x,sample_rate=1.,workers=4,kernel='auto',outputs=('psd','nsd'))
+    reference=lpsd(x,sample_rate=1.,workers=4,kernel='auto',outputs=('psd','nsd'),statistics='legacy')
     actual=gpu(x)
     assert actual.attrs['cuda_experiment']['executed']=='CPU auto residual fallback'
     np.testing.assert_array_equal(actual,reference)
@@ -96,14 +96,14 @@ def test_resident_plan_changes_input_without_overwriting_saved_output(gpu):
         x=np.random.default_rng(77).normal(size=8193)
         first=plan(x);saved=first.to_numpy().copy()
         x=np.random.default_rng(78).normal(size=8193)
-        reference=lpsd(x,sample_rate=1.,n_frequencies=64,n_averages=16,workers=4,kernel='fast',outputs=('psd','nsd'))
+        reference=lpsd(x,sample_rate=1.,n_frequencies=64,n_averages=16,workers=4,kernel='fast',outputs=('psd','nsd'),statistics='legacy')
         # A streaming call with the same adapter must leave the resident plan intact.
         gpu(x,n_frequencies=32,n_averages=8)
         actual=plan(x)
         np.testing.assert_allclose(actual,reference,rtol=1e-6,atol=1e-24)
         np.testing.assert_array_equal(first,saved)
         x=10+1e-9*x
-        reference=lpsd(x,sample_rate=1.,n_frequencies=64,n_averages=16,workers=4,kernel='auto',outputs=('psd','nsd'))
+        reference=lpsd(x,sample_rate=1.,n_frequencies=64,n_averages=16,workers=4,kernel='auto',outputs=('psd','nsd'),statistics='legacy')
         np.testing.assert_array_equal(plan(x),reference)
         with pytest.raises(ValueError,match='length'): plan(x[:-1])
     finally: plan.close()

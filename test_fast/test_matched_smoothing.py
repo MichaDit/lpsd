@@ -142,7 +142,7 @@ def test_measured_bluestein_hybrid_retains_original_density(fftw, native_smoothi
                   max_working_mb=32)
     with OriginalSmoothing(fftw, n, **common) as before, MatchedSmoothing(
             fftw, n, fft_algorithm="bluestein", fft_convolution_length=4096,
-            planner="measure", time_limit=.02, **common) as after:
+            planner="measure", time_limit=.02, statistics="legacy", **common) as after:
         assert after.metadata["planner"] == "measure"
         assert after.metadata["planner_time_limit_s"] == .02
         for case in ("white", "offbin_tone", "dc_nanovolt"):
@@ -207,7 +207,8 @@ def test_all_six_signals_match_frozen_estimator(
                   max_working_mb=32, block_bins=127)
     with OriginalSmoothing(fftw, n, **common) as before, MatchedSmoothing(
             fftw, n, operations_backend="native", smoothing_backend="native",
-            weight_dtype=weight_dtype, defer_normalization=defer_normalization, **common) as after:
+            weight_dtype=weight_dtype, defer_normalization=defer_normalization,
+            statistics="legacy", **common) as after:
         assert after.metadata["smoothing_backend"] == "native"
         assert after._last_low_metadata is not None
         np.testing.assert_array_equal(after.frequencies, before.frequencies)

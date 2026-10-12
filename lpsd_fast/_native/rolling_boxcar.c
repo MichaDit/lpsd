@@ -98,13 +98,13 @@ static LPSD_ALWAYS_INLINE void boxcar_coefficient_means(const double *cr,
     *mi = qi + qi_low;
 }
 
-LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
+static LPSD_TARGET_CLONES int fast_dft_boxcar_impl(double *Pr_r, double *Pr_i,
                                       double *Vr_r, double *Vr_i, long int *Navs,
                                       const double *x, long int nData, long int segLen,
                                       double *Cr, double *Ci, double olap,
                                       double frequency_bin, int mode, bool statistics,
                                       double *preparation_seconds, double *segments_seconds,
-                                      long int *rebase_count)
+                                      long int *rebase_count, bool corrected_statistics)
 {
     if (Pr_r == NULL || Pr_i == NULL || Navs == NULL || rebase_count == NULL ||
         x == NULL || Cr == NULL || Ci == NULL ||
@@ -141,10 +141,11 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
      * The Python eligibility check avoids entering here for ordinary cases;
      * this native guard also makes direct calls safe and deterministic. */
     if (segLen < 256 || navg < 32 || ceil(shift) > (double)segLen * 0.25) {
-        return fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
+        return fast_dft_impl_ready(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
                              nData, segLen, Cr, Ci, olap, 0, false, mode,
                              statistics, true, Cr, Ci,
-                             preparation_seconds, segments_seconds, NAN, NULL);
+                             preparation_seconds, segments_seconds, NAN, NULL,
+                             false, corrected_statistics);
     }
 
     *Pr_r = *Pr_i = NAN;
@@ -225,18 +226,19 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
             const double wasted_preparation = profile ? *preparation_seconds : 0.0;
             const double wasted_segments = profile ? monotonic_seconds() - segments_started : 0.0;
             *rebase_count = -1;
-            const int status = fast_dft_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
+            const int status = fast_dft_impl_ready(Pr_r, Pr_i, Vr_r, Vr_i, Navs, x, x,
                                             nData, segLen, Cr, Ci, olap, 0, false, mode,
                                             statistics, true, Cr, Ci,
-                                            preparation_seconds, segments_seconds, NAN, NULL);
+                                            preparation_seconds, segments_seconds, NAN, NULL,
+                                            false, corrected_statistics);
             if (profile) {
                 *preparation_seconds += wasted_preparation;
                 *segments_seconds += wasted_segments;
             }
             return status;
         }
-        update_original_statistics(ii, rr, ri, rr, ri,
-                                     statistics && ii == navg - 1,
+        update_statistics(ii, navg, rr, ri, rr, ri,
+                                     statistics, corrected_statistics,
                                      &Mr_r, &Mr_i, &M2_r, &M2_i);
     }
     if (profile) *segments_seconds = monotonic_seconds() - segments_started;
@@ -248,4 +250,30 @@ LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
     }
     *Navs = navg;
     return 0;
+}
+
+LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
+                                      double *Vr_r, double *Vr_i, long int *Navs,
+                                      const double *x, long int nData, long int segLen,
+                                      double *Cr, double *Ci, double olap,
+                                      double frequency_bin, int mode, bool statistics,
+                                      double *preparation_seconds, double *segments_seconds,
+                                      long int *rebase_count)
+{
+    return fast_dft_boxcar_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+        x, nData, segLen, Cr, Ci, olap, frequency_bin, mode, statistics,
+        preparation_seconds, segments_seconds, rebase_count, false);
+}
+
+LPSD_TARGET_CLONES int fast_dft_boxcar_corrected(double *Pr_r, double *Pr_i,
+                                      double *Vr_r, double *Vr_i, long int *Navs,
+                                      const double *x, long int nData, long int segLen,
+                                      double *Cr, double *Ci, double olap,
+                                      double frequency_bin, int mode, bool statistics,
+                                      double *preparation_seconds, double *segments_seconds,
+                                      long int *rebase_count)
+{
+    return fast_dft_boxcar_impl(Pr_r, Pr_i, Vr_r, Vr_i, Navs,
+        x, nData, segLen, Cr, Ci, olap, frequency_bin, mode, statistics,
+        preparation_seconds, segments_seconds, rebase_count, true);
 }

@@ -260,6 +260,21 @@ def _linux_process_snapshot(proc_root):
     return statuses, children
 
 
+class _MemorySample(tuple):
+    """Two counters with optional, scalar evidence about their tree coverage.
+
+    Tuple unpacking/equality stay compatible with existing reader callers.
+    These are successive procfs/OS reads, never an atomic process snapshot.
+    """
+    def __new__(cls, rss, private, *, source, processes, private_metric,
+                rss_fallback_processes=0):
+        sample = super().__new__(cls, (rss, private))
+        sample.diagnostics = {"source": source, "processes": processes,
+                              "private_metric": private_metric, "tree_complete": True,
+                              "rss_fallback_processes": rss_fallback_processes}
+        return sample
+
+
 class _LinuxMemoryReader:
     """Resolve a namespace PID through its controller, then read its tree.
 
@@ -308,7 +323,7 @@ class _LinuxMemoryReader:
             return None, None
         pending = [(self.visible_pid, self.parent_pid)]
         visited = set()
-        rss, anonymous = 0, 0
+        rss, anonymous, processes, rss_fallback_processes = 0, 0, 0, 0
         while pending:
             pid, parent = pending.pop()
             if pid in visited:
@@ -351,8 +366,16 @@ class _LinuxMemoryReader:
             rss += resident
             # Old kernels without RssAnon use a conservative RSS fallback.
             anonymous += private
+            processes += 1
+            rss_fallback_processes += int("RssAnon" not in fields)
             pending.extend((child, pid) for child in children)
-        return rss, anonymous
+        metric = ("rss_fallback" if rss_fallback_processes == processes and processes
+                  else "anonymous_rss_with_rss_fallback" if rss_fallback_processes
+                  else "anonymous_rss")
+        return _MemorySample(rss, anonymous,
+                             source="proc_ppid_scan" if snapshot is not None else "proc_children",
+                             processes=processes, private_metric=metric,
+                             rss_fallback_processes=rss_fallback_processes)
 
 
 def _memory_usage(pid):
@@ -369,7 +392,7 @@ def _memory_usage(pid):
         import psutil
         owner = psutil.Process(pid)
         processes = [owner] + owner.children(recursive=True)
-        rss, private, private_available = 0, 0, True
+        rss, private, private_available, measured_processes = 0, 0, True, 0
         for proc in processes:
             if not proc.is_running():
                 continue
@@ -377,6 +400,7 @@ def _memory_usage(pid):
             if type(info.rss) is not int or info.rss < 0:
                 return None, None
             rss += info.rss
+            measured_processes += 1
             if sys.platform == "darwin":
                 # Optional USS needs a privileged task port on older psutil and
                 # can block the synchronous watchdog. Read complete RSS only.
@@ -399,7 +423,9 @@ def _memory_usage(pid):
                 # An absent counter is different from a measured zero. Do
                 # not turn partial tree coverage into an anonymous reading.
                 private_available = False
-        return rss, private if private_available else None
+        return _MemorySample(rss, private if private_available else None, source="psutil",
+                             processes=measured_processes,
+                             private_metric="private_bytes" if os.name == "nt" else "uss")
     except (ImportError, OSError, ProcessLookupError):
         return None, None
     except Exception:
@@ -475,6 +501,9 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
     status, reason, peak_rss = None, "", 0
     live_samples, missing_samples, rss_observed = 0, 0, False
     rss_fallback_samples = 0
+    guard = {"scope": "process_tree", "measurement": "sampled",
+             "limit_bytes": case["ram_budget_bytes"], "termination": "none",
+             "complete_tree_samples": 0, "rss_fallback_samples": 0}
     missing_since = wall
     try:
         while process.poll() is None:
@@ -483,7 +512,9 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                 status, reason = "timeout", "time_limit"
                 terminate_tree(process)
                 break
-            rss, anonymous = memory_reader()
+            sample = memory_reader()
+            rss, anonymous = sample
+            sample_details = getattr(sample, "diagnostics", {})
             sampled_at = time.monotonic()
             rss_available = type(rss) is int and rss >= 0
             anonymous_available = type(anonymous) is int and anonymous >= 0
@@ -502,12 +533,40 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                 available = rss_available and rss > 0
             if available:
                 live_samples += 1
-                rss_fallback_samples += int(rss_fallback)
+                private_rss_fallback = (case["storage"] == "disk"
+                                        and sample_details.get("rss_fallback_processes", 0) > 0)
+                rss_fallback_samples += int(rss_fallback or private_rss_fallback)
                 missing_since = None
                 # On Linux disk paths, use anonymous resident bytes: the same
                 # file pages can be counted twice by overlapping mmap views.
                 measured = anonymous if case["storage"] == "disk" and not rss_fallback else rss
+                if case["storage"] != "disk":
+                    metric = "rss"
+                elif rss_fallback:
+                    metric = "rss_fallback"
+                else:
+                    metric = sample_details.get("private_metric") or (
+                        "anonymous_rss" if sys.platform.startswith("linux") else
+                        "private_bytes" if sys.platform == "win32" else "uss")
+                guard.update(last_bytes=measured, last_metric=metric,
+                             last_sample_elapsed_s=max(0., sampled_at - wall),
+                             rss_fallback_samples=rss_fallback_samples)
+                if "peak_bytes" not in guard or measured > guard["peak_bytes"]:
+                    guard.update(peak_bytes=measured, peak_metric=metric)
+                # Evidence belongs to this particular last measurement. A
+                # compatible reader can still return a plain two-tuple;
+                # never attach a preceding sample's tree proof to that value.
+                for key in ("last_sample_tree_complete", "last_processes", "last_source"):
+                    guard.pop(key, None)
+                if sample_details.get("tree_complete") is True:
+                    guard["complete_tree_samples"] += 1
+                    guard.update(last_sample_tree_complete=True,
+                                 last_processes=sample_details["processes"],
+                                 peak_processes=max(guard.get("peak_processes", 0), sample_details["processes"]),
+                                 last_source=sample_details["source"])
                 if measured > case["ram_budget_bytes"]:
+                    guard.update(termination="limit_exceeded", trigger_bytes=measured,
+                                 trigger_metric=metric)
                     status, reason = "failed", "memory_limit"
                     terminate_tree(process)
                     break
@@ -521,6 +580,7 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                     if process.poll() is not None:
                         break
                     status, reason = "failed", "memory_measurement_unavailable"
+                    guard["termination"] = "measurement_unavailable"
                     terminate_tree(process)
                     break
             # Only known owned file names are examined, not a recursive scan
@@ -563,14 +623,14 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
         result = {"status": status, "reason": reason}
     high_water = result.get("peak_rss_bytes")
     if type(high_water) is int and high_water >= 0:
+        result["rss_measurement"] = "process_high_water_mark" if high_water >= peak_rss else "sampled"
         peak_rss = max(peak_rss, high_water)
-        result["rss_measurement"] = "process_high_water_mark"
     else:
         result["rss_measurement"] = "sampled" if rss_observed else "unavailable"
     result.update(process_wall_s=elapsed, peak_rss_bytes=peak_rss, time_limit_s=timeout,
                   live_memory_observed=live_samples > 0, live_memory_samples=live_samples,
                   live_memory_missing_samples=missing_samples,
-                  live_memory_rss_fallback_samples=rss_fallback_samples)
+                  live_memory_rss_fallback_samples=rss_fallback_samples, memory_guard=guard)
     return result
 
 
@@ -608,7 +668,11 @@ def _matrix(args):
 
 def _compare_group(report, spectra, row, spectrum):
     """Small Python-only comparison; no NumPy dependency in the parent."""
-    key = (row["n"], row.get("point_factor"), row["target_points"], row["signal"], row["storage"])
+    statistics = (row.get("statistics", "legacy") if row["method"] != "fftw"
+                  else row.get("requested_statistics", report.get("settings", {}).get("requested_statistics", "legacy")))
+    if statistics not in ("corrected", "legacy"):
+        return
+    key = (row["n"], row.get("point_factor"), row["target_points"], row["signal"], row["storage"], statistics)
     group = spectra.setdefault(key, {})
     group[row["method"]] = (row, spectrum)
     if "lpsd" not in group:
@@ -621,6 +685,7 @@ def _compare_group(report, spectra, row, spectrum):
                        if .01 <= f <= 20 and r > 0 and math.isfinite(a / r)]
         if differences:
             current["comparison"] = {
+                "reference_statistics": statistics,
                 "points": len(differences),
                 "rms_relative_nsd_difference": math.sqrt(sum(x * x for x in differences) / len(differences)),
                 "maximum_relative_nsd_difference": max(abs(x) for x in differences),
@@ -628,6 +693,9 @@ def _compare_group(report, spectra, row, spectrum):
 
 
 def run(args):
+    statistics = getattr(args, "statistics", "corrected")
+    if statistics not in ("corrected", "legacy"):
+        raise ValueError("statistics must be corrected or legacy")
     native_request = native_working_request(getattr(args, "native_working_mib", None))
     disk_algorithm = getattr(args, "disk_fft_algorithm", "full")
     if disk_algorithm not in ("full", "packed-real"):
@@ -647,6 +715,7 @@ def run(args):
     report = {"schema": SCHEMA, "state": "running", "source_commit": _source_commit(), "source_dirty": _source_dirty(),
               "environment": environment(resources), "cases": [], "elapsed_seconds": deadline.elapsed(),
               "settings": {"max_seconds": args.max_hours * 3600,
+                           "requested_statistics": statistics,
                            "bootstrap_remaining_seconds": deadline.seconds,
                            "ram_budget_mib": resources.ram_budget // MIB,
                            "disk_budget_mib": resources.disk_budget // MIB,
@@ -686,7 +755,8 @@ def run(args):
         for position, specification in enumerate(matrix):
             row = {key: value for key, value in specification.items() if key != "requested_storage"}
             row.update(base_target_points=args.base_points, requested_threads=resources.threads,
-                       point_count_resolved=False)
+                       point_count_resolved=False, requested_statistics=statistics,
+                       statistics=statistics if row["method"] != "fftw" else "not_applicable")
             row.update(smoothing_controls(row["method"], resources.threads, smoothing_request))
             smoothing_reserve = row["smoothing_runtime_reserve_bytes"]
             refreshed = detect_resources(args.work_dir, args.ram_gib, args.disk_gib, args.threads)
@@ -768,12 +838,17 @@ def run(args):
                         report.setdefault("spectra", []).append({"n": row["n"], "method": row["method"],
                                                                   "signal": row["signal"], "storage": storage,
                                                                   "disk_power_reduction": row["disk_power_reduction"],
+                                                                  "statistics": row["statistics"],
+                                                                  "requested_statistics": row["requested_statistics"],
                                                                   "target_points": row["target_points"], **spectrum})
             report["cases"].append(row)
             report["elapsed_seconds"] = deadline.elapsed()
             write_report(args.output, report, args.save_spectra)
             point_label = f"J={row['target_points']} / {row['actual_points']} output points" if row.get("point_count_resolved") else f"point factor {row.get('point_factor') or 'explicit'}"
             detail = f"{row['compute_wall_s']:.6f} s" if row["status"] == "completed" else row.get("reason", "")
+            threading = row.get("fftw_threading", {})
+            if threading.get("status") == "fallback_single_thread":
+                detail += f"; FFTW threads {threading['actual']}/{threading['requested']} (thread runtime unavailable)"
             if row["native_working_policy"] == "explicit_cap":
                 detail += f"; native cap {row['native_working_limit_bytes'] / MIB:g} MiB"
             print(f"[{position + 1}/{len(matrix)}] N={row['n']} {row['method']} {storage} "
@@ -866,6 +941,8 @@ def parser():
     run_parser.add_argument("--ram-gib", default="auto", help="Allocation budget in GiB, bounded by available RAM")
     run_parser.add_argument("--disk-gib", default="auto", help="Temporary dataset-file budget in GiB, bounded by free disk")
     run_parser.add_argument("--threads", type=int, help="Maximum threads, capped by affinity and CPU quota")
+    run_parser.add_argument("--statistics", choices=("corrected", "legacy"), default="corrected",
+                            help="Native LPSD statistics, including the native part of matched smoothing")
     run_parser.add_argument("--smoothing-workers", type=_positive_smoothing_workers,
                             help="Matched FFTW smoothing worker limit, capped by admitted threads; default min(4, threads)")
     run_parser.add_argument("--native-working-mib", type=_native_working_mib,

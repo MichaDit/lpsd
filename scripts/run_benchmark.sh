@@ -116,10 +116,49 @@ verify_sha() {
 
 # uv's Python installation has no subprocess compiler. This pre-Python guard
 # terminates that process at the deadline; the Python stage watches whole trees.
+linux_child_memory() {
+    lpsd_memory_parent=$1; lpsd_memory_child=$2
+    shift 2
+    awk -v parent="$lpsd_memory_parent" -v child="$lpsd_memory_child" '
+        function record() {
+            if (p == parent && (n == child || (!has_ns && pid == child))) {
+                found++; found_pid=pid;
+                if (pid !~ /^[0-9]+$/ || pid <= 0 || (has_ns && ns_first != pid)) bad=1;
+                if (state == "Z" || state == "X" || state == "x") {
+                    if (threads != 1) bad=1;
+                } else if (!has_rss || state == "" || r !~ /^[0-9]+$/ || bad_rss) bad=1;
+                else total += r;
+            }
+        }
+        BEGIN {
+            # Read paths individually: an exited foreign process must not
+            # abort discovery of our uniquely identified, readable child.
+            for (file=1; file<ARGC; file++) {
+                p=0; n=0; pid=0; r=0; has_ns=0; has_rss=0;
+                state=""; threads=0; ns_first=0; bad_rss=0;
+                while ((reading=(getline < ARGV[file])) > 0) {
+                    if ($1 == "Pid:") pid=$2;
+                    if ($1 == "PPid:") p=$2;
+                    if ($1 == "NSpid:") { has_ns=1; ns_first=$2; n=$NF }
+                    if ($1 == "State:") state=$2;
+                    if ($1 == "Threads:") threads=$2;
+                    if ($1 == "VmRSS:") { r=$2; has_rss=1; bad_rss=(NF != 3 || $3 != "kB") }
+                }
+                close(ARGV[file]);
+                if (reading == 0) record();
+            }
+            if (found != 1 || bad) exit 1;
+            printf "%.0f %.0f\n", found_pid, total;
+            exit;
+        }
+    ' "$@"
+}
+
 bounded_python_install() {
     "$@" &
     lpsd_child=$!
     (
+        lpsd_child_proc=''
         while kill -0 "$lpsd_child" 2>/dev/null; do
             if [ "$(date +%s)" -ge "$LPSD_BENCHMARK_DEADLINE_EPOCH" ]; then
                 kill -KILL "$lpsd_child" 2>/dev/null || :; exit
@@ -130,14 +169,33 @@ bounded_python_install() {
                 kill -KILL "$lpsd_child" 2>/dev/null || :; exit
             fi
             if [ "$lpsd_system" = Linux ]; then
-                lpsd_child_rss=$(awk -v parent="$lpsd_proc_pid" -v child="$lpsd_child" '
-                    FNR == 1 { if (p==parent && n==child) total += r; p=0; n=0; r=0 }
-                    /^PPid:/ { p=$2 } /^NSpid:/ { n=$NF } /^VmRSS:/ { r=$2 }
-                    END { if (p==parent && n==child) total += r; print total+0 }
-                ' /proc/[0-9]*/status 2>/dev/null || :)
+                if [ -n "$lpsd_child_proc" ]; then
+                    lpsd_child_sample=$(linux_child_memory "$lpsd_proc_pid" "$lpsd_child" \
+                        "/proc/$lpsd_child_proc/status" 2>/dev/null) || lpsd_child_sample=''
+                else
+                    lpsd_child_sample=$(linux_child_memory "$lpsd_proc_pid" "$lpsd_child" \
+                        /proc/[0-9]*/status 2>/dev/null) || lpsd_child_sample=''
+                fi
+                # Only our verified target is cached. Its PID, parent and
+                # namespace identity are checked again on each direct read.
+                lpsd_child_proc=${lpsd_child_sample%% *}
+                lpsd_child_rss=${lpsd_child_sample#* }
+                case "$lpsd_child_proc" in ''|*[!0-9]*) lpsd_child_rss='';; esac
+                if [ "$lpsd_child_sample" = "$lpsd_child_proc" ]; then lpsd_child_rss=''; fi
             else
-                lpsd_child_rss=$(ps -o rss= -p "$lpsd_child" 2>/dev/null | awk '{s += $1} END {print s+0}')
+                lpsd_child_rss=$(ps -o rss= -p "$lpsd_child" 2>/dev/null) || lpsd_child_rss=''
+                lpsd_child_rss=$(printf '%s\n' "$lpsd_child_rss" | awk '
+                    NF != 1 || $1 !~ /^[0-9]+$/ { bad=1 }
+                    { count++; total += $1 }
+                    END { if (bad || count != 1) exit 1; printf "%.0f\n", total }
+                ') || lpsd_child_rss=''
             fi
+            # No readable counter is not a zero-byte process. If it exited
+            # during the probe, the best-effort kill is harmless and wait
+            # below still obtains the installer exit status.
+            case "$lpsd_child_rss" in ''|*[!0-9]*)
+                kill -KILL "$lpsd_child" 2>/dev/null || :; exit;;
+            esac
             if [ "$lpsd_child_rss" -gt "$lpsd_ram_kib" ]; then
                 kill -KILL "$lpsd_child" 2>/dev/null || :; exit
             fi

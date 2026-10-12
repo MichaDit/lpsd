@@ -28,7 +28,7 @@ def assert_selected(actual, full, names):
 def selected(name, outputs, kernel="auto", workers=1):
     case = CASES[name]
     return lpsd_fast.lpsd(case.data, outputs=outputs, kernel=kernel,
-                          workers=workers, **case.kwargs)
+                          workers=workers, statistics="legacy", **case.kwargs)
 
 
 @pytest.mark.parametrize("kernel", ("scalar", "auto"))
@@ -77,9 +77,9 @@ def test_selected_csd_retains_legacy_complex_and_real_rules(anticorrelated):
     if anticorrelated:
         values = np.random.default_rng(414).standard_normal(513)
         data = pd.DataFrame({"a": values, "b": -values})
-    full = lpsd_fast.lcsd(data, workers=1, **DEFAULTS)
+    full = lpsd_fast.lcsd(data, workers=1, statistics="legacy", **DEFAULTS)
     actual = lpsd_fast.lcsd(data, outputs=("asd", "psd", "psd_std"),
-                            workers=1, **DEFAULTS)
+                            workers=1, statistics="legacy", **DEFAULTS)
     assert_selected(actual, full, ("asd", "psd", "psd_std"))
     # In particular, do not sqrt a real negative CSD before complex64 casting.
     assert np.isfinite(actual.asd).all()

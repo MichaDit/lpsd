@@ -111,6 +111,36 @@ int fast_dft_selected_bounded(double *Pr_r, double *Pr_i,
                               double *preparation_seconds, double *segments_seconds,
                               long int *fused_batches);
 
+/* Corrected all-segment statistics, additive to every legacy export above.
+ * Pr is the mean of ALL K periodograms; for CSD each is X*conj(Y).
+ * With statistics=true, Vr_r is sum(|Z-mean|^2)/(K-1), Vr_i is zero.
+ * K=1 has a valid mean and NAN variance: no sample variance can be estimated.
+ * The caller converts this sample variance to nominal SEM by dividing by K
+ * before the square root and applying its spectral normalization. No segment
+ * correlation or effective-degrees-of-freedom correction is supplied here.
+ * statistics=false skips M2 entirely and accepts NULL variance outputs.
+ * Remaining arguments match fast_dft_selected_bounded; an infinite input_peak
+ * disables fused dots, and the timer pointers may both be NULL. */
+int fast_dft_selected_corrected(double *Pr_r, double *Pr_i,
+                              double *Vr_r, double *Vr_i, long int *Navs,
+                              const double *x1data, const double *x2data,
+                              long int nData, long int segLen,
+                              double *Cr, double *Ci,
+                              double olap, int order, bool csd, int mode,
+                              bool statistics, bool inplace, double input_peak,
+                              double *preparation_seconds, double *segments_seconds,
+                              long int *fused_batches);
+
+/* Read-only prepared order-zero PSD with corrected mean. Qr/Qi come from
+ * fast_dft_prepare_order0. No variance is computed. The separate original
+ * fast_dft_prepared_order0 ABI and its version remain legacy-compatible. */
+int fast_dft_prepared_order0_corrected(double *Pr_r, double *Pr_i, long int *Navs,
+                            const double *x, long int nData, long int segLen,
+                            const double *Qr, const double *Qi,
+                            double olap, int mode, double input_peak,
+                            double *preparation_seconds, double *segments_seconds,
+                            long int *fused_batches);
+
 /* Whether the current build and CPU support the optional fused PSD kernel.
  * This is a dispatch capability, not a performance measurement. */
 int native_segment_fma_supported(void);
@@ -122,6 +152,16 @@ int native_segment_fma_supported(void);
  * timers must be both NULL or both non-NULL. rebase_count is nonnegative for
  * overlap reuse, -1 for a direct fallback. Modes 2/3 are supported. */
 LPSD_TARGET_CLONES int fast_dft_boxcar(double *Pr_r, double *Pr_i,
+                                      double *Vr_r, double *Vr_i, long int *Navs,
+                                      const double *x, long int nData, long int segLen,
+                                      double *Cr, double *Ci, double olap,
+                                      double frequency_bin, int mode, bool statistics,
+                                      double *preparation_seconds, double *segments_seconds,
+                                      long int *rebase_count);
+
+/* Same reuse/whole-frequency fallback contract, with corrected mean and
+ * real accumulated sample variance as in fast_dft_selected_corrected. */
+LPSD_TARGET_CLONES int fast_dft_boxcar_corrected(double *Pr_r, double *Pr_i,
                                       double *Vr_r, double *Vr_i, long int *Navs,
                                       const double *x, long int nData, long int segLen,
                                       double *Cr, double *Ci, double olap,
@@ -202,6 +242,16 @@ LPSD_TARGET_CLONES int generate_coefficients_blocked(double *Cr, double *Ci, con
  * are retained; dot products use block reductions. Status4 means unsupported.
  */
 LPSD_TARGET_CLONES int fast_dft_kaiser_streaming(
+    double *Pr_r, double *Pr_i, long int *Navs,
+    const double *samples, long int nData, long int segLen,
+    double beta, double frequency_bin, double olap, int mode,
+    long int block_length, long int max_segments,
+    double *sum_window, double *sum_squares,
+    double *preparation_seconds, double *segments_seconds);
+
+/* Same bounded buffers and segment projections, corrected all-segment mean.
+ * This PSD-only interface performs no sample-variance work. */
+LPSD_TARGET_CLONES int fast_dft_kaiser_streaming_corrected(
     double *Pr_r, double *Pr_i, long int *Navs,
     const double *samples, long int nData, long int segLen,
     double beta, double frequency_bin, double olap, int mode,

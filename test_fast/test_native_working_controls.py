@@ -150,6 +150,18 @@ def test_forecasts_and_calibration_require_the_same_explicit_profile():
     assert not resources.calibration_matches(legacy_target, previous)
 
 
+@pytest.mark.parametrize("method", ["lpsd", "matched"])
+def test_calibration_keeps_corrected_and_legacy_statistics_separate(method):
+    base = {"method": method, "signal": "white", "storage": "ram"}
+    old = {**base, "status": "completed"}
+    corrected = {**base, "statistics": "corrected"}
+    assert resources.calibration_matches(base, old)
+    assert resources.calibration_matches({**base, "statistics": "legacy"}, old)
+    assert not resources.calibration_matches(corrected, old)
+    assert not resources.calibration_matches(base, {**old, "statistics": "corrected"})
+    assert resources.calibration_matches(corrected, {**old, "statistics": "corrected"})
+
+
 def test_public_cap_provenance_is_closed_idempotent_and_optional():
     case = _case(request=384)
     fields = {**resources.native_working_budget(case)[2], "native_working_applied_bytes": 384 * MIB}
