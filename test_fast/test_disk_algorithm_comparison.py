@@ -8,6 +8,17 @@ from benchmarks import bench_disk_algorithms as comparison
 from benchmarks import bench_fftw_disk as pipeline
 
 
+@pytest.fixture(scope="module")
+def fftw_available():
+    """Only runtime cases require the optional FFTW installation."""
+    from benchmarks import bench_fftw as bf
+    from lpsd_benchmark.worker import _load_fftw
+    try:
+        return _load_fftw(bf, 2)
+    except ImportError as error:
+        pytest.skip(f"Optional FFTW shared library unavailable: {error}")
+
+
 def arguments(tmp_path):
     return ["--compare-direct-power", "--sizes", "4096", "--point-factors", "1",
             "--threads", "1", "--repeats", "1", "--max-seconds", "30",
@@ -31,7 +42,7 @@ def test_direct_comparison_rejects_unqualified_request_before_files(tmp_path, ca
 
 
 @pytest.mark.parametrize("relative_change, accepted", [(1e-6, True), (1e-5, False)])
-def test_direct_comparison_gates_actual_float32_outputs_at_3ppm(tmp_path, monkeypatch,
+def test_direct_comparison_gates_actual_float32_outputs_at_3ppm(tmp_path, monkeypatch, fftw_available,
                                                                relative_change, accepted):
     original = pipeline.disk_pipeline
 
@@ -68,7 +79,7 @@ def test_direct_comparison_gates_actual_float32_outputs_at_3ppm(tmp_path, monkey
 
 
 @pytest.mark.parametrize("corruption", ["abi", "half_n", "power_vector"])
-def test_direct_comparison_rejects_wrong_observed_route(tmp_path, monkeypatch, corruption):
+def test_direct_comparison_rejects_wrong_observed_route(tmp_path, monkeypatch, fftw_available, corruption):
     original = pipeline.disk_pipeline
 
     def altered(method, values, backend, directory, options):
