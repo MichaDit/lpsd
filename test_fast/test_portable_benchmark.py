@@ -565,14 +565,17 @@ def test_linux_memory_resolves_proc_namespace_and_rejects_unrelated_pid_trees(tm
         (task / "children").write_text(" ".join(map(str, values)))
     status("self", 1, (2000, 5), 0, 0)
     (tmp_path / "self" / "status").write_text("Pid:\t2000\nPPid:\t1\nNSpid:\t2000 5\n")
+    status(2000, 1, (2000, 5), 0, 0)
     status(6, 5000, (6, 6), 9000, 9000)  # /proc/Popen.pid would hit unrelated memory.
     status(3000, 2000, (3000, 6), 1000, 600)
     status(3100, 3000, (3100, 7), 400, 300)
     status(4000, 5000, (4000, 6), 9000, 9000)  # Same inner PID, different controller.
     status(5000, 2000, (5000, 8, 6), 9000, 9000)  # Match at the wrong namespace depth.
-    if children_file:
-        children(2000, (6, 3000, 4000, 5000))
+    children(2000, (6, 3000, 4000, 5000))
+    if not children_file:
+        (tmp_path / "2000" / "task" / "2000" / "children").unlink()
     children(3000, (3100, 4000))
+    children(3100, ())
     reader = runner._LinuxMemoryReader(6, proc_root=tmp_path)
     assert reader.read() == (1400 * 1024, 900 * 1024)
     assert reader.visible_pid == 3000

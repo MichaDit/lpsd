@@ -45,12 +45,14 @@ Packed Real numerical experiment provides no performance measurement.
 
 ## Run the campaign
 
-The current fast.9 source pin is
-**`1c345822f015f3df93d5acb60ace2170f99d0547`**. The
+The current fast.9 source pin, including the Linux process-tree memory fix, is
+**`09d5385f262988885478a4d47151fcd1dfd39e9c`**. The
 [portable guide](portable-benchmark.md#start-from-a-pinned-revision) supplies
 complete launch commands using that pin. The
 [fast.9 platform qualification and paired performance results](performance-fast9.md)
-include the later device-driven corrections. The
+include the later device-driven corrections. The subsequent
+[Linux memory-guard qualification](linux-memory-guard.md) is separate from
+those performance measurements. The
 [physical Windows and ARM64 reports](device-tests-20261012.md) retain their
 separate fast.8 source, successful cases and interruptions. Neither set is
 pooled with the historical E/G table above.

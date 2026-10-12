@@ -7,14 +7,16 @@ repository push permission, fork or pull request to report measurements.
 
 ## Start from a pinned revision
 
-The commands below use the final **fast.9 source**,
-`1c345822f015f3df93d5acb60ace2170f99d0547`. Its
-[native test/build qualification](https://github.com/MichaDit/lpsd/actions/runs/38246521516)
-and [portable platform qualification](https://github.com/MichaDit/lpsd/actions/runs/38246521492)
-are recorded with the actual tested checkout, source hashes, test counts and
-optional skips in the [fast.9 results](performance-fast9.md). Physical-device
-campaigns, interrupted runs and the new corrections have separate evidence;
-CI does not establish completion of those earlier device campaigns.
+The commands below use the **fast.9 source with the Linux memory-guard correction**,
+`09d5385f262988885478a4d47151fcd1dfd39e9c`. Its
+[native test/build qualification](https://github.com/MichaDit/lpsd/actions/runs/38284527956)
+and [portable platform qualification](https://github.com/MichaDit/lpsd/actions/runs/38284527904)
+belong to that exact source commit. The
+[Linux follow-up report](linux-memory-guard.md) records the additional fault,
+regression checks and source-bound validation. The
+[fast.9 performance results](performance-fast9.md) retain their original
+measurement revisions. Physical-device campaigns and interrupted runs have
+separate evidence; CI does not establish completion of those earlier campaigns.
 
 The wrapper and downloaded source use the same full commit. When testing
 another revision, change both occurrences of the pin in the download command.
@@ -24,13 +26,13 @@ The earlier recovered R3 experiments and macOS qualification remain in the
 Linux x86-64 / ARM64 and macOS, from a writable directory:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.sh | sh -s -- --revision 1c345822f015f3df93d5acb60ace2170f99d0547
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.sh | sh -s -- --revision 09d5385f262988885478a4d47151fcd1dfd39e9c
 ```
 
 Windows, in Windows PowerShell 5.1 or PowerShell 7:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.ps1'))) -Revision '1c345822f015f3df93d5acb60ace2170f99d0547'
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.ps1'))) -Revision '09d5385f262988885478a4d47151fcd1dfd39e9c'
 ```
 
 The command creates a fresh `lpsd-benchmark...` directory under the current
@@ -45,11 +47,11 @@ distribution; inspect the script first if that does not match your workflow.
 For an already downloaded checkout, the equivalent commands are:
 
 ```sh
-sh scripts/run_benchmark.sh --revision 1c345822f015f3df93d5acb60ace2170f99d0547
+sh scripts/run_benchmark.sh --revision 09d5385f262988885478a4d47151fcd1dfd39e9c
 ```
 
 ```powershell
-& ./scripts/run_benchmark.ps1 -Revision '1c345822f015f3df93d5acb60ace2170f99d0547'
+& ./scripts/run_benchmark.ps1 -Revision '09d5385f262988885478a4d47151fcd1dfd39e9c'
 ```
 
 ## Choose resource and time budgets
@@ -82,13 +84,13 @@ these arguments changes the run:
 For example, the Unix command with a 32 GiB allocation ceiling is:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.sh | sh -s -- --revision 1c345822f015f3df93d5acb60ace2170f99d0547 --ram-gib 32 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.sh | sh -s -- --revision 09d5385f262988885478a4d47151fcd1dfd39e9c --ram-gib 32 --point-factors 1 2
 ```
 
 For PowerShell, pass additional arguments as an array:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.ps1'))) -Revision '1c345822f015f3df93d5acb60ace2170f99d0547' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/09d5385f262988885478a4d47151fcd1dfd39e9c/scripts/run_benchmark.ps1'))) -Revision '09d5385f262988885478a4d47151fcd1dfd39e9c' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
 ```
 
 ### What the limits mean
@@ -673,7 +675,7 @@ does not claim that uncommitted source is a clean remote revision. Normal
 contributors should use the commit-pinned download route.
 
 ```sh
-sh scripts/run_benchmark.sh --revision 1c345822f015f3df93d5acb60ace2170f99d0547 --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
+sh scripts/run_benchmark.sh --revision 09d5385f262988885478a4d47151fcd1dfd39e9c --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
 ```
 
 The bootstrap unit tests cover archive traversal/link rejection, checksum and

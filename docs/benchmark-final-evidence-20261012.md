@@ -326,6 +326,18 @@ Die dokumentierten unerwarteten Windows-/Instrument-Regressionstestfehler
 bleiben ungelöst in dieser getrennten Gerätequelle; die folgende CI
 etikettiert sie nicht nachträglich als bestandene Hardwaretests.
 
+Nachtrag zur Gerätequelle: Die spätere
+[Publikation `e193080`](https://github.com/MichaDit/lpsd/commit/e193080134a9578f9dd0ca1b1b809e8f64e470e2)
+enthält inzwischen den vollständigen Instrumentlauf aus demselben
+fast.8-Quellstand: 116 erfolgreiche, drei am Speicherlimit gescheiterte und
+13 übersprungene Fälle. Der abschließende Regressionstest ergab 2.101
+bestandene und zwei fehlgeschlagene Tests, sechs Skips und zwei erwartete
+Fehlschläge. Abschluss und Gerätefreigabe sind nun dokumentiert. Der obere
+Absatz beschreibt weiterhin den früheren Manifeststand; die
+[aktuelle Geräteauswertung](device-tests-20261012.md) führt den Nachtrag aus.
+Eine Prüfung des später korrigierten fast.9-Codes auf diesem Instrument
+ist damit nicht belegt.
+
 ## Eigene Validierung der fast.9-Integration
 
 Die optionale native Direct-log-Anbindung und die laufende Zählung der

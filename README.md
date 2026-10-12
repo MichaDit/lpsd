@@ -25,6 +25,12 @@ See the [fast.9 results and validation](docs/performance-fast9.md),
 [packed-phase comparison](docs/performance-packed-phase.md) and
 [direct-reduction profile](docs/direct-log-power.md).
 
+A subsequent [Linux memory-guard correction](docs/linux-memory-guard.md)
+counts descendants on procfs mounts without the optional children interface
+and rejects incomplete live process-tree measurements. The portable guide
+identifies the current qualified source pin. The numerical implementation is
+preserved; fast.9 performance measurements retain their original revisions.
+
 Version `fast.8` integrates the recovered cross-platform and large-input
 measurements. On Apple Silicon, eligible mean-detrended segments fuse the
 existing residual subtraction into the native dot product. Windows and macOS

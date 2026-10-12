@@ -1,0 +1,863 @@
+{
+  "schema": "lpsd-linux-memory-guard-validation-v1",
+  "record_created_at_utc": "2026-10-12T17:33:26.066426+00:00",
+  "scope": "Linux process-tree monitoring regression, local supervised smoke and source-bound four-platform CI evidence; no performance improvement claim.",
+  "privacy": {
+    "synthetic_input_only": true,
+    "scalar_summary_only": true,
+    "spectra_included": false,
+    "hostnames_addresses_user_paths_process_identifiers_included": false
+  },
+  "source": {
+    "published_code_commit": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+    "published_code_tree": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+    "runner_sha256": "cf5255ffaa364b8b324a4fc9fa9b0e937bd1fc030f85b6308fed81b291343ead",
+    "smoke_recorded_checkout_commit": "c2d97efbeb24b54022d9f9caecc85bf6d5063365",
+    "smoke_recorded_checkout_dirty": true,
+    "provenance_explanation": "The published commit was created remotely while the local checkout still recorded the older HEAD plus working changes. The smoke preserves those actual values; the published commit is a separately verified source-equivalence pin.",
+    "direct_blob_comparison": {
+      "files": 11,
+      "all_byte_equal_to_published_code_commit": true,
+      "sha256": {
+        "lpsd_benchmark/__init__.py": "80b154d3ff7c3eefe123e47770132e1c7e7a2f06a19bafaac0ab398203951ae4",
+        "lpsd_benchmark/__main__.py": "2230b7261912c396fc2217adab82aac05843fa11ce53b63ed182b2b6f66f47ea",
+        "lpsd_benchmark/runner.py": "cf5255ffaa364b8b324a4fc9fa9b0e937bd1fc030f85b6308fed81b291343ead",
+        "lpsd_benchmark/worker.py": "9f333de88b4db0e36747d077cf5ff3e26893d7e9299a28419004ce0308d1f74b",
+        "lpsd_benchmark/resources.py": "1588f4851558f79f672a2b8918b21749cd07ce9cf9ef10c2aefdf76ffd1a033b",
+        "lpsd_benchmark/privacy.py": "cf40c9ff1b769b1c2925eb9e14f5e1ca4554e8c35a1017bde3c140cb5014b4f5",
+        "test_fast/test_linux_memory_tree.py": "c554c278bcbcdd31baaf94488c7765bba2a00611c0b647b82dfdff445be3fbde",
+        "test_fast/test_benchmark_memory_measurement.py": "7f137a26dd16fd64396d57ce9341b89b8677dc34528aefd567db3c32b02ae0ee",
+        "test_fast/test_portable_benchmark.py": "0f32655ae273121153b53ae5ecaceb9e05631c6e7bcd4cb1788d5ecfad15e44b",
+        "test_fast/test_benchmark_owned_file_counter.py": "b8755243dbb9c8901300b17ba9d1545ef8918aaa5dcfa2cd9f6eb36e875e103d",
+        "test_fast/test_case_disk_budget.py": "aa03c27491c1032831d40d14fc4a453c0fd86f15fa2428359fad84c5e2e30012"
+      }
+    },
+    "complete_tracked_blob_comparison": {
+      "byte_identical_files": 335,
+      "different_files": [
+        "README.md",
+        "docs/benchmark-campaign-2026-10.md",
+        "docs/performance-fast9.md",
+        "docs/portable-benchmark.md"
+      ],
+      "differences_are_documentation_only": true,
+      "all_runtime_and_test_files_byte_equal": true,
+      "comparison_excludes_untracked_new_validation_artifacts": true
+    }
+  },
+  "local_test_environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "python": "3.12.14",
+    "pytest": "9.1.1",
+    "psutil": "7.2.2"
+  },
+  "local_regression_runs": [
+    {
+      "name": "final_linux_memory_and_portable_regressions",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "test_fast/test_linux_memory_tree.py",
+        "test_fast/test_benchmark_memory_measurement.py",
+        "test_fast/test_portable_benchmark.py"
+      ],
+      "passed": 148,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 1,
+      "expected_failures": 0,
+      "reported_wall_seconds": 2.83,
+      "skip": "test_fast/test_benchmark_memory_measurement.py::test_real_macos_owned_child_memory_probe",
+      "skip_reason": "Real macOS RSS/USS API qualification; Linux host.",
+      "source_binding": "Final runner SHA256 and test-file digests recorded above; includes the Threads==1 zombie guard.",
+      "evidence_origin": "Observed final pytest console output in this session."
+    },
+    {
+      "name": "separate_owned_file_and_disk_budget_regressions",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "-o",
+        "addopts=",
+        "-q",
+        "test_fast/test_benchmark_owned_file_counter.py",
+        "test_fast/test_case_disk_budget.py"
+      ],
+      "passed": 14,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "expected_failures": 0,
+      "reported_wall_seconds": 0.18,
+      "source_scope": "Separate observed run before the final Threads==1 tightening; the owned-file/disk accounting logic and these test files were unchanged by that tightening. No final-cohort rerun is claimed.",
+      "evidence_origin": "Observed console output in the recovery validation session."
+    }
+  ],
+  "independent_review_reproduction": {
+    "reviewed_runner_sha256": "cf5255ffaa364b8b324a4fc9fa9b0e937bd1fc030f85b6308fed81b291343ead",
+    "scenario": "A pthread_exit group leader has State Z and Threads 2 while a worker thread remains live.",
+    "living_thread_observed_rss_bytes": 75276288,
+    "leader_status": "Z",
+    "leader_threads": 2,
+    "final_tree_measurement": [
+      null,
+      null
+    ],
+    "result": "The final guard rejects the incomplete group-leader measurement instead of treating it as zero.",
+    "evidence_origin": "Independent live process reproduction and review of the exact runner digest."
+  },
+  "final_supervised_smoke": {
+    "raw_report_filename": "final-portable-memory-followup.json",
+    "raw_report_sha256": "b209696903b5f1bfa3b111d5a8a796d2ea02d2adfe617cce026eebf32c1f074e",
+    "state": "completed",
+    "exit_code": 0,
+    "profile": "performance",
+    "requested_methods": [
+      "fftw",
+      "matched",
+      "lpsd"
+    ],
+    "settings": {
+      "smoothing_worker_policy": "default_cap4",
+      "smoothing_runtime_reserve_model": "incremental_9mib_above_cap4_v1",
+      "native_working_policy": "auto",
+      "max_seconds": 180.0,
+      "bootstrap_remaining_seconds": 180.0,
+      "ram_budget_mib": 1024,
+      "disk_budget_mib": 1024,
+      "threads": 2,
+      "sample_rate_hz": 50.0,
+      "seed": 20261010,
+      "n_averages": 100,
+      "psll_db": 200.0,
+      "prediction_safety_factor": 4.0,
+      "base_points": 1000,
+      "storage": "auto",
+      "fft_layout": "auto",
+      "window_storage": "auto",
+      "disk_fft_algorithm": "full",
+      "disk_power_reduction": "materialized",
+      "timing_scope": "complete_call_psd_and_nsd",
+      "input_dtype": "float64",
+      "output_dtype": "float32",
+      "points": [],
+      "sizes": [
+        100000
+      ],
+      "quality_sizes": [],
+      "point_factors": [
+        1.0,
+        2.0
+      ]
+    },
+    "environment": {
+      "os": "Linux",
+      "process_arch": "x86_64",
+      "host_arch": "x86_64",
+      "logical_cpus_available": 2,
+      "cpu_quota": 8.0,
+      "ram_total_mib": 8192,
+      "versions": {
+        "python": "3.12.14",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "scipy": "1.17.0"
+      }
+    },
+    "recorded_source_commit": "c2d97efbeb24b54022d9f9caecc85bf6d5063365",
+    "recorded_source_dirty": true,
+    "elapsed_seconds": 9.279503363999538,
+    "case_count": 6,
+    "completed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "timed_out": 0,
+    "live_memory_observed_for_every_case": true,
+    "live_memory_samples": 89,
+    "live_memory_missing_samples": 1,
+    "live_memory_rss_fallback_samples": 0,
+    "all_recorded_result_invariants_passed": true,
+    "maximum_reported_peak_rss_bytes": 123437056,
+    "native_binary_sha256": [
+      "61e18e7c420bbcf9b5f102d6e1e4fcea7a120e8f9bf69051754d2ecda2db9fe6"
+    ],
+    "fftw_binary_sha256": [
+      "b5cc02c4d360b5b20111cb0a251f8368af8c9ce3145357f5ba54c51ac4ca9b35"
+    ],
+    "fftw_threads_binary_sha256": [
+      "fd4b9672b1c7b297c87681f8bcaad414c3b18f3aed5edbf5fa7f665482eb0c7c"
+    ],
+    "native_versions": [
+      "1.0.6+fast.9"
+    ],
+    "fftw_versions": [
+      "3.3.10"
+    ],
+    "cases": [
+      {
+        "method": "fftw",
+        "n": 100000,
+        "signal": "white",
+        "storage": "ram",
+        "point_factor": 1.0,
+        "target_points": 1000,
+        "actual_points": 469,
+        "requested_threads": 2,
+        "actual_threads": 2,
+        "status": "completed",
+        "reason": "",
+        "live_memory_observed": true,
+        "live_memory_samples": 12,
+        "live_memory_missing_samples": 1,
+        "live_memory_rss_fallback_samples": 0,
+        "peak_rss_bytes": 118837248,
+        "rss_measurement": "process_high_water_mark",
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "compute_wall_s": 0.012590248001288273,
+        "process_wall_s": 1.3219485610006814,
+        "input_sha256": "dcb68c241c7fd6e5133e4ab97dc50a9ae58d85c303b66d9d8b233a76dfce00dc",
+        "frequency_sha256": "7e56fd0bd6e33ae8d934bd80cfb228fa53cd253dcb8131c094225058f18c767d",
+        "psd_sha256": "55389785e724eebf446925f1a3792544d4eca3a1edcc6df825f5f96a98e04003",
+        "nsd_sha256": "ef136aec8637cfe22f551179f78f7cd9083139db1901f7a68cb50b0477414b79",
+        "source_sha256": "497f29a558396d4f5150a3e412f779c9648451fdbbc34ff75c007901959b6fde"
+      },
+      {
+        "method": "matched",
+        "n": 100000,
+        "signal": "white",
+        "storage": "ram",
+        "point_factor": 1.0,
+        "target_points": 1000,
+        "actual_points": 469,
+        "requested_threads": 2,
+        "actual_threads": 2,
+        "status": "completed",
+        "reason": "",
+        "live_memory_observed": true,
+        "live_memory_samples": 13,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 0,
+        "peak_rss_bytes": 123437056,
+        "rss_measurement": "process_high_water_mark",
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "compute_wall_s": 0.08780887499960954,
+        "process_wall_s": 1.3282505269999092,
+        "input_sha256": "dcb68c241c7fd6e5133e4ab97dc50a9ae58d85c303b66d9d8b233a76dfce00dc",
+        "frequency_sha256": "7e56fd0bd6e33ae8d934bd80cfb228fa53cd253dcb8131c094225058f18c767d",
+        "psd_sha256": "b393d83ba27d842b254e79dffabd5a3fa219358bca3f747900ac81229542443e",
+        "nsd_sha256": "64a159ed462fc4764ca40f0eaa8566c9ccef84a6eee61613914af45c5f7ba192",
+        "source_sha256": "ba70be311f3c3d0c4f397194be9bdbc7957012dfc635feb91c1aa969ba352f7b"
+      },
+      {
+        "method": "lpsd",
+        "n": 100000,
+        "signal": "white",
+        "storage": "ram",
+        "point_factor": 1.0,
+        "target_points": 1000,
+        "actual_points": 469,
+        "requested_threads": 2,
+        "actual_threads": 2,
+        "status": "completed",
+        "reason": "",
+        "live_memory_observed": true,
+        "live_memory_samples": 15,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 0,
+        "peak_rss_bytes": 117706752,
+        "rss_measurement": "process_high_water_mark",
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "compute_wall_s": 0.09856029399998079,
+        "process_wall_s": 1.535575333999077,
+        "input_sha256": "dcb68c241c7fd6e5133e4ab97dc50a9ae58d85c303b66d9d8b233a76dfce00dc",
+        "frequency_sha256": "7e56fd0bd6e33ae8d934bd80cfb228fa53cd253dcb8131c094225058f18c767d",
+        "psd_sha256": "c98aeda8a8569abffaa367b5c14c3cfd4742140924f1e52b2c4db7d31a2bfd90",
+        "nsd_sha256": "9c0c70d91de031a5c50d5a07cf3b9ec5875849220f223f30f36c09b823c93943",
+        "source_sha256": "6866ce6b4c8a1024a22d4de71052c39e28957d6dbc0338b7729bfad9b26d00b7"
+      },
+      {
+        "method": "fftw",
+        "n": 100000,
+        "signal": "white",
+        "storage": "ram",
+        "point_factor": 2.0,
+        "target_points": 2425,
+        "actual_points": 938,
+        "requested_threads": 2,
+        "actual_threads": 2,
+        "status": "completed",
+        "reason": "",
+        "live_memory_observed": true,
+        "live_memory_samples": 15,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 0,
+        "peak_rss_bytes": 120532992,
+        "rss_measurement": "process_high_water_mark",
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "compute_wall_s": 0.01687992299957841,
+        "process_wall_s": 1.5332643370002188,
+        "input_sha256": "dcb68c241c7fd6e5133e4ab97dc50a9ae58d85c303b66d9d8b233a76dfce00dc",
+        "frequency_sha256": "11cf4aea07a84347a5fd3ef9a978f6492f2eca251bbc1212d814051da1adb062",
+        "psd_sha256": "3c83c5b3e6230127b862897b27a7077393ea1348e91d768d1b52842b708e4fce",
+        "nsd_sha256": "fe74404e2b2d9dc4f248ecac3f4ed2784dce6d2d0076c813759546d0a823b6c5",
+        "source_sha256": "497f29a558396d4f5150a3e412f779c9648451fdbbc34ff75c007901959b6fde"
+      },
+      {
+        "method": "matched",
+        "n": 100000,
+        "signal": "white",
+        "storage": "ram",
+        "point_factor": 2.0,
+        "target_points": 2425,
+        "actual_points": 938,
+        "requested_threads": 2,
+        "actual_threads": 2,
+        "status": "completed",
+        "reason": "",
+        "live_memory_observed": true,
+        "live_memory_samples": 15,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 0,
+        "peak_rss_bytes": 121688064,
+        "rss_measurement": "process_high_water_mark",
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "compute_wall_s": 0.13577647900092416,
+        "process_wall_s": 1.5355695289999858,
+        "input_sha256": "dcb68c241c7fd6e5133e4ab97dc50a9ae58d85c303b66d9d8b233a76dfce00dc",
+        "frequency_sha256": "11cf4aea07a84347a5fd3ef9a978f6492f2eca251bbc1212d814051da1adb062",
+        "psd_sha256": "86dbb0308cf83bcf49e9fa399d3e8fb2fdf18ea59d501dfa8ef1a8e1fded2019",
+        "nsd_sha256": "c7c2b33258bd649332290cf1c3fbd68e8b9a95000ff47f9e161b95bc5ee2222b",
+        "source_sha256": "ba70be311f3c3d0c4f397194be9bdbc7957012dfc635feb91c1aa969ba352f7b"
+      },
+      {
+        "method": "lpsd",
+        "n": 100000,
+        "signal": "white",
+        "storage": "ram",
+        "point_factor": 2.0,
+        "target_points": 2425,
+        "actual_points": 938,
+        "requested_threads": 2,
+        "actual_threads": 2,
+        "status": "completed",
+        "reason": "",
+        "live_memory_observed": true,
+        "live_memory_samples": 19,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 0,
+        "peak_rss_bytes": 119771136,
+        "rss_measurement": "process_high_water_mark",
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "compute_wall_s": 0.27702178999970783,
+        "process_wall_s": 1.950474840001334,
+        "input_sha256": "dcb68c241c7fd6e5133e4ab97dc50a9ae58d85c303b66d9d8b233a76dfce00dc",
+        "frequency_sha256": "11cf4aea07a84347a5fd3ef9a978f6492f2eca251bbc1212d814051da1adb062",
+        "psd_sha256": "c5bd6ac896cba58ff8bed376e495c9b83adfe51b2e820e3fdca7bb0a4c100b6b",
+        "nsd_sha256": "9a9c57938f3ee2913cb43795492aec97190f6c8f1505c55508f1194393889fc3",
+        "source_sha256": "6866ce6b4c8a1024a22d4de71052c39e28957d6dbc0338b7729bfad9b26d00b7"
+      }
+    ]
+  },
+  "limitations": [
+    "The final local smoke is Linux x86-64 only; it does not confirm physical ARM, Windows or macOS device reruns.",
+    "All six cases used seeded white-noise input, N=100000 and RAM storage. This smoke is not a large-data, disk-storage or memory-pressure qualification.",
+    "The recorded timings are individual smoke observations and are not a controlled speed comparison.",
+    "One temporarily missing live-memory measurement recovered; all six cases completed with positive observed live-memory coverage.",
+    "The public RSS-fallback counter concerns the macOS private-memory fallback; it is not a count of Linux PPid/procfs fallback scans.",
+    "Process-tree readings are sampled and non-atomic; successful probes are not a simultaneous snapshot or a kernel-enforced memory cap.",
+    "The 148-test final run and separate earlier 14-test run are distinct local observations, not CI counts or an aggregate qualification of every platform.",
+    "Local regression and smoke observations remain separate from the source-bound CI qualification recorded above."
+  ],
+  "ci_qualification": {
+    "schema": "lpsd-linux-memory-ci-audit-v1",
+    "repository": "https://github.com/MichaDit/lpsd",
+    "observed_at_utc": "2026-10-12T17:36:29Z",
+    "status": "passed",
+    "qualified_head_commit": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+    "qualified_head_tree": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+    "parent_commits": [
+      "c2d97efbeb24b54022d9f9caecc85bf6d5063365"
+    ],
+    "commit_url": "https://github.com/MichaDit/lpsd/commit/09d5385f262988885478a4d47151fcd1dfd39e9c",
+    "git_commit_api_url": "https://api.github.com/repos/MichaDit/lpsd/git/commits/09d5385f262988885478a4d47151fcd1dfd39e9c",
+    "source_identity": [
+      {
+        "path": "lpsd_benchmark/runner.py",
+        "sha256": "cf5255ffaa364b8b324a4fc9fa9b0e937bd1fc030f85b6308fed81b291343ead",
+        "git_blob_sha": "859cf6bf2ced4b3bfd3448e5e2a7658185f3efee",
+        "reviewed_local_equals_remote_blob": true
+      },
+      {
+        "path": "test_fast/test_linux_memory_tree.py",
+        "sha256": "c554c278bcbcdd31baaf94488c7765bba2a00611c0b647b82dfdff445be3fbde",
+        "git_blob_sha": "e8cc37432eb8bbef86b9091a54d00fad15856faa",
+        "reviewed_local_equals_remote_blob": true
+      },
+      {
+        "path": "test_fast/test_portable_benchmark.py",
+        "sha256": "0f32655ae273121153b53ae5ecaceb9e05631c6e7bcd4cb1788d5ecfad15e44b",
+        "git_blob_sha": "eadb822c61e955ae22643fe30072e70dc113db1c",
+        "reviewed_local_equals_remote_blob": true
+      }
+    ],
+    "checkout_evidence": {
+      "all_twelve_job_checkout_logs_read": true,
+      "all_initial_checkout_shas_equal_qualified_head": true,
+      "head_tree_verified_using_git_commit_and_tree_api": true,
+      "method": "First actions/checkout git log -1 --format=%H output in each completed job; later benchmark baseline checkouts are excluded."
+    },
+    "runs": [
+      {
+        "id": 38284527956,
+        "name": "Native tests and wheel",
+        "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956",
+        "event": "push",
+        "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+        "head_branch": "fix/linux-memory-tree-20261012",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-12T17:29:18Z",
+        "updated_at": "2026-10-12T17:34:07Z",
+        "job_count": 8,
+        "jobs": [
+          {
+            "id": 114929603510,
+            "name": "Wheel / linux-arm64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603510",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [],
+            "installed_wheel_gate": {
+              "outside_checkout": true,
+              "passed": true
+            }
+          },
+          {
+            "id": 114929603718,
+            "name": "Numerical / linux-x64-gcc / Python 3.10",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603718",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [
+              {
+                "scope": "optimized_regression_suite",
+                "passed": 2320,
+                "skipped": 5,
+                "xfail": 2,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "original_upstream_suite",
+                "passed": 18,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              }
+            ]
+          },
+          {
+            "id": 114929603777,
+            "name": "Wheel / linux-x64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603777",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [],
+            "installed_wheel_gate": {
+              "outside_checkout": true,
+              "passed": true
+            }
+          },
+          {
+            "id": 114929603834,
+            "name": "Numerical / macos-arm64-clang / Python 3.12",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603834",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [
+              {
+                "scope": "optimized_regression_suite",
+                "passed": 1918,
+                "skipped": 407,
+                "xfail": 2,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "original_upstream_suite",
+                "passed": 18,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              }
+            ]
+          },
+          {
+            "id": 114929603856,
+            "name": "Numerical / linux-x64-clang / Python 3.12",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603856",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [
+              {
+                "scope": "optimized_regression_suite",
+                "passed": 2320,
+                "skipped": 5,
+                "xfail": 2,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "original_upstream_suite",
+                "passed": 18,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              }
+            ]
+          },
+          {
+            "id": 114929603944,
+            "name": "Wheel / macos-arm64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603944",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [],
+            "installed_wheel_gate": {
+              "outside_checkout": true,
+              "passed": true
+            }
+          },
+          {
+            "id": 114929603979,
+            "name": "Numerical / linux-x64-gcc / Python 3.12",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603979",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [
+              {
+                "scope": "fftw_adapter_subset",
+                "passed": 212,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "disk_pipeline_subset",
+                "passed": 204,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "optimized_regression_suite",
+                "passed": 2320,
+                "skipped": 5,
+                "xfail": 2,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "original_upstream_suite",
+                "passed": 18,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              }
+            ]
+          },
+          {
+            "id": 114929603986,
+            "name": "Numerical / linux-arm64-gcc / Python 3.12",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527956/job/114929603986",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [
+              {
+                "scope": "optimized_regression_suite",
+                "passed": 2320,
+                "skipped": 5,
+                "xfail": 2,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              },
+              {
+                "scope": "original_upstream_suite",
+                "passed": 18,
+                "skipped": 0,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 38284527904,
+        "name": "Portable benchmark bootstrap",
+        "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527904",
+        "event": "push",
+        "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+        "head_branch": "fix/linux-memory-tree-20261012",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-12T17:29:18Z",
+        "updated_at": "2026-10-12T17:32:50Z",
+        "job_count": 4,
+        "jobs": [
+          {
+            "id": 114929603048,
+            "name": "Bootstrap / linux-x64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527904/job/114929603048",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [],
+            "portable_gates": {
+              "validated_all_three_methods_reports": 2,
+              "actual_output_point_counts": [
+                469,
+                938
+              ],
+              "completed_ram_cases": 12,
+              "direct_abi3_full_disk_psd_nsd_ownership_zero_energy_gate_passed": true,
+              "full_and_packed_disk_pair_command_step_passed": true
+            }
+          },
+          {
+            "id": 114929603361,
+            "name": "Bootstrap / linux-arm64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527904/job/114929603361",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [],
+            "portable_gates": {
+              "validated_all_three_methods_reports": 2,
+              "actual_output_point_counts": [
+                469,
+                938
+              ],
+              "completed_ram_cases": 12,
+              "direct_abi3_full_disk_psd_nsd_ownership_zero_energy_gate_passed": true,
+              "full_and_packed_disk_pair_command_step_passed": true
+            }
+          },
+          {
+            "id": 114929603496,
+            "name": "Bootstrap / windows-x64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527904/job/114929603496",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [
+              {
+                "scope": "windows_private_device_regression_suite",
+                "passed": 409,
+                "skipped": 2,
+                "xfail": 0,
+                "xpass": 0,
+                "failed": 0,
+                "errors": 0
+              }
+            ],
+            "portable_gates": {
+              "validated_all_three_methods_reports": 2,
+              "actual_output_point_counts": [
+                469,
+                938
+              ],
+              "completed_ram_cases": 12,
+              "direct_abi3_full_disk_psd_nsd_ownership_zero_energy_gate_passed": true,
+              "full_and_packed_disk_pair_command_step_passed": true
+            },
+            "mandatory_windows_gates": {
+              "frozen_estimator": {
+                "required": 24,
+                "observed_executed_and_passed": 24,
+                "passed": true
+              },
+              "bluestein": {
+                "required": 1,
+                "observed_executed_and_passed": 1,
+                "passed": true
+              },
+              "instrumented_csd": {
+                "required": 28,
+                "observed_executed_and_passed": 28,
+                "passed": true
+              },
+              "available_memory_query_without_fallback": true,
+              "powershell_watchdog_contracts_passed": true
+            }
+          },
+          {
+            "id": 114929603554,
+            "name": "Bootstrap / macos-arm64",
+            "url": "https://github.com/MichaDit/lpsd/actions/runs/38284527904/job/114929603554",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_sha": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+            "checkout_tree_sha": "479925f5a9cdeaefd9ed350c0eac2d1100bb0711",
+            "pytest_invocations": [],
+            "portable_gates": {
+              "validated_all_three_methods_reports": 2,
+              "actual_output_point_counts": [
+                469,
+                938
+              ],
+              "completed_ram_cases": 12,
+              "direct_abi3_full_disk_psd_nsd_ownership_zero_energy_gate_passed": true,
+              "full_and_packed_disk_pair_command_step_passed": true
+            }
+          }
+        ]
+      }
+    ],
+    "required_jobs": 12,
+    "passed_jobs": 12,
+    "failed_jobs": 0,
+    "actual_failures": [],
+    "windows_gate_scope_note": "The explicit log gates cover 24 frozen comparisons, one Bluestein comparison and 28 instrumented CSD cases. The 409/2 full Windows summary is separate and overlapping; no additional JUnit case-by-case audit is claimed here.",
+    "limitations": [
+      "CI correctness and packaging qualification is distinct from physical user-device performance testing; the final revision was not rerun on the user's Windows or ARM devices by this audit.",
+      "Pytest counts are from completed job log summaries. Focused FFTW/disk subsets overlap the full optimized suite and must not be added as distinct tests.",
+      "Skipped and expected-failure tests remain recorded. The macOS optimized suite has optional/platform skips; its separate portable bootstrap installs FFTW and passes direct/packed correctness gates.",
+      "The Windows portable workflow runs its existing five-module private-environment suite; it is not a Windows execution of the complete Linux-oriented optimized suite.",
+      "No new source-matched performance improvement is inferred from these CI runs; the pre-existing benchmark baselines and algorithm comparisons have their own scopes.",
+      "Artifact archives and individual JUnit test cases were not re-parsed for this audit. All twelve initial checkout SHAs, workflow/job status, reported counts, and explicit mandatory gate log observations were verified.",
+      "This audit binds only code commit 09d5385f262988885478a4d47151fcd1dfd39e9c. Any later commit must be checked for executable/source changes before inheriting this qualification."
+    ]
+  },
+  "ci_audit_original_sha256": "dd26b3fb8ed9755a00e36e074d889118b0485ce59973df766b071aede8b065f8",
+  "recovered_device_update": {
+    "commit": "e193080134a9578f9dd0ca1b1b809e8f64e470e2",
+    "parent": "c2d97efbeb24b54022d9f9caecc85bf6d5063365",
+    "tree": "9edb2cc6fb4742d526dee2a3d7f01537cb4c1df2",
+    "scope": "Concurrent published recovery of final fast.8 instrument results and verified cleanup; no runtime or test-source changes.",
+    "instrument_source": "b8c500217f7c0ad996f55b039bbf09d685800614",
+    "instrument_cases": 132,
+    "instrument_statuses": {
+      "completed": 116,
+      "failed": 3,
+      "skipped": 13
+    },
+    "regression_recheck": {
+      "passed": 2101,
+      "failed": 2,
+      "errors": 0,
+      "skipped": 6,
+      "xfailed": 2
+    },
+    "retained_windows_unique_successes": 131,
+    "expected_windows_cases": 132,
+    "source_cohort_note": "These recovered fast.8 observations do not qualify the later fast.9 correction on the physical instrument.",
+    "all_seven_report_hashes_verified": true,
+    "regression_summary_hash_verified": true,
+    "manifest_sha256": "c01bcbe44147758461c259fb2b0f1827a4eaac4790f72e5aa8cfee37c2fb6548",
+    "instrument_report_sha256": "a6ed84c98cfc9d2325fe45943bcf61e11899e57040876c4e6c12e72f72352c45",
+    "small_arm_thread_observation": {
+      "requested_threads": 2,
+      "actual_fftw_threads": 1,
+      "actual_native_lpsd_threads": 2,
+      "fftw_version": "3.3.5",
+      "threaded_library_digest_recorded": false,
+      "specific_loader_failure_known": false,
+      "two_thread_fftw_performance_measured": false
+    }
+  },
+  "publication_integration": {
+    "qualified_code_commit": "09d5385f262988885478a4d47151fcd1dfd39e9c",
+    "recovered_device_commit": "e193080134a9578f9dd0ca1b1b809e8f64e470e2",
+    "combined_source_device_tree": "2984f3f72f6108d6bf185a14dbaa9c2dfa16c45c",
+    "all_runtime_and_test_files_unchanged_from_qualified_code": true,
+    "changed_existing_files_from_qualified_code": [
+      "README.md",
+      "benchmarks/results/device-tests-20261012/fast8-arm64-instrument-snapshot.json",
+      "benchmarks/results/device-tests-20261012/manifest.json",
+      "benchmarks/results/device-tests-20261012/regressions.json",
+      "docs/benchmark-campaign-2026-10.md",
+      "docs/benchmark-final-evidence-20261012.md",
+      "docs/device-tests-20261012.md",
+      "docs/performance-fast9.md",
+      "docs/portable-benchmark.md"
+    ],
+    "new_files": [
+      "docs/linux-memory-guard.md",
+      "benchmarks/results/linux-memory-guard-validation-20261012.json"
+    ],
+    "only_documentation_and_recorded_results_differ": true
+  }
+}

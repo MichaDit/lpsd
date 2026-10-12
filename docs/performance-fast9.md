@@ -3,13 +3,19 @@
 Version **1.0.6+fast.9** combines the packed-real phase optimization and
 resource-guard repairs with the recovered direct logarithmic power reducer
 and corrections prompted by the subsequently uploaded physical-device tests.
-The final source pin is
+The fast.9 source qualification below is anchored to
 [`1c345822f015f3df93d5acb60ace2170f99d0547`](https://github.com/MichaDit/lpsd/commit/1c345822f015f3df93d5acb60ace2170f99d0547).
 The runtime integration `83da4d035258e718c4f0c8744b4c279a68092221` combines
 both fast.9 branches and the published device reports, preserving all three
 parent histories. The later `c417b9a` and `1c34582` commits change only test
 fixtures: complete child readiness and a self-contained CSD source copy for
 Windows checkouts whose temporary directory is on another drive.
+
+The later [Linux memory-guard follow-up](linux-memory-guard.md) fixes a
+separate process-tree accounting gap found while recovering the published
+work. It retains these numerical sources and historical performance data.
+Use the [portable guide](portable-benchmark.md#start-from-a-pinned-revision)
+for the current qualified source pin and its separate validation.
 
 The performance experiments retain their actual earlier source identities:
 the phase change was measured at `f4082f04`, and the direct 100M comparison
@@ -153,8 +159,8 @@ estimator nor establishes the cost on other platforms.
 
 The original instrument's discrepancy was not reproduced exactly on local
 x86. The final platform tests qualify the guarded path on their own native
-hardware, but a new run on that physical instrument is still required for
-device confirmation. The guard covers the tested extreme projection range;
+hardware, but a run of the corrected fast.9 source on that physical instrument
+is still required for device confirmation. The guard covers the tested extreme projection range;
 it is not a universal guarantee for every cancelling input.
 
 ### Portable regression fixtures
@@ -191,7 +197,15 @@ fast.8 observations are separate from the new fast.9 CI qualification.
 |---|---|---|
 | Windows x86-64, 16 admitted workers | **131 unique successful cases / 132** | The doubled-point 1B LPSD case was interrupted by a host crash; eight repeated support cases in the continuation are not counted twice |
 | ARM64 SBC, two workers, 384 MiB RAM budget | **108 completed, zero failed, 24 skipped / 132** | Complete recorded benchmark; skips remain skips |
-| ARM64 instrument, two workers, 768 MiB RAM budget | **6 completed cases at the retained checkpoint** | Later state is unavailable after the control-host restart; no current running/finished assertion |
+| ARM64 instrument, two workers, 768 MiB RAM budget | **132 recorded: 116 completed, three failed, 13 skipped** | Final fast.8 report recovered; three memory-limit failures remain, with a separate completed regression recheck |
+
+The later [device evidence update](https://github.com/MichaDit/lpsd/commit/e193080134a9578f9dd0ca1b1b809e8f64e470e2)
+recovered the instrument's complete report and post-benchmark regression run.
+The latter passed 2,101 tests, failed the deadline and exceptional-CSD tests,
+skipped six and retained two expected failures. All 25 frozen-reference
+prerequisite failures were resolved. Cleanup and release were freshly verified
+at 17:15 UTC on 12 October. These are recovered **fast.8** results; the new
+fast.9 corrections still have their separate CI qualification.
 
 Windows has approximately **64 GiB physical RAM** (64,727 MiB reported) and
 used a **32 GiB benchmark ceiling**, with 16 GiB of admitted dataset disk.
@@ -216,13 +230,25 @@ worker startup, setup and checks can dominate process time: the instrument's
 100k simple FFTW observation is 0.126 s API versus 19.197 s process wall time.
 No unmeasured startup improvement is claimed.
 
+The recovered small-ARM reports also distinguish the two admitted workers
+from the actual FFTW execution: the SBC and instrument report one FFTW thread,
+including the matched estimator, while native LPSD reports two. Their FFTW
+runtime is 3.3.5 and no threaded-library digest is retained. The loader tries
+discovered threading libraries before its explicit one-thread fallback; there
+is no ARM policy forcing one thread. The reports do not retain the load/init
+error needed to distinguish an absent threading library from another runtime
+failure. A working threaded runtime and an on-device one/two-thread comparison
+would be needed to qualify an additional gain. The present data establish
+neither a loader-code defect nor a measured two-thread improvement.
+
 The control host recorded bugcheck **0x4E** on restarting at
 `2026-10-12T09:32:56Z`; its cause remains unknown. The earlier `6246f0c`
 Windows 1B/doubled LPSD `invalid_result` lacks an invariant breakdown or
 retained spectra, so it is not diagnosed or relabelled as a valid timing.
-Three old instrument 30M disk cases hit their memory limit; this does not
-justify increasing device budgets. The corrected source is ready for new
-device runs, while these historical limitations remain recorded.
+Three instrument 30M disk cases hit their memory limit in both recorded
+campaigns; this does not justify increasing device budgets. The corrected
+source is ready for new device runs, while the original failed results remain
+recorded.
 
 ## Validation and source identity
 

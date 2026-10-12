@@ -87,6 +87,26 @@ Representative fast.8 white-noise results at **N=100,000**, baseline points:
 | ARM64 instrument | matched | 469 | 0.942455 | 19.692130 |
 | ARM64 instrument | lpsd | 469 | 1.714765 | 20.492503 |
 
+### Recovered larger instrument cases
+
+The completed fast.8 instrument report adds these full API observations:
+
+| Samples | Method | Baseline points | API wall, s | Doubled points | API wall, s |
+|---|---|---:|---:|---:|---:|
+| 10,000,000 | fftw | 651 | 7.623 | 1,302 | 7.330 |
+| 10,000,000 | matched | 651 | 68.343 | 1,302 | 129.203 |
+| 10,000,000 | lpsd | 651 | 203.451 | 1,302 | 428.136 |
+| 30,000,000 | lpsd | 678 | 691.414 | 1,356 | 1,447.498 |
+
+These are single observations of different estimators. The two simple FFTW
+times do not establish an advantage from doubling the output count. The
+successful cases reach 30M only for native LPSD. The three failed 30M disk
+cases have no completed API time; their `memory_limit` status records a
+supervisor stop, not a diagnosed OS out-of-memory event. Separate private
+memory measurements were not retained for those failures. There is no
+completed 100M or 1B instrument case. Its 13 skips comprise ten disk-budget
+and three time-budget decisions.
+
 ### Regression results
 
 | Run | Passed | Failed | Errors | Skipped | Expected failures |
@@ -129,6 +149,12 @@ A completed supervisor or released device does not mean every test passed.
 - Windows admitted 16 workers, 32 GiB benchmark RAM and 16 GiB dataset disk.
   The SBC admitted two workers, 0.375 GiB RAM and 2 GiB disk; the instrument
   admitted two workers, 0.75 GiB RAM and 2 GiB disk.
+- The fast.8 SBC and instrument report **one actual FFTW thread** for their
+  successful simple and matched FFTW cases, despite two requested workers;
+  native LPSD reports two. Their FFTW 3.3.5 runtime has no recorded threaded
+  library digest. The exports do not identify the loader/init failure, so an
+  absent library and an unusable threading runtime cannot be distinguished.
+  These observations do not qualify a two-thread FFTW speedup on either device.
 - The instrument ran a private Debian ARM64 chroot on the Android kernel,
   with its ordinary acquisition/web processes preserved. This is not a stock
   Android/Termux test or an isolated idle-device measurement. The first campaign
