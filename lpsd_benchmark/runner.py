@@ -301,13 +301,15 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
     arguments = command or [sys.executable, "-m", "lpsd_benchmark.worker", str(case_path), str(result_path)]
     wall = time.monotonic()
     case_end = min(deadline.end, wall + timeout)
+    next_heartbeat = wall + 60.
     process = subprocess.Popen(arguments, **kwargs)
     memory_reader = (_LinuxMemoryReader(process.pid).read if sys.platform.startswith("linux")
                      else lambda: _memory_usage(process.pid))
     status, reason, peak_rss = None, "", 0
     try:
         while process.poll() is None:
-            if time.monotonic() >= case_end:
+            now = time.monotonic()
+            if now >= case_end:
                 status, reason = "timeout", "time_limit"
                 terminate_tree(process)
                 break
@@ -332,6 +334,16 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                 status, reason = "failed", "disk_limit"
                 terminate_tree(process)
                 break
+            if now >= next_heartbeat:
+                next_heartbeat = now + 60.
+                try:
+                    print(f"[running] N={case.get('n', '?')} {case.get('method', '?')} "
+                          f"requested J={case.get('target_points', '?')}, "
+                          f"point factor={case.get('point_factor') or 'explicit'}; "
+                          f"process elapsed {now - wall:.0f} s; limit {case_end - wall:.0f} s "
+                          "(includes setup/checks; not a completed timing)", flush=True)
+                except (OSError, ValueError):
+                    pass  # An unavailable output stream must not stop the child.
             time.sleep(min(interval, max(0., case_end - time.monotonic())))
     except BaseException:
         terminate_tree(process)

@@ -504,6 +504,38 @@ def test_peak_width_is_reserved_for_isolated_tone_and_sparse_grid_is_undefined()
     assert isolated_tone_metrics("offbin_tone", np.array([2., 3.]), np.ones(2), tones) == {}
 
 
+def test_case_heartbeat_uses_watchdog_clock_without_changing_deadline(tmp_path, monkeypatch, capsys):
+    clock, reads, sleeps, stopped = [0.], [], [], []
+    def sleep(seconds):
+        sleeps.append(seconds)
+        clock[0] += seconds
+    def memory():
+        reads.append(clock[0])
+        return 17, 11
+    process = SimpleNamespace(pid=12345, returncode=None, poll=lambda: None)
+    monkeypatch.setattr(runner, "time", SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    monkeypatch.setattr(runner.subprocess, "Popen", lambda *args, **kwargs: process)
+    monkeypatch.setattr(runner, "_LinuxMemoryReader", lambda pid: SimpleNamespace(read=memory))
+    monkeypatch.setattr(runner, "_memory_usage", lambda pid: memory())
+    monkeypatch.setattr(runner, "terminate_tree", lambda child: stopped.append((child, clock[0])))
+    case = {"n": 1_000_000_000, "method": "lpsd", "target_points": 1000, "point_factor": 2.,
+            "storage": "ram", "ram_budget_bytes": 1024, "disk_budget_bytes": 1024}
+    result = runner.execute_case(case, tmp_path, SimpleNamespace(end=155.), 240.,
+                                 command=["synthetic-watchdog-child"], interval=30.)
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == 2
+    for line, elapsed in zip(lines, (60, 120)):
+        assert "N=1000000000 lpsd requested J=1000, point factor=2.0" in line
+        assert f"process elapsed {elapsed} s; limit 155 s" in line
+        assert "includes setup/checks; not a completed timing" in line
+        assert "%" not in line and "remaining" not in line
+    assert reads == [0., 30., 60., 90., 120., 150.]
+    assert sleeps == [30., 30., 30., 30., 30., 5.]
+    assert stopped == [(process, 155.)]
+    assert result == {"status": "timeout", "reason": "time_limit", "rss_measurement": "sampled",
+                      "process_wall_s": 155., "peak_rss_bytes": 17, "time_limit_s": 240.}
+
+
 def test_timeout_kills_owned_process_and_is_not_a_completed_timing(tmp_path):
     case = {"storage": "ram", "ram_budget_bytes": 1024 * resources.MIB,
             "disk_budget_bytes": 1024 * resources.MIB}
