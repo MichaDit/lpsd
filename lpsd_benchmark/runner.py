@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import platform
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,7 @@ from .resources import (Deadline, MIB, calibration_matches, choose_fft_layout, c
                         native_working_request, predict_seconds, select_storage, smoothing_controls)
 
 ROOT = Path(__file__).resolve().parent.parent
+_MEMORY_MEASUREMENT_GRACE_S = 1.0
 
 
 def _arch(value):
@@ -258,30 +260,98 @@ class _LinuxMemoryReader:
 
 
 def _memory_usage(pid):
-    """Return RSS and anonymous resident bytes; file aliases can inflate RSS."""
+    """Return complete-tree RSS/private bytes; None denotes an unavailable counter.
+
+    On macOS, read RSS through proc_pidinfo without issuing the optional,
+    privileged and potentially blocking USS query. An unreadable RSS value
+    anywhere in the live tree invalidates
+    the whole RSS sum instead of treating that process as using zero bytes.
+    """
     if sys.platform.startswith("linux"):
         return _LinuxMemoryReader(pid).read()
     try:
         import psutil
         owner = psutil.Process(pid)
         processes = [owner] + owner.children(recursive=True)
-        rss, private = 0, 0
+        rss, private, private_available = 0, 0, True
         for proc in processes:
             if not proc.is_running():
                 continue
             info = proc.memory_info()
+            if type(info.rss) is not int or info.rss < 0:
+                return None, None
             rss += info.rss
-            if os.name == "nt":
-                private += getattr(info, "private", getattr(info, "pagefile", 0))
+            if sys.platform == "darwin":
+                # Optional USS needs a privileged task port on older psutil and
+                # can block the synchronous watchdog. Read complete RSS only.
+                value = None
+            elif os.name == "nt":
+                value = getattr(info, "private", None)
+                if value is None:
+                    value = getattr(info, "pagefile", None)
             else:
-                private += getattr(proc.memory_full_info(), "uss", 0)
-        return rss, private
+                full_info = getattr(proc, "memory_full_info", None)
+                try:
+                    value = getattr(full_info(), "uss", None) if callable(full_info) else None
+                except (psutil.AccessDenied, psutil.NoSuchProcess, OSError, NotImplementedError):
+                    # RSS was measured already. Missing privileges, an exited
+                    # task or an unsupported USS query make only USS unknown.
+                    value = None
+            if type(value) is int and value >= 0:
+                private += value
+            else:
+                # An absent counter is different from a measured zero. Do
+                # not turn partial tree coverage into an anonymous reading.
+                private_available = False
+        return rss, private if private_available else None
     except (ImportError, OSError, ProcessLookupError):
-        return 0, 0
+        return None, None
     except Exception:
         # psutil's platform-specific NoSuchProcess/AccessDenied exceptions do
-        # not all inherit OSError. A disappearing child is not a failure.
-        return 0, 0
+        # not all inherit OSError. Incomplete RSS/tree coverage is unavailable;
+        # the supervisor still distinguishes a normal exit from a live gap.
+        return None, None
+
+
+def _owned_case_file_bytes(directory):
+    """Count only known files in this case and its immediate FFT workspaces.
+
+    FFT workspaces use exclusive ``fft-work-*`` child directories. Do not
+    recursively scan unrelated descendants or follow symlinks/reparse points.
+    Logical file lengths count sparse files without double-counting mmap views.
+    Files and FFT children can disappear while the worker cleans up; other
+    metadata errors still stop the supervised child.
+    """
+    def regular_size(path):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            return 0
+        if (not stat.S_ISREG(info.st_mode)
+                or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+            raise OSError("Expected a regular owned benchmark data file")
+        return info.st_size
+
+    root = directory.lstat()
+    if (not stat.S_ISDIR(root.st_mode)
+            or getattr(root, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        raise OSError("Expected a real owned benchmark case directory")
+    total = sum(regular_size(directory / name)
+                for name in ("input.f64", "workspace.c128", "powers.f64"))
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            if not entry.name.startswith("fft-work-"):
+                continue
+            try:
+                info = entry.stat(follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            if (not stat.S_ISDIR(info.st_mode)
+                    or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                raise OSError("Expected a real owned FFT workspace directory")
+            total += sum(regular_size(directory / entry.name / name)
+                         for name in ("workspace.c128", "powers.f64"))
+    return total
 
 
 def execute_case(case, directory, deadline, timeout, *, command=None, interval=.1):
@@ -307,6 +377,9 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
     memory_reader = (_LinuxMemoryReader(process.pid).read if sys.platform.startswith("linux")
                      else lambda: _memory_usage(process.pid))
     status, reason, peak_rss = None, "", 0
+    live_samples, missing_samples, rss_observed = 0, 0, False
+    rss_fallback_samples = 0
+    missing_since = wall
     try:
         while process.poll() is None:
             now = time.monotonic()
@@ -315,22 +388,48 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                 terminate_tree(process)
                 break
             rss, anonymous = memory_reader()
-            peak_rss = max(peak_rss, rss)
-            # On Linux disk paths, use anonymous resident bytes: the same
-            # file pages can be counted twice by overlapping mmap views.
-            measured = anonymous if case["storage"] == "disk" else rss
-            if measured > case["ram_budget_bytes"]:
-                status, reason = "failed", "memory_limit"
-                terminate_tree(process)
-                break
+            sampled_at = time.monotonic()
+            rss_available = type(rss) is int and rss >= 0
+            anonymous_available = type(anonymous) is int and anonymous >= 0
+            if rss_available:
+                peak_rss = max(peak_rss, rss)
+                rss_observed = rss_observed or rss > 0
+            # macOS may expose RSS but deny the task-port access needed for
+            # USS. Summed RSS is conservative: it includes private pages and
+            # can count shared/file mappings more than once. Keep the same
+            # budget and explicitly report every sample using this fallback.
+            rss_fallback = (sys.platform == "darwin" and case["storage"] == "disk"
+                            and rss_available and rss > 0 and not anonymous_available)
+            if case["storage"] == "disk":
+                available = (rss_available and anonymous_available and (rss > 0 or anonymous > 0)) or rss_fallback
+            else:
+                available = rss_available and rss > 0
+            if available:
+                live_samples += 1
+                rss_fallback_samples += int(rss_fallback)
+                missing_since = None
+                # On Linux disk paths, use anonymous resident bytes: the same
+                # file pages can be counted twice by overlapping mmap views.
+                measured = anonymous if case["storage"] == "disk" and not rss_fallback else rss
+                if measured > case["ram_budget_bytes"]:
+                    status, reason = "failed", "memory_limit"
+                    terminate_tree(process)
+                    break
+            else:
+                missing_samples += 1
+                if missing_since is None:
+                    missing_since = sampled_at
+                if sampled_at - missing_since >= _MEMORY_MEASUREMENT_GRACE_S:
+                    # A child may exit while its final memory read disappears.
+                    # Reap that exit normally instead of inventing a live loss.
+                    if process.poll() is not None:
+                        break
+                    status, reason = "failed", "memory_measurement_unavailable"
+                    terminate_tree(process)
+                    break
             # Only known owned file names are examined, not a recursive scan
             # of the user's drive. Logical lengths also bound sparse files.
-            logical_bytes = 0
-            for filename in ("input.f64", "workspace.c128", "powers.f64"):
-                try:
-                    logical_bytes += (directory / filename).stat().st_size
-                except FileNotFoundError:
-                    pass
+            logical_bytes = _owned_case_file_bytes(directory)
             if logical_bytes > case["disk_budget_bytes"]:
                 status, reason = "failed", "disk_limit"
                 terminate_tree(process)
@@ -345,7 +444,11 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                           "(includes setup/checks; not a completed timing)", flush=True)
                 except (OSError, ValueError):
                     pass  # An unavailable output stream must not stop the child.
-            time.sleep(min(interval, max(0., case_end - time.monotonic())))
+            sleep_at = time.monotonic()
+            pause = min(interval, max(0., case_end - sleep_at))
+            if missing_since is not None:
+                pause = min(pause, max(0., missing_since + _MEMORY_MEASUREMENT_GRACE_S - sleep_at))
+            time.sleep(pause)
     except BaseException:
         terminate_tree(process)
         raise
@@ -363,12 +466,15 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
     else:
         result = {"status": status, "reason": reason}
     high_water = result.get("peak_rss_bytes")
-    if isinstance(high_water, int) and high_water >= 0:
+    if type(high_water) is int and high_water >= 0:
         peak_rss = max(peak_rss, high_water)
         result["rss_measurement"] = "process_high_water_mark"
     else:
-        result["rss_measurement"] = "sampled"
-    result.update(process_wall_s=elapsed, peak_rss_bytes=peak_rss, time_limit_s=timeout)
+        result["rss_measurement"] = "sampled" if rss_observed else "unavailable"
+    result.update(process_wall_s=elapsed, peak_rss_bytes=peak_rss, time_limit_s=timeout,
+                  live_memory_observed=live_samples > 0, live_memory_samples=live_samples,
+                  live_memory_missing_samples=missing_samples,
+                  live_memory_rss_fallback_samples=rss_fallback_samples)
     return result
 
 
@@ -430,6 +536,9 @@ def run(args):
     disk_algorithm = getattr(args, "disk_fft_algorithm", "full")
     if disk_algorithm not in ("full", "packed-real"):
         raise ValueError("disk-fft-algorithm must be full or packed-real")
+    disk_reduction = getattr(args, "disk_power_reduction", "materialized")
+    if disk_reduction not in ("materialized", "direct-log"):
+        raise ValueError("disk-power-reduction must be materialized or direct-log")
     deadline = Deadline(args.max_hours * 3600, os.environ.get("LPSD_BENCHMARK_DEADLINE_EPOCH"))
     args.work_dir.mkdir(parents=True, exist_ok=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -455,6 +564,7 @@ def run(args):
                            "storage": args.storage, "fft_layout": args.fft_layout,
                            "window_storage": args.window_storage,
                            "disk_fft_algorithm": disk_algorithm,
+                           "disk_power_reduction": disk_reduction,
                            "sizes": args.sizes, "points": args.points or [],
                            "quality_sizes": sorted(set(args.quality_sizes) & set(args.sizes)) if args.profile == "full" else [],
                            "base_points": args.base_points,
@@ -504,6 +614,8 @@ def run(args):
             row.update(storage=storage, ram_required_bytes=ram_need, disk_required_bytes=disk_need,
                        disk_fft_algorithm=(disk_algorithm if storage == "disk" and row["method"] != "lpsd"
                                            else "not_applicable"),
+                       disk_power_reduction=(disk_reduction if storage == "disk" and row["method"] == "fftw"
+                                             else "not_applicable"),
                        fft_layout="blocked" if storage == "disk" and row["method"] != "lpsd" else fft_layout,
                        window_storage="blocked" if storage == "disk" and row["method"] != "lpsd" else window_storage,
                        fftw_plan_reserve_bytes=fftw_plan_reserve(row["n"], row["method"]) if storage == "ram" else 0,
@@ -516,6 +628,10 @@ def run(args):
             row.update(native_controls)
             if row["method"] in ("lpsd", "matched") and allowance is None and not skip:
                 skip = "memory_budget"
+            if (row["disk_power_reduction"] == "direct-log" and not skip
+                    and (disk_algorithm != "full" or row["n"] > 1_000_000_000
+                         or row["fft_memory_mb"] != 128.0)):
+                skip = "unsupported"
             prediction = predict_seconds(row, report["cases"])
             calibration = (row["n"] <= 100_000 and not any(
                 calibration_matches(row, old) for old in report["cases"]))
@@ -525,7 +641,9 @@ def run(args):
                 # The first small case is a strictly time-bounded probe, not
                 # a forecast. It may use a shorter window in a quick run.
                 prediction = min(180., max(0., deadline.remaining() - reserve))
-            if row["method"] in unavailable:
+            dependency_key = ((row["method"], "direct-log")
+                              if row["disk_power_reduction"] == "direct-log" else row["method"])
+            if dependency_key in unavailable:
                 skip = "dependency_unavailable"
             if deadline.remaining() <= reserve:
                 skip = "time_budget"
@@ -547,12 +665,13 @@ def run(args):
                 spectrum = result.pop("_spectrum", None)
                 row.update(result)
                 if row.get("reason") == "dependency_unavailable":
-                    unavailable.add(row["method"])
+                    unavailable.add(dependency_key)
                 if row["status"] == "completed" and spectrum:
                     _compare_group(report, spectra, row, spectrum)
                     if args.save_spectra:
                         report.setdefault("spectra", []).append({"n": row["n"], "method": row["method"],
                                                                   "signal": row["signal"], "storage": storage,
+                                                                  "disk_power_reduction": row["disk_power_reduction"],
                                                                   "target_points": row["target_points"], **spectrum})
             report["cases"].append(row)
             report["elapsed_seconds"] = deadline.elapsed()
@@ -665,6 +784,9 @@ def parser():
     run_parser.add_argument("--storage", choices=("auto", "ram", "disk", "both"), default="auto")
     run_parser.add_argument("--disk-fft-algorithm", choices=("full", "packed-real"), default="full",
                             help="Disk FFT: full complex transform or original-N real packing; odd N uses full fallback")
+    run_parser.add_argument("--disk-power-reduction", choices=("materialized", "direct-log"), default="materialized",
+                            help="Explicit simple/full disk FFTW reduction; direct-log requires the original "
+                                 "fs50/K100/Kaiser200 profile, 128 MiB FFT allowance and workspace admission")
     run_parser.add_argument("--fft-layout", choices=("auto", "out-of-place", "in-place"), default="auto",
                             help="auto first tries out-of-place RAM, then the smaller in-place allocation")
     run_parser.add_argument("--window-storage", choices=("auto", "full", "fft_input_then_blocked"), default="auto",

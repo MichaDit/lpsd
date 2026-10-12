@@ -103,7 +103,7 @@ class PackedRealDiskFFT:
             workspace_power_extra_virtual_mapping_bytes=4 * n + 8,
             packed_complex_region_bytes=8 * n, reconstruction_elements=capacity,
             reconstruction_additional_array_bytes=0,
-            reconstruction_scratch="Two disjoint complex views of the FFTW tile, plus the existing twiddle buffer; vectors use the existing k2 array.",
+            reconstruction_scratch="Two disjoint complex views of the FFTW tile, plus the existing twiddle buffer; phase offsets reuse the existing k2 and real scratch arrays.",
             maximum_large_file_bytes_with_input=24 * n,
             inner_layout=dict(inner),
         )
@@ -198,10 +198,32 @@ class PackedRealDiskFFT:
         if np.shares_memory(powers, self.matrix):
             raise ValueError("External powers must not overlap the transform workspace")
         if (np.shares_memory(powers, self._core._work)
-                or np.shares_memory(powers, self._core._twiddle)):
+                or np.shares_memory(powers, self._core._twiddle)
+                or np.shares_memory(powers, self._core._real_scratch)):
             raise ValueError("External powers must not overlap reconstruction scratch")
         if disk._maps_same_file(powers, self.workspace_path):
             raise ValueError("External powers must use a different file/inode")
+
+    def _phase_indices(self, imaginary, first_row, first_column):
+        """Fill exact original-N integer frequency indices in existing storage."""
+        core = self._core
+        row_count, column_count = imaginary.shape
+        if column_count <= min(len(core._k2), len(core._real_scratch)):
+            # These integer indices and their products are <= M <= 2**52,
+            # so both operations below are exact in float64, just as the
+            # former per-column integer product followed by float(). Reuse
+            # dead real scratch and fill the whole tile in memory order.
+            columns = core._real_scratch[:column_count]
+            np.add(core._k2[:column_count], float(first_column), out=columns)
+            np.multiply(columns, float(self.a), out=columns)
+            np.add(core._k2[first_row:first_row + row_count, None], columns[None, :],
+                   out=imaginary)
+        else:
+            # An unusual very wide tile may outgrow either existing vector.
+            # Keep its bounded path instead of allocating another buffer.
+            for column in range(column_count):
+                np.add(core._k2[first_row:first_row + row_count],
+                       float(self.a * (first_column + column)), out=imaginary[:, column])
 
     def _tile(self, output, first_row, row_count, first_column, column_count, scale):
         """Read both source rectangles before modifying any arithmetic view."""
@@ -231,9 +253,7 @@ class PackedRealDiskFFT:
         np.add(left, right, out=left)
         # Reuse the now-dead partner buffer for W_N^k. Integers <= M are
         # represented exactly; no M-based frequency or power normalization.
-        for column in range(column_count):
-            np.add(core._k2[first_row:first_row + row_count],
-                   float(self.a * (first_column + column)), out=right.imag[:, column])
+        self._phase_indices(right.imag, first_row, first_column)
         right.imag *= -2.0 * np.pi / self.n
         right.real.fill(0.0)
         np.exp(right, out=right)

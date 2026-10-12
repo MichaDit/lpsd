@@ -7,25 +7,30 @@ repository push permission, fork or pull request to report measurements.
 
 ## Start from a pinned revision
 
-The commands below use the validated **fast.8 runtime**,
-`2e215275124d0ffa05e314d7eddf18ecab5a1ae1`. All eight
-[native test/build jobs](https://github.com/MichaDit/lpsd/actions/runs/38218181121)
-and all four [portable platform jobs](https://github.com/MichaDit/lpsd/actions/runs/38218181042)
-passed for this exact code tree. The wrapper and downloaded source use the
-same full commit. When testing another revision, change both occurrences of
-the pin in the download command. Measurements and limits are documented in
-the [platform follow-up](performance-platform-followup.md).
+The commands below use the final **fast.9 source**,
+`1c345822f015f3df93d5acb60ace2170f99d0547`. Its
+[native test/build qualification](https://github.com/MichaDit/lpsd/actions/runs/38246521516)
+and [portable platform qualification](https://github.com/MichaDit/lpsd/actions/runs/38246521492)
+are recorded with the actual tested checkout, source hashes, test counts and
+optional skips in the [fast.9 results](performance-fast9.md). Physical-device
+campaigns, interrupted runs and the new corrections have separate evidence;
+CI does not establish completion of those earlier device campaigns.
+
+The wrapper and downloaded source use the same full commit. When testing
+another revision, change both occurrences of the pin in the download command.
+The earlier recovered R3 experiments and macOS qualification remain in the
+[historical evidence addendum](benchmark-final-evidence-20261012.md).
 
 Linux x86-64 / ARM64 and macOS, from a writable directory:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.sh | sh -s -- --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.sh | sh -s -- --revision 1c345822f015f3df93d5acb60ace2170f99d0547
 ```
 
 Windows, in Windows PowerShell 5.1 or PowerShell 7:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.ps1'))) -Revision '2e215275124d0ffa05e314d7eddf18ecab5a1ae1'
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.ps1'))) -Revision '1c345822f015f3df93d5acb60ace2170f99d0547'
 ```
 
 The command creates a fresh `lpsd-benchmark...` directory under the current
@@ -40,11 +45,11 @@ distribution; inspect the script first if that does not match your workflow.
 For an already downloaded checkout, the equivalent commands are:
 
 ```sh
-sh scripts/run_benchmark.sh --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1
+sh scripts/run_benchmark.sh --revision 1c345822f015f3df93d5acb60ace2170f99d0547
 ```
 
 ```powershell
-& ./scripts/run_benchmark.ps1 -Revision '2e215275124d0ffa05e314d7eddf18ecab5a1ae1'
+& ./scripts/run_benchmark.ps1 -Revision '1c345822f015f3df93d5acb60ace2170f99d0547'
 ```
 
 ## Choose resource and time budgets
@@ -68,6 +73,7 @@ these arguments changes the run:
 | Explicit matched-FFTW smoothing parallelism | `--threads 8 --smoothing-workers 8` |
 | Cap native LPSD working memory, including the hybrid's low frequencies | `--native-working-mib 384` |
 | Compare the real-input disk FFT route | `--storage disk --disk-fft-algorithm packed-real` |
+| Experimental direct logarithmic power reduction | `--methods fftw --storage disk --disk-fft-algorithm full --disk-power-reduction direct-log` |
 | Preserve local spectra for plotting | `--save-spectra` |
 | Put dataset files on a selected local drive | `--work-dir /path/on/local-drive/lpsd-work` |
 | Use an installed compatible compiler only | `--compiler system` |
@@ -76,16 +82,58 @@ these arguments changes the run:
 For example, the Unix command with a 32 GiB allocation ceiling is:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.sh | sh -s -- --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1 --ram-gib 32 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.sh | sh -s -- --revision 1c345822f015f3df93d5acb60ace2170f99d0547 --ram-gib 32 --point-factors 1 2
 ```
 
 For PowerShell, pass additional arguments as an array:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/2e215275124d0ffa05e314d7eddf18ecab5a1ae1/scripts/run_benchmark.ps1'))) -Revision '2e215275124d0ffa05e314d7eddf18ecab5a1ae1' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/1c345822f015f3df93d5acb60ace2170f99d0547/scripts/run_benchmark.ps1'))) -Revision '1c345822f015f3df93d5acb60ace2170f99d0547' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
 ```
 
 ### What the limits mean
+
+The experimental `direct-log` reduction is available in **fast.9**. It applies
+to the simple full-complex disk FFT with the original input length, the fixed
+50 Hz / K=100 / PSLL=200 profile and a 128 MiB FFT tile. It returns only the
+owned logarithmic group arrays instead of materializing the full one-sided
+power vector. Its independent energy traversal, original float32 PSD and
+complex64-square-root NSD remain in the complete-call timer. The full FFT
+matrix and the input still occupy **24N logical file bytes** together; this
+option does not change the disk-space admission reserve. Small-plan or
+insufficient-workspace cases remain ineligible. It does not select disk
+storage by itself and does not change the matched or native estimators.
+
+The default remains `materialized`. A separate Linux 100M paired comparison
+at source `ca2d26f9` measured **6.89% / 10.08% less complete-call wall time**
+at 704 / 1,408 points, with 6,336 PSD and 6,336 NSD comparisons bit-identical.
+The two variants shared their FFT geometry, buffers and dependency versions.
+This is a three-pair result on one host; the input/workspace fit in memory.
+The acceptance gate remains `rtol=3e-6, atol=0`. See the
+[direct profile, complete measurements and reproduction](direct-log-power.md).
+The separate recovered R3 qualification passed the same all-point tolerance
+on its small corpus. The last external one-billion-sample attempt completed
+only its reference: the unchanged disk-space check refused R3 before it
+started. Therefore **no one-billion Direct-log time or speedup is available**;
+see the [historical evidence addendum](benchmark-final-evidence-20261012.md).
+
+The supervisor counts known data files in owned immediate `fft-work-*`
+directories as well as the input. It does not recursively scan the selected
+drive. If budget-relevant live memory readings remain unavailable for one
+second while a child is still running, it stops and reaps that child and
+records `memory_measurement_unavailable`. A high-water mark collected after
+exit is a separate observation; it does not stand in for live monitoring.
+
+On macOS the live reader deliberately uses the complete process-tree RSS and
+does not query USS through `memory_full_info()`. The [psutil changelog](https://github.com/giampaolo/psutil/blob/master/HISTORY.rst)
+describes how the older USS query can require extra privileges or hang on
+headless systems (issue 2885); the pinned reader avoids that query entirely.
+For disk cases, the same RAM ceiling is therefore checked conservatively
+against RSS, with `live_memory_rss_fallback_samples` recording the actual
+number of such probes. RSS includes file mappings and can reject a large case
+earlier than a private-memory policy would. Missing or incomplete RSS still
+triggers the unchanged availability guard; no private value is invented.
+Linux and Windows retain their existing anonymous/private-memory policies.
 
 `--smoothing-workers` selects the worker limit for the `matched` method in both
 RAM and disk mode. It accepts a positive integer below 2**63 and is capped by
@@ -188,10 +236,15 @@ total disk budget. The same conservative resource admission and process
 supervision remain in force.
 
 Floating-point rounding can differ, especially at tiny spectral nulls. The
-packed/full comparison checks every PSD and NSD value against the requested
-1% relative limit and separately reports the historical, stricter 3-ppm gate.
-The previous strict results have not been relabeled. See the
-[qualification and platform measurements](performance-platform-followup.md).
+original qualification requires every PSD and NSD value to satisfy
+`rtol=3e-6, atol=0`; four off-bin comparisons in the earlier packed corpus
+failed that gate. A separate existing platform report also evaluates a 1%
+relative threshold. That alternate assessment does not authorize relaxing
+the original limit or turn its failures into passes. The later controlled
+100M white-noise pairs are bit-identical, but they do not cover those off-bin
+failures or establish a one-billion-sample packed result. See the
+[qualification and platform measurements](performance-platform-followup.md)
+and the [final evidence addendum](benchmark-final-evidence-20261012.md).
 
 Use small **disk** calibration cases before larger packed cases; full-FFT or
 RAM timings do not calibrate this algorithm. For example:
@@ -620,7 +673,7 @@ does not claim that uncommitted source is a clean remote revision. Normal
 contributors should use the commit-pinned download route.
 
 ```sh
-sh scripts/run_benchmark.sh --revision 2e215275124d0ffa05e314d7eddf18ecab5a1ae1 --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
+sh scripts/run_benchmark.sh --revision 1c345822f015f3df93d5acb60ace2170f99d0547 --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
 ```
 
 The bootstrap unit tests cover archive traversal/link rejection, checksum and

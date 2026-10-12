@@ -30,6 +30,7 @@ MAX_ISSUE_PARTS = 16
 STATES = ("completed", "skipped", "timeout", "failed", "cancelled")
 REASONS = ("memory_budget", "disk_budget", "time_budget", "uncalibrated",
            "dependency_unavailable", "time_limit", "memory_limit", "disk_limit",
+           "memory_measurement_unavailable",
            "worker_failed", "invalid_result", "cancelled", "unsupported", "")
 ARCHITECTURES = ("x86_64", "aarch64", "armv7", "x86", "other")
 OPERATING_SYSTEMS = ("Linux", "Windows", "Darwin", "Android", "Other")
@@ -149,6 +150,7 @@ def sanitize(report):
             "fft_layout": _enum(settings.get("fft_layout"), ("auto", "out-of-place", "in-place"), "auto"),
             "window_storage": _enum(settings.get("window_storage"), ("auto", "full", "fft_input_then_blocked"), "auto"),
             "disk_fft_algorithm": _enum(settings.get("disk_fft_algorithm"), ("full", "packed-real"), "full"),
+            "disk_power_reduction": _enum(settings.get("disk_power_reduction"), ("materialized", "direct-log"), "materialized"),
             "timing_scope": "complete_call_psd_and_nsd",
             "input_dtype": "float64",
             "output_dtype": "float32",
@@ -212,6 +214,20 @@ def sanitize(report):
         inner = integer(row.get("disk_fft_inner_samples"), 2, 2_147_483_647)
         if inner is not None:
             result["disk_fft_inner_samples"] = inner
+        applicable = row["method"] == "fftw" and result["storage"] == "disk"
+        reduction = (_enum(row.get("disk_power_reduction", "materialized"),
+                           ("materialized", "direct-log", "not_applicable"), "not_applicable")
+                     if applicable else "not_applicable")
+        result["disk_power_reduction"] = reduction
+        if reduction == "direct-log":
+            abi = integer(row.get("direct_log_power_abi"), 3, 3)
+            state_bytes = integer(row.get("direct_log_power_state_bytes"), 96, 48 * 65536 + 48)
+            if abi is not None:
+                result["direct_log_power_abi"] = abi
+            if state_bytes is not None:
+                result["direct_log_power_state_bytes"] = state_bytes
+        if applicable and reduction in ("materialized", "direct-log") and isinstance(row.get("power_vector_created"), bool):
+            result["power_vector_created"] = row["power_vector_created"]
         # Pool capacities are observed allocations, not resident-memory
         # measurements. Keep integer bytes and only actual retirement indices.
         for key in ("native_scratch_initial_bytes", "native_scratch_final_bytes", "native_scratch_peak_bytes"):
@@ -236,8 +252,18 @@ def sanitize(report):
         for key in ("finite", "psd_nonnegative", "nsd_matches_sqrt_psd", "input_unchanged", "point_count_resolved", "one_shot_window"):
             if isinstance(row.get(key), bool):
                 result[key] = row[key]
-        if row.get("rss_measurement") in ("process_high_water_mark", "sampled"):
+        if row.get("rss_measurement") in ("process_high_water_mark", "sampled", "unavailable"):
             result["rss_measurement"] = row["rss_measurement"]
+        for key in ("live_memory_samples", "live_memory_missing_samples"):
+            value = integer(row.get(key))
+            if value is not None:
+                result[key] = value
+        fallback_samples = integer(row.get("live_memory_rss_fallback_samples"))
+        live_samples = integer(row.get("live_memory_samples"))
+        if fallback_samples is not None and live_samples is not None and fallback_samples <= live_samples:
+            result["live_memory_rss_fallback_samples"] = fallback_samples
+        if isinstance(row.get("live_memory_observed"), bool):
+            result["live_memory_observed"] = row["live_memory_observed"]
         if row.get("native_backend") in ("bounded", "legacy", "not_applicable"):
             result["native_backend"] = row["native_backend"]
         result["noise"] = _numbers(row.get("noise"), (
@@ -250,6 +276,7 @@ def sanitize(report):
         result["phases"] = _numbers(row.get("phases"), (
             "workspace_and_plan_s", "workspace_and_fftw_planning_s", "window_and_normalization_s",
             "input_validation_copy_mean_window_s", "blocked_fftw_s", "ordered_one_sided_power_s",
+            "direct_log_groups_and_energy_s",
             "time_energy_diagnostic_s", "frequency_energy_diagnostic_s", "logarithmic_grouping_and_outputs_s",
             "matched_frequency_smoothing_s", "low_lpsd_and_outputs_s", "lpsd_complete_s",
             "release_fft_before_low_lpsd_s", "workspace_cleanup_s"))

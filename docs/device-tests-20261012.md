@@ -161,3 +161,14 @@ contains reviewed counts and relative test identifiers, without raw logs.
 - [fast8-windows-continuation.json](../benchmarks/results/device-tests-20261012/fast8-windows-continuation.json)
 - [fast8-arm64-board.json](../benchmarks/results/device-tests-20261012/fast8-arm64-board.json)
 - [fast8-arm64-instrument-snapshot.json](../benchmarks/results/device-tests-20261012/fast8-arm64-instrument-snapshot.json)
+
+## Follow-up in fast.9
+
+The [fast.9 follow-up](performance-fast9.md) evaluates these records and
+qualifies corrections for ZIP member names, Windows path assertions,
+archive-based frozen-reference metadata, slow-child deadline fixtures and
+extreme CSD projections. Its local and CI results are new source cohorts;
+they do not replace the failures, skips or interrupted cases in this
+publication snapshot. The physical instrument rerun and Windows doubled-point
+1B LPSD case remain unconfirmed. Original report bytes and manifest hashes
+are preserved.

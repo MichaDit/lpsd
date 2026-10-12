@@ -363,7 +363,9 @@ def extract_archive(archive, destination, budget, *, max_bytes, expected_root=No
                 mode = entry.external_attr >> 16
                 directory = entry.is_dir()
                 regular = not stat.S_ISLNK(mode) and (not stat.S_IFMT(mode) or stat.S_ISREG(mode))
-                target = validate(entry.filename, entry.file_size, directory, regular)
+                # ZipInfo normalizes backslashes on Windows and truncates at
+                # NUL. Validate the original archive name before either change.
+                target = validate(entry.orig_filename, entry.file_size, directory, regular)
                 if directory:
                     target.mkdir(exist_ok=True)
                 else:

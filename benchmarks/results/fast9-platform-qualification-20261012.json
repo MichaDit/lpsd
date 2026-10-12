@@ -1,0 +1,408 @@
+{
+  "schema": "lpsd-fast9-platform-qualification-public-v1",
+  "evidence_date": "2026-10-12",
+  "scope": "Public scalar qualification only. Original integration, targeted macOS fix and final CI have distinct source identities. No raw logs, spectra, machine identifiers, private paths or authentication data. No performance times are inferred from test or CI durations.",
+  "initial_integration": {
+    "commit": "e6aa1603d01ef81b9cfb6cc03643029768712bd0",
+    "tree": "32ce2d8f9ad9ce9c2317eae18677279ba18d9ac2",
+    "ci_receipt_sha256": "82aee042c45a7949aff4c94bee3618a34b45f6dec6e619661e9da1ab9e464613",
+    "status": "completed",
+    "job_counts": {
+      "success": 10,
+      "failure": 2
+    },
+    "runs": [
+      {
+        "id": 38238345436,
+        "url": "https://github.com/MichaDit/lpsd/actions/runs/38238345436",
+        "jobs": [
+          {
+            "id": 114774468515,
+            "name": "Wheel / macos-arm64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774468760,
+            "name": "Wheel / linux-arm64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774468972,
+            "name": "Wheel / linux-x64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774468998,
+            "name": "Numerical / linux-arm64-gcc / Python 3.12",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774469011,
+            "name": "Numerical / linux-x64-gcc / Python 3.10",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774469032,
+            "name": "Numerical / macos-arm64-clang / Python 3.12",
+            "status": "completed",
+            "conclusion": "failure"
+          },
+          {
+            "id": 114774469060,
+            "name": "Numerical / linux-x64-clang / Python 3.12",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774469170,
+            "name": "Numerical / linux-x64-gcc / Python 3.12",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 38238345435,
+        "url": "https://github.com/MichaDit/lpsd/actions/runs/38238345435",
+        "jobs": [
+          {
+            "id": 114774468648,
+            "name": "Bootstrap / windows-x64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774468852,
+            "name": "Bootstrap / linux-x64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 114774468865,
+            "name": "Bootstrap / macos-arm64",
+            "status": "completed",
+            "conclusion": "failure"
+          },
+          {
+            "id": 114774468957,
+            "name": "Bootstrap / linux-arm64",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "failure_scope": "Two macOS live-memory-observation failures. Retained as historical failures, not relabeled by the follow-up."
+  },
+  "macos_followup": {
+    "commit": "e0b66fe61797406e8b186d2598382d46b46bc1af",
+    "tree": "e83b8058e7ee876a5e947355e67c43bcf27c70b2",
+    "parent": "e6aa1603d01ef81b9cfb6cc03643029768712bd0",
+    "source_freeze_sha256": "3f545cb783a9493a5431c2a10503595a1bfd6709ce04ffd4eeb1d67e0eb60fec",
+    "changed_files": 5,
+    "unchanged_other_integration_files": 15,
+    "native_binaries_unchanged": true,
+    "targeted_receipt_sha256": "421419a3cfeb2386f62529168dd155676496b679ca08de4e356dc11f2aa2c884",
+    "targeted_tests": {
+      "os": "Linux",
+      "darwin_windows_branches": "controlled_test_objects",
+      "passed": 43,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "independent_review_sha256": "aa5c6c9aa85a51640e34190ed3c9d09ffc254eb8b09de4814ede45001965eb6e",
+    "static_review_status": "passed_static_review",
+    "fix_scope": "Darwin process-tree RSS without USS query; disk RSS fallback against the unchanged RAM ceiling; parent-owned bounded fallback sample count; psutil test extra. Missing observations still stop and reap the child after the existing grace. No spectral or timing changes."
+  },
+  "actual_final_ci": {
+    "receipt_sha256": "dfba53179055d54a02dd977324d5d21f5fb06acdc9a4c5c39b343a65376bbe10",
+    "observed_at_utc": "2026-10-12T11:16:32.847Z",
+    "status": "completed",
+    "conclusion": "success",
+    "source_commit": "e0b66fe61797406e8b186d2598382d46b46bc1af",
+    "source_tree": "e83b8058e7ee876a5e947355e67c43bcf27c70b2",
+    "pr_number": 3,
+    "api_reported_base_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+    "merge_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640",
+    "merge_tree": "fda6d72ff1b94a71169cd67296731a4a5e41c41c",
+    "actual_merge_parent_commits": [
+      "3fab6be75601562444f7cd22bf0fc13c21c6204d",
+      "e0b66fe61797406e8b186d2598382d46b46bc1af"
+    ],
+    "base_delta_scope": "README, device documentation and published device JSON reports only; no runtime changes.",
+    "job_count": 12,
+    "job_conclusion_counts": {
+      "success": 12,
+      "failure": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "incomplete": 0
+    },
+    "workflows": [
+      {
+        "id": 38240789429,
+        "name": "Native tests and wheel",
+        "url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429",
+        "head_sha": "e0b66fe61797406e8b186d2598382d46b46bc1af",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 38240789253,
+        "name": "Portable benchmark bootstrap",
+        "url": "https://github.com/MichaDit/lpsd/actions/runs/38240789253",
+        "head_sha": "e0b66fe61797406e8b186d2598382d46b46bc1af",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "jobs": [
+      {
+        "id": 114782585708,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782585708",
+        "name": "Wheel / macos-arm64",
+        "os": "macOS",
+        "architecture": "arm64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      },
+      {
+        "id": 114782585982,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782585982",
+        "name": "Wheel / linux-arm64",
+        "os": "Linux",
+        "architecture": "arm64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      },
+      {
+        "id": 114782586008,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782586008",
+        "name": "Numerical / linux-x64-gcc / Python 3.12",
+        "os": "Linux",
+        "architecture": "x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640",
+        "test_suites": [
+          {
+            "suite": "required_fftw_adapters",
+            "counts": {
+              "passed": 210
+            }
+          },
+          {
+            "suite": "required_disk_pipelines",
+            "counts": {
+              "passed": 204
+            }
+          },
+          {
+            "suite": "optimized_regression",
+            "counts": {
+              "passed": 2212,
+              "skipped": 4,
+              "xfailed": 2
+            }
+          },
+          {
+            "suite": "original_upstream",
+            "counts": {
+              "passed": 18
+            }
+          }
+        ]
+      },
+      {
+        "id": 114782586036,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782586036",
+        "name": "Numerical / macos-arm64-clang / Python 3.12",
+        "os": "macOS",
+        "architecture": "arm64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640",
+        "test_suites": [
+          {
+            "suite": "optimized_regression",
+            "counts": {
+              "passed": 1819,
+              "skipped": 397,
+              "xfailed": 2
+            }
+          },
+          {
+            "suite": "original_upstream",
+            "counts": {
+              "passed": 18
+            }
+          }
+        ]
+      },
+      {
+        "id": 114782586052,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782586052",
+        "name": "Numerical / linux-x64-gcc / Python 3.10",
+        "os": "Linux",
+        "architecture": "x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640",
+        "test_suites": [
+          {
+            "suite": "optimized_regression",
+            "counts": {
+              "passed": 2212,
+              "skipped": 4,
+              "xfailed": 2
+            }
+          },
+          {
+            "suite": "original_upstream",
+            "counts": {
+              "passed": 18
+            }
+          }
+        ]
+      },
+      {
+        "id": 114782586061,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782586061",
+        "name": "Numerical / linux-x64-clang / Python 3.12",
+        "os": "Linux",
+        "architecture": "x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640",
+        "test_suites": [
+          {
+            "suite": "optimized_regression",
+            "counts": {
+              "passed": 2212,
+              "skipped": 4,
+              "xfailed": 2
+            }
+          },
+          {
+            "suite": "original_upstream",
+            "counts": {
+              "passed": 18
+            }
+          }
+        ]
+      },
+      {
+        "id": 114782586093,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782586093",
+        "name": "Numerical / linux-arm64-gcc / Python 3.12",
+        "os": "Linux",
+        "architecture": "arm64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640",
+        "test_suites": [
+          {
+            "suite": "optimized_regression",
+            "counts": {
+              "passed": 2212,
+              "skipped": 4,
+              "xfailed": 2
+            }
+          },
+          {
+            "suite": "original_upstream",
+            "counts": {
+              "passed": 18
+            }
+          }
+        ]
+      },
+      {
+        "id": 114782586137,
+        "run_id": 38240789429,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789429/job/114782586137",
+        "name": "Wheel / linux-x64",
+        "os": "Linux",
+        "architecture": "x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      },
+      {
+        "id": 114782584937,
+        "run_id": 38240789253,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789253/job/114782584937",
+        "name": "Bootstrap / linux-arm64",
+        "os": "Linux",
+        "architecture": "arm64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      },
+      {
+        "id": 114782585297,
+        "run_id": 38240789253,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789253/job/114782585297",
+        "name": "Bootstrap / linux-x64",
+        "os": "Linux",
+        "architecture": "x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      },
+      {
+        "id": 114782585349,
+        "run_id": 38240789253,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789253/job/114782585349",
+        "name": "Bootstrap / windows-x64",
+        "os": "Windows",
+        "architecture": "x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      },
+      {
+        "id": 114782585440,
+        "run_id": 38240789253,
+        "html_url": "https://github.com/MichaDit/lpsd/actions/runs/38240789253/job/114782585440",
+        "name": "Bootstrap / macos-arm64",
+        "os": "macOS",
+        "architecture": "arm64",
+        "status": "completed",
+        "conclusion": "success",
+        "initial_checkout_commit": "d7011b46d61bd73218334ee6c358bc3dbc827640"
+      }
+    ],
+    "macos_skips": {
+      "total": 397,
+      "optional_fftw_library": 385,
+      "optional_fftw_native_runtime": 6,
+      "other_fftw_runtime": 2,
+      "cupy": 2,
+      "linux_only": 2
+    },
+    "bootstrap_scope": "Fresh private setup on Linux x86_64, Linux arm64, macOS arm64 and Windows x86_64. Each checks all three methods at actual 469/938 points, bounded-window settings, the separate disk-algorithm pairs and the integrated direct-power correctness smoke.",
+    "limits": "Optional skipped tests remain skipped. Subsets are not added to the complete suite. CI is not a billion-sample, physical-device or universal accuracy qualification. Previously published device failures remain separate."
+  },
+  "related_device_evidence": {
+    "publication_commit": "3fab6be75601562444f7cd22bf0fc13c21c6204d",
+    "runtime_commit": "b8c500217f7c0ad996f55b039bbf09d685800614",
+    "manifest_path": "benchmarks/results/device-tests-20261012/manifest.json",
+    "scope": "Separately published 32-GiB-budget Windows and constrained ARM64 observations, including failures and interrupted cases. Not measurements of this fast.9 commit."
+  }
+}

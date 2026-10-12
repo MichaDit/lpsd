@@ -8,7 +8,9 @@ These checks do not benchmark either implementation.
 from __future__ import annotations
 
 import gc
+import hashlib
 import os
+from pathlib import Path
 from types import SimpleNamespace
 import weakref
 
@@ -21,10 +23,80 @@ from benchmarks import matched_smoothing as smoothing_module
 from benchmarks.matched_smoothing import (
     MatchedSmoothing, _Kernel, _NativeSmoothing, estimate_once, kaiser_power_response,
 )
+from benchmarks.reference import matched_smoothing_20261010 as frozen_module
 from benchmarks.reference.matched_smoothing_20261010 import (
     MatchedSmoothing as OriginalSmoothing,
 )
 from lpsd_fast import api
+
+
+_FROZEN_MATCHED_SHA256 = "5b67cf30875a1a0374bc04af190b27fed184204b6ec6ec4b973947e1bc229eec"
+
+
+def _verified_frozen_source_metadata():
+    reference = Path(frozen_module.__file__).resolve()
+    digest = hashlib.sha256(reference.read_bytes()).hexdigest()
+    assert digest == _FROZEN_MATCHED_SHA256, "Frozen matched-smoothing reference changed"
+    api_path = Path(frozen_module._lpsd_api.__file__).resolve()
+    files = [reference, Path(frozen_module._fftw.__file__).resolve(), api_path,
+             api_path.parent.parent / "lpsd_fast" / "_native" / "fast_dft.c"]
+    return {
+        "repo": "https://github.com/MichaDit/lpsd",
+        "commit": None,
+        "commit_origin": "verified_frozen_test_snapshot",
+        "snapshot": "matched_smoothing_20261010",
+        "snapshot_introduced_in_commit": "cfa8a5a3b1a619d71ca756132ebed185f65a5df2",
+        "snapshot_sha256": digest,
+        "source_sha256": {
+            str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in files
+        },
+    }
+
+
+@pytest.fixture(scope="module", autouse=True)
+def frozen_reference_source_metadata():
+    # Archive checkouts have no Git metadata. Preserve the frozen implementation
+    # byte-for-byte and bypass only its Git lookup after verifying its fixed hash.
+    metadata = _verified_frozen_source_metadata()
+    previous = frozen_module._SOURCE_METADATA
+    frozen_module._SOURCE_METADATA = metadata
+    try:
+        yield metadata
+    finally:
+        frozen_module._SOURCE_METADATA = previous
+
+
+def test_frozen_reference_metadata_keeps_actual_hashes_without_git(
+        monkeypatch, frozen_reference_source_metadata):
+    def missing_git(*args, **kwargs):
+        raise FileNotFoundError("Git is unavailable in this archive test")
+
+    # Replace only the frozen module's subprocess binding; other provenance
+    # readers and subprocess users retain their real implementations.
+    monkeypatch.setattr(frozen_module, "subprocess", SimpleNamespace(check_output=missing_git))
+    result = frozen_module._source_metadata()
+    assert result == frozen_reference_source_metadata
+    assert result["commit"] is None
+    assert result["commit_origin"] == "verified_frozen_test_snapshot"
+    assert result["snapshot"] == "matched_smoothing_20261010"
+    assert result["snapshot_sha256"] == _FROZEN_MATCHED_SHA256
+    api_path = Path(frozen_module._lpsd_api.__file__).resolve()
+    paths = {Path(frozen_module.__file__).resolve(),
+             Path(frozen_module._fftw.__file__).resolve(), api_path,
+             api_path.parent.parent / "lpsd_fast" / "_native" / "fast_dft.c"}
+    assert set(result["source_sha256"]) == {str(path) for path in paths}
+    for path, digest in result["source_sha256"].items():
+        assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == digest
+
+
+def test_changed_frozen_reference_is_rejected_before_metadata_replacement(
+        tmp_path, monkeypatch, frozen_reference_source_metadata):
+    changed = tmp_path / "matched_smoothing_20261010.py"
+    changed.write_bytes(Path(frozen_module.__file__).read_bytes() + b"\n")
+    monkeypatch.setattr(frozen_module, "__file__", str(changed))
+    with pytest.raises(AssertionError, match="Frozen matched-smoothing reference changed"):
+        _verified_frozen_source_metadata()
+    assert frozen_module._SOURCE_METADATA is frozen_reference_source_metadata
 
 
 @pytest.fixture(scope="module")

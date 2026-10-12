@@ -495,6 +495,21 @@ def calibration_matches(case, row):
                       for value in (case, row)]
         if algorithms[0] != algorithms[1] or algorithms[0] not in ("full", "packed-real"):
             return False
+    if case["method"] == "fftw":
+        reductions = [value.get("disk_power_reduction", "materialized")
+                      if value.get("storage") == "disk" else "materialized"
+                      for value in (case, row)]
+        if reductions[0] != reductions[1] or reductions[0] not in ("materialized", "direct-log"):
+            return False
+        if reductions[0] == "direct-log":
+            # A materialized/RAM observation cannot qualify this new route.
+            # Keep the fixed tile profile and require actual ABI readback.
+            if (any(value.get("storage") != "disk" or value.get("disk_fft_algorithm", "full") != "full"
+                    or value.get("fft_memory_mb") != 128.0 for value in (case, row))
+                    or type(row.get("direct_log_power_abi")) is not int
+                    or row["direct_log_power_abi"] != 3
+                    or row.get("power_vector_created") is not False):
+                return False
     if (case["method"] == "matched"
             and row.get("smoothing_workers_limit") != case.get("smoothing_workers_limit")):
         return False

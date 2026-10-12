@@ -6,7 +6,7 @@ one billion samples and genuinely doubled output point counts. The
 results; the [compact evidence JSON](../benchmarks/results/recovered-campaign-20261012.json)
 records exact measurements, historical source revisions and artifact SHA256
 identities. The historical measurements use E/G (`1.0.6+fast.7`). This document
-also describes the explicit controls in the `1.0.6+fast.8` development line;
+also describes explicit controls retained in `1.0.6+fast.9`;
 those controls do not turn the older observations into measurements of the
 new revision.
 
@@ -45,12 +45,15 @@ Packed Real numerical experiment provides no performance measurement.
 
 ## Run the campaign
 
-The currently qualified fast.8 runtime is
-**`2e215275124d0ffa05e314d7eddf18ecab5a1ae1`**. The
-[portable guide](portable-benchmark.md#start-from-a-pinned-revision) now supplies
-complete launch commands with that pin. Its
-[final platform validation and new 100M comparison](performance-platform-followup.md)
-are separate from the historical E/G table above.
+The current fast.9 source pin is
+**`1c345822f015f3df93d5acb60ace2170f99d0547`**. The
+[portable guide](portable-benchmark.md#start-from-a-pinned-revision) supplies
+complete launch commands using that pin. The
+[fast.9 platform qualification and paired performance results](performance-fast9.md)
+include the later device-driven corrections. The
+[physical Windows and ARM64 reports](device-tests-20261012.md) retain their
+separate fast.8 source, successful cases and interruptions. Neither set is
+pooled with the historical E/G table above.
 
 Use the [portable benchmark instructions](portable-benchmark.md) for the
 platform-specific launcher and pinned dependencies. Select the full
