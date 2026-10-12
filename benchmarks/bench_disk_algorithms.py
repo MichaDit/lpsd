@@ -6,14 +6,18 @@ Uses the same FFTW binary, input, output grid, resource allowances and native
 library for both algorithms. Signal creation and hashes are outside each
 timer. Fresh planning, preprocessing, both spectra and workspace cleanup are
 inside. No speed threshold is a test; all-point numerical failures fail the
-run. This small performance screen creates no remote reports.
+run. --compare-packed-phase instead isolates the frozen fast.8 phase loop
+versus current packed reconstruction and requires bit-identical outputs.
+This small performance screen creates no remote reports.
 """
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 import gc
 import hashlib
+import inspect
 import json
 import math
 import os
@@ -62,6 +66,29 @@ def differences(reference, candidate):
     }
 
 
+@contextmanager
+def packed_phase_variant(variant):
+    """Select only the frozen reconstruction method outside the call timer.
+
+    This standalone harness executes serial calls. Restore the private class
+    selector even if a numerical check or the pipeline itself raises.
+    """
+    from benchmarks import bench_fftw_disk as pipeline
+    from benchmarks.reference.packed_real_phase_fast8 import LegacyPhasePackedRealDiskFFT
+    if variant not in ("legacy-phase", "packed-real"):
+        raise ValueError("Unknown packed phase comparison variant")
+    original = pipeline.disk_fft_class
+    def select(algorithm):
+        if algorithm == "packed-real" and variant == "legacy-phase":
+            return LegacyPhasePackedRealDiskFFT
+        return original(algorithm)
+    pipeline.disk_fft_class = select
+    try:
+        yield
+    finally:
+        pipeline.disk_fft_class = original
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sizes", type=int, nargs="+", default=[1_000_000])
@@ -74,6 +101,8 @@ def main():
     parser.add_argument("--fft-memory-mib", type=float, default=64.)
     parser.add_argument("--native-working-mib", type=float, default=128.)
     parser.add_argument("--max-seconds", type=float, default=600.)
+    parser.add_argument("--compare-packed-phase", action="store_true",
+                        help="Compare frozen fast.8 versus current packed phase construction, requiring identical spectra")
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -82,6 +111,8 @@ def main():
             any(not math.isfinite(value) or value <= 0 for value in
                 (args.fft_memory_mib, args.native_working_mib, args.max_seconds))):
         parser.error("Positive sizes, workers, repeats, factors, budgets and deadline required")
+    if args.compare_packed_phase and any(n % 2 for n in args.sizes):
+        parser.error("Packed phase comparison requires even lengths >= 4")
     import numpy as np
     from benchmarks import bench_fftw as bf
     from benchmarks.bench_fftw_disk import disk_pipeline, input_file
@@ -90,13 +121,16 @@ def main():
     from lpsd_benchmark.worker import _load_fftw, resolve_point_plan
     from lpsd_fast import api
 
+    variants = ("legacy-phase", "packed-real") if args.compare_packed_phase else ("full", "packed-real")
+    baseline, candidate = variants
     api._native()
     requested_directory = args.work_dir.resolve() if args.work_dir else None
     if requested_directory:
         requested_directory.mkdir(parents=True, exist_ok=True)
     backend = _load_fftw(bf, args.threads)
     report = {
-        "schema": "lpsd-disk-algorithm-pairs-v1", "status": "running",
+        "schema": "lpsd-packed-phase-pairs-v1" if args.compare_packed_phase else "lpsd-disk-algorithm-pairs-v1",
+        "status": "running", "baseline_variant": baseline, "candidate_variant": candidate,
         "started_utc": datetime.now(timezone.utc).isoformat(),
         "system": platform.system(), "machine": platform.machine(),
         "python": platform.python_version(), "numpy": np.__version__,
@@ -115,6 +149,20 @@ def main():
                  "cooperative between calls; ordinary portable runner has process supervision.",
         "cases": [],
     }
+    if args.compare_packed_phase:
+        from benchmarks.reference import packed_real_phase_fast8 as reference
+        method_hash = hashlib.sha256(inspect.getsource(
+            reference.LegacyPhasePackedRealDiskFFT._tile).encode("utf-8")).hexdigest()
+        if method_hash != reference.REFERENCE_METHOD_SHA256:
+            raise RuntimeError("Frozen fast.8 reconstruction method was changed")
+        reference_name = "benchmarks/reference/packed_real_phase_fast8.py"
+        report["source_sha256"][reference_name] = hashlib.sha256((ROOT / reference_name).read_bytes()).hexdigest()
+        report["comparison_reference"] = {
+            "commit": reference.REFERENCE_COMMIT, "file": reference.REFERENCE_FILE,
+            "method": "PackedRealDiskFFT._tile", "method_sha256": method_hash,
+            "scope": "Frozen method subclass of current packed FFT. Only reconstruction differs; all other code, buffers and settings are shared.",
+        }
+        report["scope"] += " Both variants request packed-real. Class selection is outside the timer; all returned PSD/NSD bytes must agree."
     deadline = time.perf_counter() + args.max_seconds
     write_report(args.output, report)
     failed = False
@@ -159,30 +207,42 @@ def main():
                                 report["cases"].append(row)
                                 for repeat in range(args.repeats):
                                     frames, samples = {}, {}
-                                    order = ("full", "packed-real") if repeat % 2 == 0 else ("packed-real", "full")
-                                    for algorithm in order:
+                                    order = variants if repeat % 2 == 0 else variants[::-1]
+                                    for variant in order:
                                         if time.perf_counter() >= deadline:
                                             raise TimeoutError("Comparison deadline reached between calls")
                                         options = SimpleNamespace(sample_rate=50., n_frequencies=plan["target_points"],
                                                                   n_averages=100, fft_memory_mb=args.fft_memory_mib,
                                                                   low_working_mb=args.native_working_mib, workers=threads,
                                                                   smoothing_workers=min(4, threads), power_storage="external" if n % 2 else "workspace",
-                                                                  disk_fft_algorithm=algorithm)
-                                        gc.collect()
-                                        wall, cpu = time.perf_counter(), time.process_time()
-                                        frame, details = disk_pipeline(method, values, backend, directory, options)
-                                        cpu, wall = time.process_time() - cpu, time.perf_counter() - wall
+                                                                  disk_fft_algorithm="packed-real" if args.compare_packed_phase else variant)
+                                        with packed_phase_variant(variant) if args.compare_packed_phase else nullcontext():
+                                            gc.collect()
+                                            wall, cpu = time.perf_counter(), time.process_time()
+                                            frame, details = disk_pipeline(method, values, backend, directory, options)
+                                            cpu, wall = time.process_time() - cpu, time.perf_counter() - wall
                                         if (not np.isfinite(frame.to_numpy()).all() or
                                                 not (frame.to_numpy() >= 0).all()):
                                             raise AssertionError("Nonfinite or negative spectrum")
-                                        frames[algorithm] = frame
-                                        samples[algorithm] = {"wall_s": wall, "cpu_s": cpu,
-                                                              "phases": details["phases"]}
-                                    a, b = frames["full"], frames["packed-real"]
+                                        if args.compare_packed_phase and (
+                                                details["disk_fft_algorithm"] != "packed-real"
+                                                or details["fft"]["route"] != "packed_even"
+                                                or details["fft"]["inner_n"] != n // 2):
+                                            raise AssertionError("Packed phase comparison did not execute the packed route")
+                                        frames[variant] = frame
+                                        samples[variant] = {"wall_s": wall, "cpu_s": cpu,
+                                                            "phases": details["phases"]}
+                                        if args.compare_packed_phase:
+                                            samples[variant].update(disk_fft_algorithm=details["disk_fft_algorithm"],
+                                                                    fft_inner_n=details["fft"]["inner_n"],
+                                                                    fft_factors=details["fft"]["factors"])
+                                    a, b = frames[baseline], frames[candidate]
                                     same_grid = np.array_equal(a.index.to_numpy(), b.index.to_numpy())
                                     comparison = {column: differences(a[column].to_numpy(), b[column].to_numpy())
                                                   for column in ("psd", "nsd")}
                                     good = same_grid and all(item["passed"] for item in comparison.values())
+                                    if args.compare_packed_phase:
+                                        good &= all(item["bit_identical"] for item in comparison.values())
                                     row["pairs"].append({"repeat": repeat, "order": order, "samples": samples,
                                                          "identical_frequency_grid": same_grid,
                                                          "comparison": comparison, "passed": good})
@@ -190,11 +250,11 @@ def main():
                                     write_report(args.output, report)
                                 row["median_wall_s"] = {algorithm: statistics.median(
                                     pair["samples"][algorithm]["wall_s"] for pair in row["pairs"])
-                                    for algorithm in ("full", "packed-real")}
+                                    for algorithm in variants}
                                 row["median_cpu_s"] = {algorithm: statistics.median(
                                     pair["samples"][algorithm]["cpu_s"] for pair in row["pairs"])
-                                    for algorithm in ("full", "packed-real")}
-                                row["ratio_of_wall_medians"] = row["median_wall_s"]["full"] / row["median_wall_s"]["packed-real"]
+                                    for algorithm in variants}
+                                row["ratio_of_wall_medians"] = row["median_wall_s"][baseline] / row["median_wall_s"][candidate]
                                 row["status"] = "completed" if all(pair["passed"] for pair in row["pairs"]) else "failed_numerical_gate"
                                 print(json.dumps({key: row[key] for key in ("n", "method", "signal", "point_factor", "status", "ratio_of_wall_medians")}), flush=True)
                         if bf.digest_array(values) != fingerprint:

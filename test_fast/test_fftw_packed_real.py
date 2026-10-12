@@ -89,6 +89,80 @@ def test_inner_factors_and_partner_order(fftw, tmp_path, factors):
         assert transform.packed_matrix.shape == factors
 
 
+@pytest.mark.parametrize("a,b,first_row,rows,first_column,columns,scratch", [
+    (32, 128, 3, 7, 101, 17, 32),
+    (512, 4096, 500, 12, 1023, 63, 64),
+    (1, 512, 0, 1, 1, 19, 64),
+    (64, 512, 5, 7, 100, 31, 3),
+    (8, 2**49, 1, 7, 2**49 - 4, 4, 4),
+    (7, 2**52 // 7, 4, 3, 2**52 // 7 - 6, 6, 6),
+])
+def test_reconstruction_phase_indices_are_exact(
+        a, b, first_row, rows, first_column, columns, scratch):
+    """Check partial/wide tiles and near-limit indices without a huge FFT.
+
+    Original-N frequency indices must match independently evaluated Python
+    integers exactly. Different complex-ufunc tile shapes may themselves
+    round differently, so no cross-tiling power equality is assumed here.
+    """
+    assert 2 * a * b <= 2**53
+    transform = object.__new__(PackedRealDiskFFT)
+    transform.a = a
+    indices = np.arange(a, dtype=np.float64)
+    indices.setflags(write=False)
+    transform._core = SimpleNamespace(_k2=indices, _real_scratch=np.empty(scratch))
+    phase = np.empty((rows, columns), dtype=np.complex128)
+    phase.real.fill(17.)
+    expected = np.array([
+        [float(row + a * column)
+         for column in range(first_column, first_column + columns)]
+        for row in range(first_row, first_row + rows)], dtype=np.float64)
+    transform._phase_indices(phase.imag, first_row, first_column)
+    assert phase.imag.tobytes() == expected.tobytes()
+    np.testing.assert_array_equal(phase.real, 17.)
+
+
+@pytest.mark.parametrize("factors", [(64, 64), (32, 128), (1, 512), (512, 1)])
+def test_phase_change_preserves_all_power_bits(fftw, tmp_path, factors):
+    from benchmarks.reference.packed_real_phase_fast8 import LegacyPhasePackedRealDiskFFT
+    n = 2 * factors[0] * factors[1]
+    values = 7.0 + np.random.default_rng(n).normal(scale=1e-9, size=n)
+    with PackedRealDiskFFT(fftw, n, tmp_path / "phases.c128", memory_mb=.25,
+                           packed_factors=factors) as transform:
+        transform.x[:] = values
+        transform.execute()
+        original_transform = transform.packed_matrix.tobytes()
+        original_indices = transform._core._k2.tobytes()
+        candidate = transform._tile
+        baseline = LegacyPhasePackedRealDiskFFT._tile.__get__(transform, type(transform))
+        assert not np.shares_memory(transform._core._real_scratch, transform._core._work)
+        assert not np.shares_memory(transform._core._real_scratch, transform._core._twiddle)
+        for capacity in (transform.memory["reconstruction_elements"], 7, 1):
+            transform.memory["reconstruction_elements"] = capacity
+            expected, actual = np.empty(n // 2 + 1), np.empty(n // 2 + 1)
+            transform._tile = baseline
+            transform.power_into(expected, 50., n)
+            transform._tile = candidate
+            transform.power_into(actual, 50., n)
+            assert actual.tobytes() == expected.tobytes()
+        assert transform.packed_matrix.tobytes() == original_transform
+        assert transform._core._k2.tobytes() == original_indices
+
+
+def test_phase_benchmark_restores_selector_after_error():
+    from benchmarks import bench_fftw_disk as pipeline
+    from benchmarks.bench_disk_algorithms import packed_phase_variant
+    from benchmarks.reference.packed_real_phase_fast8 import LegacyPhasePackedRealDiskFFT
+    original = pipeline.disk_fft_class
+    with pytest.raises(RuntimeError, match="failed call"):
+        with packed_phase_variant("legacy-phase"):
+            assert pipeline.disk_fft_class("packed-real") is LegacyPhasePackedRealDiskFFT
+            assert pipeline.disk_fft_class("full") is DiskFFT
+            raise RuntimeError("failed call")
+    assert pipeline.disk_fft_class is original
+    assert pipeline.disk_fft_class("packed-real") is PackedRealDiskFFT
+
+
 @pytest.mark.parametrize("strategy", ["strided", "transpose"])
 def test_progress_and_transpose(fftw, tmp_path, strategy):
     events = []

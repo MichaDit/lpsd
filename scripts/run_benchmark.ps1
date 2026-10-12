@@ -60,16 +60,34 @@ if ($ramBytes -lt 128MB) { throw 'Private setup needs at least 128 MiB of admitt
 function Test-Budget {
     if ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() -ge $deadline) { throw 'Setup/run deadline reached.' }
     # uv atomically moves/deletes installation directories while this watchdog
-    # walks them. Keep the files already found when a child disappears, and
-    # still reject access errors or an unavailable setup root.
+    # walks them. Windows' reparse-point check can also throw a terminating
+    # Win32Exception, which -ErrorAction SilentlyContinue does not suppress.
+    # Count files as they arrive so a disappeared child cannot discard earlier
+    # measurements. The settled installation is checked again after uv exits.
     $scanErrors = @()
-    $used = (Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable scanErrors |
-             Measure-Object -Property Length -Sum).Sum
+    $used = 0L
+    try {
+        Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable scanErrors |
+            ForEach-Object { $used += $_.Length }
+    } catch {
+        $scanErrors += $_
+    }
     foreach ($failure in $scanErrors) {
-        $exception = $failure.Exception
+        # ErrorVariable can contain an invocation Exception directly when the
+        # provider terminates, as well as the usual nonterminating ErrorRecord.
+        $exception = if ($failure -is [Exception]) { $failure } else { $failure.Exception }
+        # ProviderInvocationException and other PowerShell invocation wrappers
+        # retain the original exception. Do not infer absence from message text.
+        while ($exception -is [System.Management.Automation.RuntimeException] -and
+               $null -ne $exception.InnerException) {
+            $exception = $exception.InnerException
+        }
+        $missingWindowsPath = $exception -is [ComponentModel.Win32Exception] -and
+                              $exception.NativeErrorCode -in @(2, 3)
         if ($exception -isnot [IO.DirectoryNotFoundException] -and
             $exception -isnot [IO.FileNotFoundException] -and
-            $exception -isnot [System.Management.Automation.ItemNotFoundException]) {
+            $exception -isnot [System.Management.Automation.ItemNotFoundException] -and
+            -not $missingWindowsPath) {
             throw $failure
         }
     }

@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import platform
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -284,6 +285,47 @@ def _memory_usage(pid):
         return 0, 0
 
 
+def _owned_case_file_bytes(directory):
+    """Count only known files in this case and its immediate FFT workspaces.
+
+    FFT workspaces use exclusive ``fft-work-*`` child directories. Do not
+    recursively scan unrelated descendants or follow symlinks/reparse points.
+    Logical file lengths count sparse files without double-counting mmap views.
+    Files and FFT children can disappear while the worker cleans up; other
+    metadata errors still stop the supervised child.
+    """
+    def regular_size(path):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            return 0
+        if (not stat.S_ISREG(info.st_mode)
+                or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+            raise OSError("Expected a regular owned benchmark data file")
+        return info.st_size
+
+    root = directory.lstat()
+    if (not stat.S_ISDIR(root.st_mode)
+            or getattr(root, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        raise OSError("Expected a real owned benchmark case directory")
+    total = sum(regular_size(directory / name)
+                for name in ("input.f64", "workspace.c128", "powers.f64"))
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            if not entry.name.startswith("fft-work-"):
+                continue
+            try:
+                info = entry.stat(follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            if (not stat.S_ISDIR(info.st_mode)
+                    or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+                raise OSError("Expected a real owned FFT workspace directory")
+            total += sum(regular_size(directory / entry.name / name)
+                         for name in ("workspace.c128", "powers.f64"))
+    return total
+
+
 def execute_case(case, directory, deadline, timeout, *, command=None, interval=.1):
     """Whole-process timeout includes imports, input setup and final checks."""
     case_path, result_path = directory / "case.json", directory / "result.json"
@@ -323,14 +365,7 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
                 status, reason = "failed", "memory_limit"
                 terminate_tree(process)
                 break
-            # Only known owned file names are examined, not a recursive scan
-            # of the user's drive. Logical lengths also bound sparse files.
-            logical_bytes = 0
-            for filename in ("input.f64", "workspace.c128", "powers.f64"):
-                try:
-                    logical_bytes += (directory / filename).stat().st_size
-                except FileNotFoundError:
-                    pass
+            logical_bytes = _owned_case_file_bytes(directory)
             if logical_bytes > case["disk_budget_bytes"]:
                 status, reason = "failed", "disk_limit"
                 terminate_tree(process)

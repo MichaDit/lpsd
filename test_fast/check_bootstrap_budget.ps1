@@ -32,8 +32,9 @@ try {
     Assert-Rejected 'disk budget'
     $setupGiB = 64.0 / 1GB
 
-    # Return real files, then reproduce a nonterminating enumeration error
-    # when an installer has just removed or renamed an enumerated child.
+    # Return real files before the installer removes or renames a child. The
+    # Windows reparse-point probe raises a terminating Win32/provider exception,
+    # while other disappearance paths produce nonterminating errors.
     function Get-ChildItem {
         [CmdletBinding()]
         param([string]$LiteralPath, [switch]$Recurse, [switch]$File, [switch]$Force)
@@ -41,21 +42,39 @@ try {
         $record = New-Object System.Management.Automation.ErrorRecord (
             $script:injectedError, 'ConcurrentEnumeration',
             [System.Management.Automation.ErrorCategory]::ReadError, $LiteralPath)
-        $PSCmdlet.WriteError($record)
+        if ($script:terminateEnumeration) { $PSCmdlet.ThrowTerminatingError($record) }
+        else { $PSCmdlet.WriteError($record) }
     }
-    foreach ($kind in @([IO.DirectoryNotFoundException], [IO.FileNotFoundException],
-                       [System.Management.Automation.ItemNotFoundException])) {
-        $script:injectedError = [Activator]::CreateInstance($kind, @('Vanished installer child'))
-        Test-Budget
-        # A disappearance must not discard the files already measured.
-        $setupGiB = 16.0 / 1GB
-        Assert-Rejected 'disk budget'
-        $setupGiB = 64.0 / 1GB
+    $missingErrors = @(
+        (New-Object IO.DirectoryNotFoundException 'Vanished installer child'),
+        (New-Object IO.FileNotFoundException 'Vanished installer child'),
+        (New-Object System.Management.Automation.ItemNotFoundException 'Vanished installer child'),
+        (New-Object ComponentModel.Win32Exception 2),
+        (New-Object ComponentModel.Win32Exception 3),
+        (New-Object System.Management.Automation.ProviderInvocationException (
+            'Provider failed', (New-Object ComponentModel.Win32Exception 3)))
+    )
+    foreach ($script:terminateEnumeration in @($false, $true)) {
+        foreach ($script:injectedError in $missingErrors) {
+            Test-Budget
+            # A disappearance must not discard the files already measured.
+            $setupGiB = 16.0 / 1GB
+            Assert-Rejected 'disk budget'
+            $setupGiB = 64.0 / 1GB
+        }
+        foreach ($script:injectedError in @(
+            (New-Object UnauthorizedAccessException 'Access denied test'),
+            (New-Object IO.IOException 'Storage error test'),
+            (New-Object ComponentModel.Win32Exception (5, 'Native access denied test')),
+            (New-Object ComponentModel.Win32Exception (23, 'Native storage error test')),
+            (New-Object System.Management.Automation.ProviderInvocationException (
+                'Wrapped access denied test', (New-Object ComponentModel.Win32Exception 5))),
+            (New-Object IO.IOException 'The system cannot find the path specified.')
+        )) {
+            # The same text without a missing-path exception/code is not enough.
+            Assert-Rejected $script:injectedError.Message
+        }
     }
-    $script:injectedError = New-Object UnauthorizedAccessException 'Access denied test'
-    Assert-Rejected 'Access denied test'
-    $script:injectedError = New-Object IO.IOException 'Storage error test'
-    Assert-Rejected 'Storage error test'
     Remove-Item Function:Get-ChildItem
 
     $deadline = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - 1
@@ -63,7 +82,7 @@ try {
     $deadline += 61
     Remove-Item -LiteralPath $root -Recurse -Force
     Assert-Rejected 'directory is unavailable'
-    Write-Host 'Bootstrap watchdog: disappearance, access, storage, disk, deadline and missing-root checks passed.'
+    Write-Host 'Bootstrap watchdog: terminating/nonterminating disappearance, access, storage, disk, deadline and missing-root checks passed.'
 } finally {
     Remove-Item Function:Get-ChildItem -ErrorAction SilentlyContinue
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
