@@ -238,7 +238,8 @@ def test_deadline_stops_subprocess_group(tmp_path, monkeypatch):
         try:
             # Slow ARM startup must not be mistaken for failure to terminate.
             # Once the real child is ready, shorten the existing deadline.
-            while not pid_file.exists():
+            while (not pid_file.exists() or
+                   pid_file.read_text(encoding="ascii") != str(child.pid)):
                 instance.check()
                 assert child.poll() is None
                 time.sleep(.01)
