@@ -80,12 +80,15 @@ def memory_lower_bound(method, n, fft_in_place=False):
 
 
 def trim():
+    """Collect Python garbage everywhere; optionally trim a Linux allocator."""
     gc.collect()
+    if not sys.platform.startswith("linux"):
+        return
     try:
         function = ct.CDLL(None).malloc_trim
         function.argtypes, function.restype = [ct.c_size_t], ct.c_int
         function(0)
-    except AttributeError:
+    except (AttributeError, OSError):
         pass
 
 

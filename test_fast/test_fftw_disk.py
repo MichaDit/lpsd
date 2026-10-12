@@ -25,6 +25,31 @@ def fftw():
         pytest.skip(f"Optional FFTW shared library unavailable: {error}")
 
 
+@pytest.mark.parametrize("failure", (None, AttributeError, OSError))
+def test_windows_memory_ceiling_keeps_fallback_without_loading_posix_libc(monkeypatch, failure):
+    calls = []
+
+    def unavailable(*args, **kwargs):
+        raise OSError("No POSIX memory information")
+
+    def windows_query(status):
+        calls.append("windows")
+        if failure is not None:
+            raise failure("Windows memory query unavailable")
+        return 0
+
+    def forbid_libc(*args, **kwargs):
+        pytest.fail("Windows memory fallback must not attempt CDLL(None)")
+
+    monkeypatch.setattr(disk_module, "os", SimpleNamespace(name="nt", sysconf=unavailable))
+    monkeypatch.setattr(disk_module, "Path", lambda *args: SimpleNamespace(read_text=unavailable))
+    monkeypatch.setattr(disk_module.ct, "windll", SimpleNamespace(
+        kernel32=SimpleNamespace(GlobalMemoryStatusEx=windows_query)), raising=False)
+    monkeypatch.setattr(disk_module.ct, "CDLL", forbid_libc)
+    assert disk_module._memory_ceiling() == 2 * 1024**3
+    assert calls == ["windows"]
+
+
 def _ordered_copy(transform):
     # Only test-sized matrices are reordered in RAM. Production gathers
     # bounded column tiles and never allocates this full transpose.

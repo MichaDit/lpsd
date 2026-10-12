@@ -9,8 +9,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 import argparse
 from functools import partial
-import ctypes as ct
-import gc
 import json
 import os
 from pathlib import Path
@@ -25,6 +23,7 @@ from benchmarks import bench_fftw as bf
 from benchmarks.matched_smoothing import MatchedSmoothing
 from benchmarks.fftw_comparison_signals import signal
 from benchmarks.bench_fftw_optimized import measured, summarize, difference, write_json, sha256
+from benchmarks.bench_fftw_large_n import trim
 from lpsd_fast import api
 
 
@@ -171,15 +170,9 @@ def main():
                 bf.RealFFT = original_fft
             if "obj" in locals():
                 del obj
-            gc.collect()
             # Drop allocator-held pages between large configurations. This is
             # outside all measured intervals and is optional off glibc.
-            try:
-                trim = ct.CDLL(None).malloc_trim
-                trim.argtypes, trim.restype = [ct.c_size_t], ct.c_int
-                trim(0)
-            except AttributeError:
-                pass
+            trim()
     assert bf.digest_array(x) == fingerprint
     output["input_unchanged"] = True
     output["max_rss_bytes"] = bf.max_rss_bytes()

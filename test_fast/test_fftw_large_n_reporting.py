@@ -8,6 +8,54 @@ from types import SimpleNamespace
 import pytest
 
 from benchmarks import bench_fftw_disk as driver
+from benchmarks import bench_fftw_large_n as large
+from benchmarks import bench_fftw_tuning as tuning
+
+
+@pytest.mark.parametrize("cleanup", (driver.trim, tuning.trim), ids=("disk", "tuning"))
+@pytest.mark.parametrize("platform_name", ("win32", "darwin"))
+def test_trim_collects_garbage_without_loading_libc_off_linux(monkeypatch, platform_name, cleanup):
+    events = []
+    monkeypatch.setattr(large.sys, "platform", platform_name)
+    monkeypatch.setattr(large.gc, "collect", lambda: events.append("collect"))
+
+    def forbid_libc(*args, **kwargs):
+        pytest.fail("Cleanup must not attempt CDLL(None) off Linux")
+
+    monkeypatch.setattr(large.ct, "CDLL", forbid_libc)
+    cleanup()
+    assert events == ["collect"]
+
+
+@pytest.mark.parametrize("failure", (AttributeError, OSError))
+def test_linux_trim_remains_optional_when_allocator_interface_is_missing(monkeypatch, failure):
+    events = []
+    monkeypatch.setattr(large.sys, "platform", "linux")
+    monkeypatch.setattr(large.gc, "collect", lambda: events.append("collect"))
+
+    def unavailable(name):
+        assert name is None and events == ["collect"]
+        if failure is OSError:
+            raise OSError("No process library available")
+        return SimpleNamespace()  # A libc without malloc_trim.
+
+    monkeypatch.setattr(large.ct, "CDLL", unavailable)
+    driver.trim()
+    assert events == ["collect"]
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Real Linux allocator query")
+def test_linux_trim_still_uses_real_libc(monkeypatch):
+    observed = []
+    original_loader = large.ct.CDLL
+
+    def load(name):
+        observed.append(name)
+        return original_loader(name)
+
+    monkeypatch.setattr(large.ct, "CDLL", load)
+    driver.trim()
+    assert observed == [None]
 
 
 def test_input_setup_failure_finishes_parent_report_and_cleans_partial_input(tmp_path, monkeypatch):

@@ -139,9 +139,10 @@ def _memory_ceiling():
                 limits.append(int(status.total_physical))
         except (AttributeError, OSError):
             pass
-    if not limits:
+    if not limits and os.name != "nt":
         # macOS/BSD expose physical memory through sysctl, without an
-        # external command or package dependency.
+        # external command or package dependency. A failed Windows query
+        # must keep the conservative fallback, not open a POSIX process libc.
         try:
             libc = ct.CDLL(None)
             value, size = ct.c_uint64(), ct.c_size_t(8)
