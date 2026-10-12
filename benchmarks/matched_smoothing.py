@@ -48,6 +48,7 @@ def _source_metadata():
                  Path(_lpsd_api.__file__).resolve(),
                  checkout / "lpsd_fast" / "prepared.py",
                  checkout / "benchmarks" / "_fftw_native.py",
+                 checkout / "benchmarks" / "_bounded_window.py",
                  checkout / "benchmarks" / "_fftw_bluestein.py",
                  checkout / "benchmarks" / "_lpsd_disk.py",
                  checkout / "lpsd_fast" / "_native" / "fast_dft.c",
@@ -262,6 +263,13 @@ class MatchedSmoothing:
     and denominator together and retains the denominator for later calls.
     Cached kernels are prepared as before. The NumPy fallback retains eager
     normalization; metadata distinguishes the requested and actual behavior.
+
+    ``window_storage='fft_input_then_blocked'`` opts into one computation with
+    bounded window storage. Setup evaluates the original full-vector native
+    sums and fourth moment in the owned FFT input. Preparation keeps the full
+    anchored NumPy mean and regenerates only small window blocks. This mode
+    requires the native window provider, retains no full window, and disables
+    ``validation()`` and repeated computation. The default remains reusable.
     """
 
     def __init__(self, backend, n, sample_rate=50.0, psll=200.0,
@@ -277,10 +285,15 @@ class MatchedSmoothing:
                  defer_normalization=False, total_cache_mb=None,
                  fft_algorithm="native", fft_convolution_length=None,
                  time_limit=None, fft_in_place=False,
-                 low_frequency_backend="prepared"):
+                 low_frequency_backend="prepared", window_storage="full"):
         if low_frequency_backend not in ("prepared", "bounded"):
             raise ValueError("low_frequency_backend must be 'prepared' or 'bounded'")
         self.low_frequency_backend = low_frequency_backend
+        if window_storage not in ("full", "fft_input_then_blocked"):
+            raise ValueError("window_storage must be 'full' or 'fft_input_then_blocked'")
+        self.window_storage = window_storage
+        self._bounded_window = None
+        self._one_shot_used = False
         started = time.perf_counter()
         self.fft = None
         self._low_prepared = None
@@ -366,6 +379,13 @@ class MatchedSmoothing:
         self._last_low_metadata = None
         phases = {"grid_and_sources_s": time.perf_counter() - started}
         try:
+            if window_storage == "fft_input_then_blocked":
+                from benchmarks._bounded_window import BoundedWindow
+                # Unsupported providers/generators are rejected before any
+                # full FFT buffer is allocated, without an N-vector fallback.
+                self._bounded_window = BoundedWindow(
+                    self.n, self.beta, self.provider, kind=full_window,
+                    taper_fraction=taper_fraction)
             tick = time.perf_counter()
             self.fft = _fftw.create_real_fft(
                 backend, self.n, planner=planner, time_limit=time_limit, algorithm=fft_algorithm,
@@ -373,17 +393,23 @@ class MatchedSmoothing:
                 operations_library=_lpsd_api._LIB, in_place=fft_in_place)
             phases["fftw_allocation_and_plan_s"] = time.perf_counter() - tick
             tick = time.perf_counter()
-            if full_window == "kaiser":
+            if self._bounded_window is not None:
+                self._bounded_window.fill_into(self.fft.x)
+                normalization_window = self.fft.x
+            elif full_window == "kaiser":
                 self.window = self.provider.generate(self.n, self.beta)
             elif full_window == "rectangular":
                 self.window = np.ones(self.n, dtype=np.float64)
             else:
                 self.window = _periodic_tukey(self.n, taper_fraction)
-            self.s1, self.s2 = self.provider.sums(self.window)
+            if self._bounded_window is None:
+                normalization_window = self.window
+            self.s1, self.s2 = self.provider.sums(normalization_window)
             fourth = 0.0
             for first in range(0, self.n, self.block_bins):
-                squared = np.square(self.window[first:first + self.block_bins])
+                squared = np.square(normalization_window[first:first + self.block_bins])
                 fourth += float(np.dot(squared, squared))
+            del normalization_window
             time_weight_factor = self.n * fourth / self.s2**2
             # At beta≈25.4 the endpoints are tiny.  Scaling the native
             # periodic-window constant gives a close target ENBW without
@@ -399,11 +425,15 @@ class MatchedSmoothing:
             # Only the NumPy fallback needs a second powers-sized workspace.
             self.scratch = (np.empty_like(self.powers)
                             if self.operations.backend == "numpy" else None)
-            self._bound_operations = self.operations.bind(
-                time_buffer=self.fft.x, window=self.window, transform=self.fft.y,
+            binding_options = dict(
+                time_buffer=self.fft.x, transform=self.fft.y,
                 n=self.n, sample_rate=self.sample_rate, window_square_sum=self.s2,
                 powers=self.powers, scratch=self.scratch,
                 allow_in_place_fft=fft_in_place)
+            if self._bounded_window is None:
+                self._bound_operations = self.operations.bind(window=self.window, **binding_options)
+            else:
+                self._bound_operations = self.operations.bind_output_only(**binding_options)
             phases["windows_normalization_and_buffers_s"] = time.perf_counter() - tick
             tick = time.perf_counter()
             budget = (requested_kernel_budget if total_budget is None else
@@ -471,6 +501,9 @@ class MatchedSmoothing:
                                    / (math.pi*self.halfwidth-self.beta)) / enbw_bins)
             else:
                 tail = 2 / (math.pi**2 * self.halfwidth * enbw_bins)
+            window_details = (None if self._bounded_window is None else
+                              dict(self._bounded_window.metadata))
+            window_scratch_bytes = 0 if window_details is None else window_details["scratch_bytes"]
             self.metadata = {
                 "algorithm": "FFTW analytic Kaiser-power smoothing with explicit low-frequency LPSD subset",
                 "same_estimator_as_lpsd": False,
@@ -486,6 +519,11 @@ class MatchedSmoothing:
                 "fft": self.fft.describe(),
                 "requested_smoothing_workers": self.smoothing_workers,
                 "operation_binding": self._bound_operations.metadata,
+                "window_storage": window_storage,
+                "window_storage_details": window_details,
+                "window_buffer_bytes": 0 if self.window is None else self.window.nbytes,
+                "window_scratch_bytes": window_scratch_bytes,
+                "one_shot_window": window_storage == "fft_input_then_blocked",
                 "full_record_window": full_window,
                 "full_record_taper_fraction": float(taper_fraction) if full_window == "tukey" else None,
                 "full_record_kaiser_psll_db": self.psll if full_window == "kaiser" else None,
@@ -545,7 +583,8 @@ class MatchedSmoothing:
                     max((8 * len(k.weights) for k in self._kernels if k.weights is not None), default=0)
                     if self.weight_dtype == np.float32 else 0,
                 "fftw_array_bytes": int(_fftw.fft_buffer_bytes(self.fft)
-                                        + self.window.nbytes + self.powers.nbytes
+                                        + (0 if self.window is None else self.window.nbytes)
+                                        + self.powers.nbytes + window_scratch_bytes
                                         + (0 if self.scratch is None else self.scratch.nbytes)),
                 "streamed_kernel_temporary_bytes": (0 if self._native_smoothing.backend == "native"
                                                      else "bounded NumPy arrays of weight_block_bins"),
@@ -647,6 +686,8 @@ class MatchedSmoothing:
         tick = time.perf_counter() if phases is not None else 0.0
         if self._closed:
             raise RuntimeError("MatchedSmoothing is closed")
+        if self.window_storage == "fft_input_then_blocked" and self._one_shot_used:
+            raise RuntimeError("fft_input_then_blocked is a one-shot window; construct a fresh MatchedSmoothing")
         names = (outputs,) if isinstance(outputs, str) else tuple(outputs)
         if not names or len(set(names)) != len(names) or any(name not in ("psd", "nsd") for name in names):
             raise ValueError("outputs must select psd, nsd, or both")
@@ -655,7 +696,15 @@ class MatchedSmoothing:
             raise ValueError("Input length differs from the prepared length")
         if phases is not None:
             now = time.perf_counter(); phases["input_validation_s"] = now - tick; tick = now
-        self._bound_operations._prepare_validated(values)
+        if self._bounded_window is not None:
+            self._one_shot_used = True
+            try:
+                self._bounded_window.prepare_into(values, self.fft.x, self.operations)
+            finally:
+                self._bounded_window.close()
+                self._bounded_window = None
+        else:
+            self._bound_operations._prepare_validated(values)
         if phases is not None:
             now = time.perf_counter(); phases["copy_mean_and_window_s"] = now - tick; tick = now
         self.fft.execute()
@@ -738,6 +787,8 @@ class MatchedSmoothing:
         """Global FFT normalization check; call outside compute timing."""
         if self._closed:
             raise RuntimeError("MatchedSmoothing is closed")
+        if self.window_storage == "fft_input_then_blocked":
+            raise RuntimeError("validation is unavailable for the opt-in one-shot window; compare against a full-window reference")
         expected = _fftw.validation_time_power(self.fft, self.window, self.s2, samples)
         obtained = float(np.sum(self.powers) * self.df)
         return {"global_windowed_time_power_v2": expected,
@@ -756,6 +807,9 @@ class MatchedSmoothing:
         if self._bound_operations is not None:
             self._bound_operations.close()
             self._bound_operations = None
+        if self._bounded_window is not None:
+            self._bounded_window.close()
+            self._bounded_window = None
         if self.fft is not None:
             self.fft.close()
         self._native_smoothing = None
@@ -786,6 +840,11 @@ def estimate_once(backend, samples, outputs="psd", **kwargs):
     arrays. FFT-only buffers are released before computing the native subset;
     ``release_fft_before_low=False`` retains the earlier overlap for comparison.
     Public input validation and PSD/NSD rounding are unchanged.
+
+    ``window_storage='fft_input_then_blocked'`` also removes the separate full
+    time-window allocation before input preparation, using an additional
+    bounded regeneration pass. Its constructor metadata records the scratch
+    limit; the ordinary full-window mode remains the default.
     """
     options = dict(kwargs)
     release_fft_before_low = bool(options.pop("release_fft_before_low", True))

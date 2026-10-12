@@ -288,13 +288,18 @@ def test_small_arm_budget_prevents_giant_files_and_keeps_small_ram_case():
     assert huge[3] == "disk_budget"
 
 
-def test_in_place_auto_can_admit_1b_fftw_with_32gib_allocation_budget():
+def test_bounded_in_place_auto_can_admit_1b_fftw_with_plan_reserve():
     n = 1_000_000_000
-    # A deliberately tight 26-GiB budget fits the 24N layout, not 32N.
+    # The original 24N in-place accounting omitted FFTW planner scratch.
+    # Reusing the FFT input for the one-shot window restores admission while
+    # retaining an empirical 8N planner allowance and bounded helper reserve.
     chosen = resources.choose_fft_layout(n, "fftw", "white", "auto", 26 * resources.GIB)
+    window = resources.choose_window_storage(n, "fftw", "white", "auto", chosen, 26 * resources.GIB)
     assert chosen == "in-place"
+    assert window == "fft_input_then_blocked"
     assert resources.required_ram(n, "fftw", fft_layout="out-of-place") > 26 * resources.GIB
-    assert resources.required_ram(n, "fftw", fft_layout=chosen) < 26 * resources.GIB
+    assert resources.required_ram(n, "fftw", fft_layout=chosen) > 26 * resources.GIB
+    assert resources.required_ram(n, "fftw", fft_layout=chosen, window_storage=window) < 26 * resources.GIB
     assert resources.choose_fft_layout(100_000, "fftw", "white", "auto", 32 * resources.GIB) == "out-of-place"
 
 

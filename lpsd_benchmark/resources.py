@@ -242,22 +242,41 @@ def detect_resources(directory, ram="auto", disk="auto", threads=None):
                      disk_budget // MIB * MIB, max(1, used_threads), capacity)
 
 
-def required_ram(n, method, signal="white", fft_layout="out-of-place"):
+def fftw_plan_reserve(n, method):
+    """Empirical extra FFTW allowance; not a universal planner upper bound.
+
+    Controlled 10M/30M profiles found roughly one additional 8N allocation
+    with FFTW 3.3.10 ESTIMATE. Keep that allowance separate from our arrays.
+    Prime lengths and other builds can require more; live guards still apply.
+    """
+    return 0 if method == "lpsd" else 8 * n
+
+
+def required_ram(n, method, signal="white", fft_layout="out-of-place",
+                 window_storage="full"):
     """Peak live arrays, bounded native scratch and interpreter overhead.
 
     This models the complete-call paths used by worker.py, not the much
     larger persistent-cache configuration from earlier reuse experiments.
-    FFTW may allocate planner-dependent additional scratch; the monitor and
-    address-space guard remain active, including for prime-length transforms.
+    Includes an empirical FFTW planning allowance in addition to known arrays.
+    The monitor and address-space guard remain active: this is not a proof of
+    an upper bound for every transform length or FFTW build.
     """
     per_sample = {"fftw": 32, "matched": 36, "lpsd": 8}[method]
     if fft_layout == "in-place" and method != "lpsd":
         per_sample -= 8
+    window_scratch = 0
+    if method != "lpsd" and window_storage == "fft_input_then_blocked":
+        per_sample -= 8
+        # Same scalar bound as BoundedWindow, without importing NumPy here:
+        # Kaiser has one block; the hybrid's Tukey has three extra temporary
+        # blocks for indices, reflection and ufunc/casting. No full-N window.
+        window_scratch = (8 if method == "fftw" else 32) * min(n, 262144)
     source_peak = 72 if signal in ("pink", "brown", "mixed_tones") else 24
     if signal == "white":
         source_peak = 8
     # The first case also includes NumPy/pandas/SciPy/native import overhead.
-    arrays = per_sample * n
+    arrays = per_sample * n + fftw_plan_reserve(n, method) + window_scratch
     if method == "lpsd":
         # Minimum useful bounded scratch allowance. The worker resolves the
         # real native plan before creating data, then verifies its exact pool
@@ -277,18 +296,38 @@ def required_disk(n, method):
     return (8 if method == "lpsd" else 24) * n + 16 * MIB
 
 
-def choose_fft_layout(n, method, signal, requested, ram_budget):
+def choose_fft_layout(n, method, signal, requested, ram_budget, window_storage="auto"):
     if method == "lpsd":
         return "not_applicable"
     if requested != "auto":
         return requested
-    if required_ram(n, method, signal, "out-of-place") <= ram_budget:
+    considered_window = "full" if window_storage == "auto" else window_storage
+    if required_ram(n, method, signal, "out-of-place", considered_window) <= ram_budget:
         return "out-of-place"
     return "in-place"
 
 
-def select_storage(n, method, signal, requested, resources, fft_layout="out-of-place"):
-    ram_need = required_ram(n, method, signal, fft_layout)
+def choose_window_storage(n, method, signal, requested, fft_layout, ram_budget):
+    """Keep the fast reusable full window when it fits the chosen FFT layout.
+
+    Auto tries full/out-of-place, full/in-place, then bounded/in-place.
+    Explicit layout and window requests are retained, even if admission must
+    subsequently skip a RAM case or choose disk storage.
+    """
+    if method == "lpsd":
+        return "not_applicable"
+    if requested != "auto":
+        return requested
+    full_need = required_ram(n, method, signal, fft_layout, "full")
+    bounded_need = required_ram(n, method, signal, fft_layout, "fft_input_then_blocked")
+    if full_need <= ram_budget or full_need <= bounded_need:
+        return "full"
+    return "fft_input_then_blocked"
+
+
+def select_storage(n, method, signal, requested, resources, fft_layout="out-of-place",
+                   window_storage="full"):
+    ram_need = required_ram(n, method, signal, fft_layout, window_storage)
     if requested in ("auto", "ram") and ram_need <= resources.ram_budget:
         return "ram", ram_need, 0, None
     if requested == "ram":

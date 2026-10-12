@@ -23,7 +23,8 @@ import time
 
 from . import DEFAULT_SIZES, MAX_SECONDS, METHODS, SCHEMA, SIGNALS
 from .privacy import MAX_CASES, MAX_LOCAL_BYTES, sanitize, submit
-from .resources import Deadline, MIB, choose_fft_layout, detect_resources, predict_seconds, select_storage
+from .resources import (Deadline, MIB, choose_fft_layout, choose_window_storage,
+                        detect_resources, fftw_plan_reserve, predict_seconds, select_storage)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -416,6 +417,7 @@ def run(args):
                            "threads": resources.threads, "sample_rate_hz": 50., "seed": 20261010,
                            "n_averages": 100, "psll_db": 200., "prediction_safety_factor": 4.,
                            "storage": args.storage, "fft_layout": args.fft_layout,
+                           "window_storage": args.window_storage,
                            "sizes": args.sizes, "points": args.points or [],
                            "quality_sizes": sorted(set(args.quality_sizes) & set(args.sizes)) if args.profile == "full" else [],
                            "base_points": args.base_points,
@@ -442,11 +444,17 @@ def run(args):
                                         min(resources.ram_budget, refreshed.ram_budget),
                                         min(resources.disk_budget, refreshed.disk_budget),
                                         resources.threads, resources.cpu_capacity)
-            fft_layout = choose_fft_layout(row["n"], row["method"], row["signal"], args.fft_layout, refreshed.ram_budget)
+            fft_layout = choose_fft_layout(row["n"], row["method"], row["signal"], args.fft_layout,
+                                           refreshed.ram_budget, args.window_storage)
+            window_storage = choose_window_storage(row["n"], row["method"], row["signal"],
+                                                    args.window_storage, fft_layout, refreshed.ram_budget)
             storage, ram_need, disk_need, skip = select_storage(
-                row["n"], row["method"], row["signal"], specification["requested_storage"], refreshed, fft_layout)
+                row["n"], row["method"], row["signal"], specification["requested_storage"],
+                refreshed, fft_layout, window_storage)
             row.update(storage=storage, ram_required_bytes=ram_need, disk_required_bytes=disk_need,
                        fft_layout="blocked" if storage == "disk" and row["method"] != "lpsd" else fft_layout,
+                       window_storage="blocked" if storage == "disk" and row["method"] != "lpsd" else window_storage,
+                       fftw_plan_reserve_bytes=fftw_plan_reserve(row["n"], row["method"]) if storage == "ram" else 0,
                        ram_budget_mib=refreshed.ram_budget // MIB, disk_budget_mib=refreshed.disk_budget // MIB,
                        fft_memory_mb=max(1., min(128., refreshed.ram_budget / MIB / 8)),
                        low_working_mb=max(1., min(2048., refreshed.ram_budget / MIB / 3)))
@@ -542,6 +550,8 @@ def parser():
     run_parser.add_argument("--storage", choices=("auto", "ram", "disk", "both"), default="auto")
     run_parser.add_argument("--fft-layout", choices=("auto", "out-of-place", "in-place"), default="auto",
                             help="auto first tries out-of-place RAM, then the smaller in-place allocation")
+    run_parser.add_argument("--window-storage", choices=("auto", "full", "fft_input_then_blocked"), default="auto",
+                            help="auto keeps the full window if it fits, otherwise regenerates bounded blocks for a one-shot call")
     run_parser.add_argument("--profile", choices=("full", "performance"), default="full",
                             help="full adds the five historical signal presets at --quality-sizes")
     run_parser.add_argument("--quality-sizes", nargs="+", type=int, default=[100_000, 1_000_000, 1_000_003],

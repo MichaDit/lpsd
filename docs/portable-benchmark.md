@@ -59,6 +59,7 @@ these arguments changes the run:
 | Baseline, double and quadruple output counts | `--point-factors 1 2 4` |
 | RAM and disk paths, when both fit | `--storage both` |
 | Explicit FFT buffer comparison | `--fft-layout in-place` or `--fft-layout out-of-place` |
+| Explicit one-shot window memory comparison | `--window-storage full` or `--window-storage fft_input_then_blocked` |
 | Preserve local spectra for plotting | `--save-spectra` |
 | Put dataset files on a selected local drive | `--work-dir /path/on/local-drive/lpsd-work` |
 | Use an installed compatible compiler only | `--compiler system` |
@@ -85,6 +86,25 @@ physical memory, cgroup limits and currently available memory. It cannot make
 (29.8023223876953125 GiB). Neither flag reserves an exact physical partition.
 The JSON records the admitted budget after OS reservations and rounding to
 whole MiB, together with measured process memory.
+
+Automatic RAM admission first tries the full window with separate FFT input
+and output, then an in-place FFT with the full window. If neither fits, it
+tries an in-place one-shot path: the existing FFT input initially holds the
+window for unchanged normalization, then window coefficients are regenerated
+in blocks of at most 262,144 samples while preparing the input. That removes
+one separate 8N-byte window allocation (8 decimal GB at N=1 billion). The
+original samples, frequency plan and complete-call timing scope are preserved.
+This mode supports exactly one computation per prepared object. Normal reusable
+estimator objects retain their full-window default.
+
+RAM estimates also include an **empirical 8N-byte FFTW planning allowance**,
+motivated by separate 10M/30M phase-memory measurements with FFTW 3.3.10. This
+allowance is an admission estimate, not a proven upper bound for every FFTW
+build or prime transform length. The JSON records the selected layout, window
+mode, known window buffers and planning allowance separately from measured RSS.
+The bounded-window scalar model admits both FFTW variants at one billion white
+samples on an otherwise available 32-decimal-GB machine after the existing OS
+reserve; actual execution still depends on measured free memory and guards.
 
 The runner estimates the complete working set before allocating a case,
 monitors workers, and uses an additional Linux address-space guard where

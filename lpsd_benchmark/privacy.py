@@ -97,6 +97,7 @@ def sanitize(report):
                                   "n_averages", "psll_db", "prediction_safety_factor", "base_points")),
             "storage": _enum(settings.get("storage"), ("auto", "ram", "disk", "both"), "auto"),
             "fft_layout": _enum(settings.get("fft_layout"), ("auto", "out-of-place", "in-place"), "auto"),
+            "window_storage": _enum(settings.get("window_storage"), ("auto", "full", "fft_input_then_blocked"), "auto"),
             "timing_scope": "complete_call_psd_and_nsd",
             "input_dtype": "float64",
             "output_dtype": "float32",
@@ -136,6 +137,7 @@ def sanitize(report):
             "method": row["method"], "signal": row["signal"],
             "storage": _enum(row.get("storage"), ("ram", "disk"), "ram"),
             "fft_layout": _enum(row.get("fft_layout"), ("out-of-place", "in-place", "blocked", "not_applicable"), "not_applicable"),
+            "window_storage": _enum(row.get("window_storage"), ("full", "fft_input_then_blocked", "blocked", "not_applicable"), "not_applicable"),
             "status": _enum(row.get("status"), STATES, "failed"),
             "reason": _enum(row.get("reason", ""), REASONS, "worker_failed"),
             "case_role": _enum(row.get("case_role"), ("calibration", "comparison"), "comparison"),
@@ -145,6 +147,7 @@ def sanitize(report):
                              "native_working_mb", "cache_bytes",
                              "native_scratch_bytes", "native_streaming_points", "native_streaming_buffer_bytes",
                              "native_working_bytes_upper_bound",
+                             "fftw_plan_reserve_bytes", "window_buffer_bytes", "window_scratch_bytes", "window_block_samples",
                              "ram_required_bytes", "disk_required_bytes", "predicted_process_s",
                              "time_limit_s", "process_wall_s", "compute_wall_s", "compute_cpu_s",
                              "input_setup_s", "peak_rss_bytes", "sample_iterations",
@@ -158,7 +161,7 @@ def sanitize(report):
             value = row.get(key)
             if isinstance(value, str) and re.fullmatch(r"[0-9]{1,3}(?:\.[0-9]{1,4}){1,3}(?:\+fast\.[0-9]{1,3})?", value):
                 result[key] = value
-        for key in ("finite", "psd_nonnegative", "nsd_matches_sqrt_psd", "input_unchanged", "point_count_resolved"):
+        for key in ("finite", "psd_nonnegative", "nsd_matches_sqrt_psd", "input_unchanged", "point_count_resolved", "one_shot_window"):
             if isinstance(row.get(key), bool):
                 result[key] = row[key]
         if row.get("rss_measurement") in ("process_high_water_mark", "sampled"):

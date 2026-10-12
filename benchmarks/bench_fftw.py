@@ -394,6 +394,13 @@ class Periodogram:
     the same FFT bins directly into log groups; that optional reduction can
     differ in floating-point summation order. ``compute(outputs=('psd','nsd'))``
     returns both representations after one transform.
+
+    ``window_storage='fft_input_then_blocked'`` is an explicit one-shot mode.
+    It normalizes the original native Kaiser window in the owned FFT input,
+    then retains only a small block for regeneration during preparation. The
+    original full-vector anchored mean is preserved. A second computation and
+    ``validation()`` are unavailable in this mode; use a fresh full-window
+    reference for validation. The default retains its reusable full window.
     """
 
     def __init__(self, backend, n, sample_rate=1.0, psll=200.0,
@@ -401,7 +408,8 @@ class Periodogram:
                  time_limit=None, window_provider=None, aggregation="log",
                  density="psd", output_dtype="float32", operations="auto",
                  operations_library=None, fft_algorithm="native",
-                 fft_convolution_length=None, fft_in_place=False):
+                 fft_convolution_length=None, fft_in_place=False,
+                 window_storage="full"):
         if aggregation not in ("log", "none") or density not in ("psd", "nsd", "both"):
             raise ValueError("Unknown aggregation or density")
         if operations not in ("auto", "numpy", "native", "native_grouped"):
@@ -410,15 +418,29 @@ class Periodogram:
             raise ValueError("Output dtype must be float32 or float64")
         if not math.isfinite(sample_rate) or sample_rate <= 0:
             raise ValueError("Sample rate must be positive and finite")
+        if window_storage not in ("full", "fft_input_then_blocked"):
+            raise ValueError("window_storage must be 'full' or 'fft_input_then_blocked'")
         self.n, self.sample_rate = n, sample_rate
         self.aggregation, self.density, self.output_dtype = aggregation, density, output_dtype
+        self.window_storage = window_storage
+        self._one_shot_used = False
         self._bound_ops = None
-        self.fft = create_real_fft(backend, n, planner, time_limit,
-                                   algorithm=fft_algorithm,
-                                   convolution_length=fft_convolution_length,
-                                   operations_library=operations_library, in_place=fft_in_place)
+        self._bounded_window = None
+        self.fft = None
         try:
-            provider = window_provider or KaiserWindow()
+            # Validate the opt-in's supported generator before allocating FFT
+            # buffers. It never silently falls back to an additional N-vector.
+            if window_storage == "fft_input_then_blocked":
+                from benchmarks._bounded_window import BoundedWindow
+                provider = window_provider or KaiserWindow()
+                self.beta = _kaiser_alpha(psll) * np.pi
+                self._bounded_window = BoundedWindow(n, self.beta, provider)
+            self.fft = create_real_fft(backend, n, planner, time_limit,
+                                       algorithm=fft_algorithm,
+                                       convolution_length=fft_convolution_length,
+                                       operations_library=operations_library, in_place=fft_in_place)
+            if self._bounded_window is None:
+                provider = window_provider or KaiserWindow()
             operation_library = operations_library if operations_library is not None else getattr(provider, "lib", None)
             self.ops = FFTWOperations("native" if operations == "native_grouped" else operations,
                                       operation_library)
@@ -427,10 +449,19 @@ class Periodogram:
             self.window_metadata = dict(provider.metadata)
             self.beta = _kaiser_alpha(psll) * np.pi
             t = time.perf_counter()
-            self.window = provider.generate(n, self.beta)
+            if self._bounded_window is None:
+                self.window = provider.generate(n, self.beta)
+                normalization_window = self.window
+            else:
+                # The plan owns this buffer; it contains no caller input yet.
+                # The whole-array native normalization keeps its original order.
+                self._bounded_window.fill_into(self.fft.x)
+                self.window = None
+                normalization_window = self.fft.x
             generation_s = time.perf_counter() - t
             t = time.perf_counter()
-            self.s1, self.s2 = provider.sums(self.window)
+            self.s1, self.s2 = provider.sums(normalization_window)
+            del normalization_window
             sums_s = time.perf_counter() - t
             if not math.isfinite(self.s2) or self.s2 <= 0:
                 raise ValueError("Invalid window normalization")
@@ -448,12 +479,19 @@ class Periodogram:
             self.last_profile = None
             self.last_band_powers = np.empty(len(self.frequencies)) if self.grouped_native else None
             if self.ops.backend == "native":
-                self._bound_ops = self.ops.bind(
-                    time_buffer=self.fft.x, window=self.window, transform=self.fft.y,
+                binding_options = dict(
+                    time_buffer=self.fft.x, transform=self.fft.y,
                     n=self.n, sample_rate=self.sample_rate, window_square_sum=self.s2,
                     powers=self.powers, cuts=self.grid["cuts"] if self.grid else None,
                     density=self._group_density, band_powers=self.last_band_powers,
                     allow_in_place_fft=fft_in_place)
+                if self._bounded_window is None:
+                    self._bound_ops = self.ops.bind(window=self.window, **binding_options)
+                else:
+                    self._bound_ops = self.ops.bind_output_only(**binding_options)
+            window_details = (None if self._bounded_window is None else
+                              dict(self._bounded_window.metadata))
+            window_scratch_bytes = 0 if window_details is None else window_details["scratch_bytes"]
             self.metadata = {
                 "fft_algorithm": fft_algorithm,
                 "fft_in_place": bool(fft_in_place),
@@ -463,13 +501,18 @@ class Periodogram:
                 "operations_requested": operations, "operations": self.operations,
                 "native_operations": dict(self.ops.metadata),
                 "mean_reduction": "unchanged numpy.mean of anchored samples",
+                "window_storage": window_storage,
+                "window_storage_details": window_details,
+                "window_buffer_bytes": 0 if self.window is None else self.window.nbytes,
+                "window_scratch_bytes": window_scratch_bytes,
+                "one_shot_window": window_storage == "fft_input_then_blocked",
                 "group_reduction": "SIMD direct FFT-bin accumulation" if self.grouped_native else "unchanged numpy.add.reduceat",
                 "profile_fusion": {
-                    "window_in_copy_and_detrend": self.ops.backend == "native",
+                    "window_in_copy_and_detrend": self.ops.backend == "native" or window_details is not None,
                     "aggregation_in_power_and_normalization": self.grouped_native},
                 "principal_buffer_bytes": fft_buffer_bytes(self.fft) + sum(array.nbytes for array in (
                     self.window, self.powers, self.scratch,
-                    self._group_density, self.last_band_powers) if array is not None),
+                    self._group_density, self.last_band_powers) if array is not None) + window_scratch_bytes,
                 "validation_reconstructs_powers": self.grouped_native,
                 "operation_binding": dict(self._bound_ops.metadata) if self._bound_ops else None,
             }
@@ -478,8 +521,10 @@ class Periodogram:
             raise
 
     def compute(self, samples, profile=False, outputs=None):
-        if not self.fft.plan:
+        if self.fft is None or not self.fft.plan:
             raise RuntimeError("Periodogram is closed")
+        if self.window_storage == "fft_input_then_blocked" and self._one_shot_used:
+            raise RuntimeError("fft_input_then_blocked is a one-shot window; construct a fresh Periodogram")
         selected = self.density if outputs is None else outputs
         if isinstance(selected, str):
             selected = ("psd", "nsd") if selected == "both" else (selected,)
@@ -502,7 +547,17 @@ class Periodogram:
         mark("input_view_s")
         # Anchor subtraction preserves small signals sitting on a large DC level.
         # All preprocessing belongs to the API timer; caller data are unchanged.
-        if self.ops.backend == "numpy":
+        if self._bounded_window is not None:
+            self._one_shot_used = True
+            try:
+                self._bounded_window.prepare_into(values, self.fft.x, self.ops)
+            finally:
+                self._bounded_window.close()
+                self._bounded_window = None
+            mark("copy_and_detrend_s")
+            if profile:
+                phases["window_multiply_s"] = 0.0
+        elif self.ops.backend == "numpy":
             np.subtract(values, values[0], out=self.fft.x)
             self.fft.x -= np.mean(self.fft.x)
             mark("copy_and_detrend_s")
@@ -554,8 +609,10 @@ class Periodogram:
 
     def validation(self, samples=None):
         """Checks on the last execution, deliberately outside API timers."""
-        if not self.fft.plan:
+        if self.fft is None or not self.fft.plan:
             raise RuntimeError("Periodogram is closed")
+        if self.window_storage == "fft_input_then_blocked":
+            raise RuntimeError("validation is unavailable for the opt-in one-shot window; compare against a full-window reference")
         df = self.sample_rate / self.n
         expected = validation_time_power(self.fft, self.window, self.s2, samples)
         # Direct grouping need not keep N/2 powers during timed computation.
@@ -584,7 +641,11 @@ class Periodogram:
         if self._bound_ops is not None:
             self._bound_ops.close()
             self._bound_ops = None
-        self.fft.close()
+        if self._bounded_window is not None:
+            self._bounded_window.close()
+            self._bounded_window = None
+        if self.fft is not None:
+            self.fft.close()
         self.window = self.powers = self.scratch = None
         self._group_density = self.last_band_powers = None
 

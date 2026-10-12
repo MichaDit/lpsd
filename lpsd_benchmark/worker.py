@@ -250,6 +250,10 @@ def run(case, directory):
     source = hashlib.sha256()
     from benchmarks import matched_smoothing
     source_paths = [Path(api.__file__), Path(bf.__file__), Path(matched_smoothing.__file__), Path(__file__)]
+    if method != "lpsd":
+        source_paths.append(Path(bf.__file__).parent / "_fftw_native.py")
+        if case.get("window_storage") == "fft_input_then_blocked":
+            source_paths.append(Path(bf.__file__).parent / "_bounded_window.py")
     if case["storage"] == "disk" or method in ("lpsd", "matched"):
         source_paths.extend(Path(bf.__file__).parent / name for name in ("bench_fftw_disk.py", "_fftw_disk.py", "_lpsd_disk.py"))
     for path in source_paths:
@@ -339,12 +343,14 @@ def run(case, directory):
         # The one-shot hybrid has no persistent cache and releases FFT buffers
         # before its bounded native subset. Admission checked the actual pool.
         in_place = case.get("fft_layout") == "in-place"
+        window_storage = case.get("window_storage", "full")
         result.setdefault("native_working_mb", (case["low_working_mb"] if case["storage"] == "disk"
                                                else 0.))
         result.setdefault("native_backend", "not_applicable")
         result["cache_bytes"] = 0
         wall, cpu = time.perf_counter(), time.process_time()
         phases = {}
+        window_metadata = None
         if case["storage"] == "disk":
             from benchmarks.bench_fftw_disk import disk_pipeline
             power_storage = ("workspace" if method == "lpsd" or estimate["workspace_power_supported"] else "external")
@@ -368,8 +374,9 @@ def run(case, directory):
             with bf.Periodogram(backend, n, **common, window_provider=provider,
                                 operations="native_grouped", operations_library=api._LIB,
                                 aggregation="log", output_dtype="float32", planner="estimate",
-                                fft_in_place=in_place) as estimator:
+                                fft_in_place=in_place, window_storage=window_storage) as estimator:
                 frame = estimator.compute(values, outputs=("psd", "nsd"))
+                window_metadata = estimator.metadata
         else:
             provider = bf.KaiserWindow("native", Path(api._LIB._name))
             backend.forget_wisdom()
@@ -380,8 +387,15 @@ def run(case, directory):
                                   smoothing_workers=min(4, case["requested_threads"]),
                                   weight_dtype="float32", operations_backend="native",
                                   smoothing_backend="native", planner="estimate", fft_in_place=in_place,
-                                  low_frequency_backend="bounded")
+                                  low_frequency_backend="bounded", window_storage=window_storage)
+            window_metadata = frame.attrs["matched_smoothing_once"]
         result.update(compute_wall_s=time.perf_counter() - wall, compute_cpu_s=time.process_time() - cpu)
+        if window_metadata is not None:
+            for key in ("window_storage", "window_buffer_bytes", "window_scratch_bytes", "one_shot_window"):
+                result[key] = window_metadata[key]
+            details = window_metadata.get("window_storage_details")
+            if details:
+                result["window_block_samples"] = details["block_samples"]
         f = frame.index.to_numpy(dtype=np.float64)
         psd, nsd = frame.psd.to_numpy(), frame.nsd.to_numpy()
         expected_f = np.asarray(plan[0], dtype=np.float64)

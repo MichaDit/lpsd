@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-def check(path):
+def check(path, expected_window=None):
     report = json.loads(Path(path).read_text(encoding="utf-8"))
     rows = [case for case in report["cases"] if case["n"] == 100000
             and case["signal"] == "white" and case["case_role"] == "comparison"]
@@ -17,8 +17,14 @@ def check(path):
     assert report["state"] == "completed", report["state"]
     assert all(case["input_unchanged"] and case["nsd_matches_sqrt_psd"]
                and case["finite"] and case["psd_nonnegative"] for case in rows)
+    if expected_window is not None:
+        fft_rows = [case for case in rows if case["method"] != "lpsd"]
+        assert all(case["window_storage"] == expected_window for case in fft_rows)
+        if expected_window == "fft_input_then_blocked":
+            assert all(case["one_shot_window"] and case["window_buffer_bytes"] == 0
+                       and case["window_scratch_bytes"] > 0 for case in fft_rows)
     print("All three methods completed with both actual point counts and valid outputs")
 
 
 if __name__ == "__main__":
-    check(sys.argv[1])
+    check(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

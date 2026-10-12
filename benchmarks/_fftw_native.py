@@ -106,6 +106,23 @@ class FFTWOperations:
             powers=powers, scratch=scratch, cuts=cuts, density=density,
             band_powers=band_powers, allow_in_place_fft=allow_in_place_fft)
 
+    def bind_output_only(self, *, time_buffer, transform, n, sample_rate,
+                         window_square_sum, powers=None, scratch=None, cuts=None,
+                         density=None, band_powers=None, allow_in_place_fft=False):
+        """Bind FFT outputs whose input is prepared by an explicit owner.
+
+        No window is retained and both preparation entry points are disabled.
+        The ordinary buffer shape, alignment and overlap checks still apply;
+        only FFTW's explicitly allowed same-origin in-place alias is accepted.
+        Close this binding before the owner frees the FFT allocation.
+        """
+        return _BoundFFTWOperations(
+            self, time_buffer=time_buffer, window=None, transform=transform,
+            n=n, sample_rate=sample_rate, window_square_sum=window_square_sum,
+            powers=powers, scratch=scratch, cuts=cuts, density=density,
+            band_powers=band_powers, allow_in_place_fft=allow_in_place_fft,
+            preparation_enabled=False)
+
     def center_window(self, data, window, mean):
         """Subtract a supplied mean and apply a window to an anchored buffer."""
         data = _output(data, len(data), "data")
@@ -198,16 +215,24 @@ class _BoundFFTWOperations:
 
     def __init__(self, operations, *, time_buffer, window, transform, n,
                  sample_rate, window_square_sum, powers, scratch, cuts,
-                 density, band_powers, allow_in_place_fft=False):
+                 density, band_powers, allow_in_place_fft=False,
+                 preparation_enabled=True):
         if (not isinstance(n, (int, np.integer)) or isinstance(n, (bool, np.bool_))
                 or n < 2 or sample_rate <= 0 or window_square_sum <= 0):
             raise ValueError("Invalid bound transform shape or normalization")
         self.n, self.bins = int(n), int(n) // 2 + 1
         self.time_buffer = _output(time_buffer, self.n, "time_buffer")
+        if not isinstance(preparation_enabled, bool):
+            raise ValueError("preparation_enabled must be a boolean")
+        if not preparation_enabled and window is not None:
+            raise ValueError("An output-only binding must not retain a window")
+        self._preparation_enabled = preparation_enabled
         # No silent copies here: these are precisely the owning plan's arrays.
         for array, size, dtype, name in (
                 (window, self.n, "float64", "window"),
                 (transform, self.bins, "complex128", "transform")):
+            if name == "window" and not preparation_enabled:
+                continue
             if (not isinstance(array, np.ndarray) or array.dtype != np.dtype(dtype)
                     or array.ndim != 1 or len(array) != size
                     or not array.flags.c_contiguous or not array.flags.aligned):
@@ -258,11 +283,12 @@ class _BoundFFTWOperations:
         self._center_args = self._power_args = self._log_args = None
         if operations.lib is not None:
             lib = operations.lib
-            self._center = lib.fftw_ops_center_window
             self._power = lib.fftw_ops_power
             self._log_power = lib.fftw_ops_log_power
-            self._center_args = (time_buffer.ctypes.data_as(_DP),
-                                 window.ctypes.data_as(_DP), self.n)
+            if preparation_enabled:
+                self._center = lib.fftw_ops_center_window
+                self._center_args = (time_buffer.ctypes.data_as(_DP),
+                                     window.ctypes.data_as(_DP), self.n)
             transform_pointer = transform.ctypes.data_as(_DP)
             if self.powers is not None:
                 self._power_args = (transform_pointer, self.n, self._scale,
@@ -275,6 +301,8 @@ class _BoundFFTWOperations:
         elif self.powers is not None and self.scratch is None:
             self.scratch = np.empty_like(self.powers)
         self.metadata = {"private_buffers_bound": True,
+                         "preparation_enabled": preparation_enabled,
+                         "retained_window_bytes": 0 if window is None else window.nbytes,
                          "in_place_fft_alias_allowed": bool(allow_in_place_fft),
                          "buffer_validation": "construction",
                          "input_validation": "per-call by owning pipeline",
@@ -283,6 +311,10 @@ class _BoundFFTWOperations:
 
     def prepare(self, samples):
         """Checked public convenience entry for a new input."""
+        if self._closed:
+            raise RuntimeError("FFTW operation binding is closed")
+        if not self._preparation_enabled:
+            raise RuntimeError("Preparation is disabled for this output-only binding")
         values = np.asarray(samples, dtype=np.float64)
         if values.ndim != 1 or len(values) != self.n:
             raise ValueError("Expected one real signal matching the bound length")
@@ -292,6 +324,8 @@ class _BoundFFTWOperations:
         """The owning pipeline has already checked dtype, dimensionality, N."""
         if self._closed:
             raise RuntimeError("FFTW operation binding is closed")
+        if not self._preparation_enabled:
+            raise RuntimeError("Preparation is disabled for this output-only binding")
         out = self.time_buffer
         np.subtract(values, values[0], out=out)
         mean = float(np.mean(out))
