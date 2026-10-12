@@ -24,17 +24,17 @@ def _case(*, method="matched", storage="ram", threads=8, request=None, ram=32 * 
             "low_working_mb": 2048., "n": n}
 
 
-@pytest.mark.parametrize("threads,request,limit,extra_mib", [
+@pytest.mark.parametrize("threads,smoothing_request,limit,extra_mib", [
     (1, None, 1, 0), (2, None, 2, 0), (8, None, 4, 0),
     (8, 1, 1, 0), (8, 4, 4, 0), (8, 8, 8, 36),
     (6, 8, 6, 18), (2, 8, 2, 0), (8, 100, 8, 36),
 ])
-def test_request_is_capped_without_changing_the_default(threads, request, limit, extra_mib):
-    value = smoothing_controls("matched", threads, request)
-    assert value["requested_smoothing_workers"] == request
+def test_request_is_capped_without_changing_the_default(threads, smoothing_request, limit, extra_mib):
+    value = smoothing_controls("matched", threads, smoothing_request)
+    assert value["requested_smoothing_workers"] == smoothing_request
     assert value["smoothing_workers_limit"] == limit
     assert value["smoothing_runtime_reserve_bytes"] == extra_mib * MIB
-    assert value["smoothing_worker_policy"] == ("default_cap4" if request is None else "explicit")
+    assert value["smoothing_worker_policy"] == ("default_cap4" if smoothing_request is None else "explicit")
     assert value["smoothing_runtime_reserve_model"] == "incremental_9mib_above_cap4_v1"
 
 
