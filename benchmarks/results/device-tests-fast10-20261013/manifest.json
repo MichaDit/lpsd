@@ -1,0 +1,398 @@
+{
+  "schema": "lpsd-physical-campaign-v1",
+  "source_commit": "d91e4cff8bfffc6206bb69785f9a1c81aa1bf639",
+  "native_version": "1.0.6+fast.10",
+  "statistics": "corrected",
+  "synthetic_input_only": true,
+  "reports": [
+    {
+      "file": "windows-x64-smoke.json",
+      "sha256": "9b48c3086698490dd53603c853b623fe8760d80c3ebb08436442f7a392af5c5f",
+      "device_class": "windows-x64",
+      "section": "smoke",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 12,
+      "recorded": 12,
+      "statuses": {
+        "completed": 12
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 12
+      }
+    },
+    {
+      "file": "windows-x64-main.json",
+      "sha256": "18ed8ad2cb76bbb44147f090ba7924fbe03aea6cc83288d363e82dffab54e616",
+      "device_class": "windows-x64",
+      "section": "main",
+      "report_state": "running",
+      "coverage": "partial",
+      "expected_records": 126,
+      "recorded": 121,
+      "statuses": {
+        "completed": 121
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 121
+      }
+    },
+    {
+      "file": "windows-x64-packed-real.json",
+      "sha256": "68698f3e335ad3a191b5292dd9df269a34df23ec6cee4a1f84fd366735494a98",
+      "device_class": "windows-x64",
+      "section": "packed-real",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 16,
+      "recorded": 16,
+      "statuses": {
+        "completed": 16
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 16
+      }
+    },
+    {
+      "file": "windows-x64-workers-1.json",
+      "sha256": "375d93c5e9ca5e9143532d7af5c1db43fdc3357feaee2e12f51dacae45264a72",
+      "device_class": "windows-x64",
+      "section": "workers-1",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "windows-x64-workers-2.json",
+      "sha256": "72426e313020a367bf008b16b81bc974bcf2273ce310651f78ccbcf0c240581f",
+      "device_class": "windows-x64",
+      "section": "workers-2",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "windows-x64-workers-4.json",
+      "sha256": "2637cc700d607abb613ee0be0878258202a8b5f71ad40d0b95071b589c063d52",
+      "device_class": "windows-x64",
+      "section": "workers-4",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-sbc-smoke.json",
+      "sha256": "145ac5ec030ac62775660e65dd391836b121377ff620992398336a787e388a19",
+      "device_class": "arm64-sbc",
+      "section": "smoke",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 12,
+      "recorded": 12,
+      "statuses": {
+        "completed": 6,
+        "skipped": 6
+      },
+      "reasons": {
+        "memory_budget": 6
+      },
+      "roles": {
+        "comparison": 12
+      }
+    },
+    {
+      "file": "arm64-sbc-main.json",
+      "sha256": "6ac6bb34835d94f2211f1b3c0c68ef89dbd5b7724882dff635efe44de5fcce05",
+      "device_class": "arm64-sbc",
+      "section": "main",
+      "report_state": "running",
+      "coverage": "partial",
+      "expected_records": 120,
+      "recorded": 114,
+      "statuses": {
+        "completed": 112,
+        "skipped": 2
+      },
+      "reasons": {
+        "memory_budget": 2
+      },
+      "roles": {
+        "comparison": 114
+      }
+    },
+    {
+      "file": "arm64-sbc-packed-real.json",
+      "sha256": "722c0227a0c72cd308c441cf537d0feeb7784a28eb42c8308542e683ccdd7521",
+      "device_class": "arm64-sbc",
+      "section": "packed-real",
+      "report_state": "running",
+      "coverage": "partial",
+      "expected_records": 16,
+      "recorded": 12,
+      "statuses": {
+        "completed": 12
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 12
+      }
+    },
+    {
+      "file": "arm64-sbc-workers-1.json",
+      "sha256": "79feaec3a1e7159274a7867a8c7708578868b57e968d78c355d5ad255e50d2b6",
+      "device_class": "arm64-sbc",
+      "section": "workers-1",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-sbc-workers-2.json",
+      "sha256": "bf0d65c21806844c571ed8603ee7080a6f88b494a07f6427cb69fa1438a97d44",
+      "device_class": "arm64-sbc",
+      "section": "workers-2",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-sbc-workers-4.json",
+      "sha256": "2236e370a693a12c112978f449ffb036fc9cf3e7f4d26625561dfe6391ea7c96",
+      "device_class": "arm64-sbc",
+      "section": "workers-4",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-smoke.json",
+      "sha256": "7d396e70860c94d5d1f042ce564af03692577ebbc8ff62fc95addc0664554fb4",
+      "device_class": "arm64-instrument",
+      "section": "smoke",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 12,
+      "recorded": 12,
+      "statuses": {
+        "completed": 12
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 12
+      }
+    },
+    {
+      "file": "arm64-instrument-main.json",
+      "sha256": "0da93e96588387baefd6f8ca03fd57f35ed58e79b5b53a691bdf4fd284cab803",
+      "device_class": "arm64-instrument",
+      "section": "main",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 120,
+      "recorded": 120,
+      "statuses": {
+        "completed": 116,
+        "failed": 4
+      },
+      "reasons": {
+        "memory_limit": 4
+      },
+      "roles": {
+        "comparison": 120
+      }
+    },
+    {
+      "file": "arm64-instrument-packed-real.json",
+      "sha256": "4bbf1725308245c7b54603ffb40ab2b586b172b3e35bf7ce751fad20b0321cc4",
+      "device_class": "arm64-instrument",
+      "section": "packed-real",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 16,
+      "recorded": 16,
+      "statuses": {
+        "completed": 12,
+        "failed": 4
+      },
+      "reasons": {
+        "memory_limit": 4
+      },
+      "roles": {
+        "comparison": 16
+      }
+    },
+    {
+      "file": "arm64-instrument-workers-1.json",
+      "sha256": "7bda67bb623fec7107a186e2728b943b02a8680db4f7239cb2729436838cff98",
+      "device_class": "arm64-instrument",
+      "section": "workers-1",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 4,
+        "skipped": 2
+      },
+      "reasons": {
+        "time_budget": 2
+      },
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-workers-2.json",
+      "sha256": "4735dd2a3b7def90a3895369d38529d58861105dfb006cb1649805eaf0ac8d93",
+      "device_class": "arm64-instrument",
+      "section": "workers-2",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 3,
+        "skipped": 3
+      },
+      "reasons": {
+        "time_budget": 3
+      },
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-workers-4.json",
+      "sha256": "526d45285da6a5bc4022442ead74a17ed224c191eef3e459b466224e45475a6f",
+      "device_class": "arm64-instrument",
+      "section": "workers-4",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 4,
+        "skipped": 2
+      },
+      "reasons": {
+        "time_budget": 2
+      },
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "windows-x64-continuation.json",
+      "sha256": "78a12018badc30c4b23c8b3294128b054a9affec45d176daadf256b1bfe82738",
+      "device_class": "windows-x64",
+      "section": "continuation",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 27,
+      "recorded": 27,
+      "statuses": {
+        "completed": 27
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 24
+      }
+    },
+    {
+      "file": "windows-x64-short-continuation-attempt.json",
+      "sha256": "df77dfb8d97967d896113630632a3bad81a5f2458decc4c7a9360c2a29fb8862",
+      "device_class": "windows-x64",
+      "section": "short-continuation-attempt",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 9,
+      "recorded": 9,
+      "statuses": {
+        "completed": 3,
+        "skipped": 6
+      },
+      "reasons": {
+        "time_budget": 6
+      },
+      "roles": {
+        "calibration": 3,
+        "comparison": 6
+      }
+    }
+  ],
+  "regression_summary": {
+    "file": "regressions.json",
+    "sha256": "9837a8e8e02aa98b05f8850916f4f62d39f668fc80c2701414b870b72a799553"
+  },
+  "windows_main_union": {
+    "unique_comparison_configurations": 126,
+    "initial_recorded": 121,
+    "continuation_comparisons": 24,
+    "new_configurations": 5,
+    "repeated_configurations": 19,
+    "continuation_calibrations": 3,
+    "short_attempt_calibrations": 3,
+    "short_attempt_skipped_configurations": 6
+  }
+}

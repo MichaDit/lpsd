@@ -13,6 +13,12 @@ before the source commit was created. The committed tree was checked against
 those bytes; a subsequent documentation commit adds this report and the
 pinned [device rerun instructions](device-rerun-fast10.md).
 
+The later [physical fast.10 campaign](device-tests-fast10-20261013.md) tested
+source `d91e4cff8bfffc6206bb69785f9a1c81aa1bf639` with fresh native builds.
+It retains the final Windows results, five SBC and one instrument regression
+failures, memory stops, incomplete coverage and dedicated worker comparisons.
+Those device results are separate from the implementation evidence below.
+
 ## Changes
 
 | Area | Resulting behavior |

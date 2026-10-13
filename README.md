@@ -73,6 +73,9 @@ commit-pinned commands for the validated runtime, including
 The [physical-device test results](docs/device-tests-20261012.md) publish
 sanitized Windows and ARM64 benchmark checkpoints, complete and interrupted
 runs, regression failures, and the limits of comparing these measurements.
+The separate [corrected-statistics fast.10 rerun](docs/device-tests-fast10-20261013.md)
+includes final regression counts, retained ARM failures and interruptions,
+the Windows 100M continuation, and measured 1/2/4-thread comparisons.
 
 For large inputs, the benchmark can reuse the real FFT buffer in place, release
 FFT storage before the matched estimator's native phase, and compute long LPSD

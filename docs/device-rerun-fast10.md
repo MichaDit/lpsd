@@ -7,6 +7,12 @@ used legacy statistics. The [qualification](fast10-validation.md) and
 [statistics contract](statistics.md) explain the change. These instructions
 prepare a new campaign; they do not report a completed device rerun.
 
+The subsequent [physical campaign results](device-tests-fast10-20261013.md)
+record the actual source `d91e4cff8bfffc6206bb69785f9a1c81aa1bf639`, private
+runtime workarounds, final regression failures, benchmark interruptions,
+admission skips and completed Windows continuation. They do not establish
+full ARM qualification or resolve the historical billion-sample host crash.
+
 ## 1. Small preflight on each device
 
 The preflight requests all three methods, RAM and disk, both point factors,
