@@ -1,5 +1,6 @@
 """Evidence gates for the complete-call direct-power comparison harness."""
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -17,6 +18,30 @@ def fftw_available():
         return _load_fftw(bf, 2)
     except ImportError as error:
         pytest.skip(f"Optional FFTW shared library unavailable: {error}")
+
+
+@pytest.fixture
+def small_comparison_resources(monkeypatch):
+    """Separate a 4096-sample numerical contract from host admission policy.
+
+    The production comparison conservatively reserves 512 MiB even at this
+    tiny size. That estimate can reject the test on an otherwise supported
+    SBC before either numerical assertion runs. Keep the real FFT/power
+    implementation; fix only the test's resource observation. An explicit
+    guard makes accidental growth of this fixture fail before computation.
+    Production admission and physical-device limits are never overridden.
+    """
+    from lpsd_benchmark import resources
+    original = pipeline.disk_pipeline
+
+    def bounded(method, values, backend, directory, options):
+        assert method == "fftw" and len(values) == 4096
+        assert options.workers == 1 and options.fft_memory_mb == 128.
+        return original(method, values, backend, directory, options)
+
+    monkeypatch.setattr(pipeline, "disk_pipeline", bounded)
+    monkeypatch.setattr(resources, "detect_resources", lambda *args, **kwargs: SimpleNamespace(
+        ram_budget=512 * 1024**2, disk_budget=512 * 1024**2, threads=1))
 
 
 def arguments(tmp_path):
@@ -43,6 +68,7 @@ def test_direct_comparison_rejects_unqualified_request_before_files(tmp_path, ca
 
 @pytest.mark.parametrize("relative_change, accepted", [(1e-6, True), (1e-5, False)])
 def test_direct_comparison_gates_actual_float32_outputs_at_3ppm(tmp_path, monkeypatch, fftw_available,
+                                                               small_comparison_resources,
                                                                relative_change, accepted):
     original = pipeline.disk_pipeline
 
@@ -79,7 +105,8 @@ def test_direct_comparison_gates_actual_float32_outputs_at_3ppm(tmp_path, monkey
 
 
 @pytest.mark.parametrize("corruption", ["abi", "half_n", "power_vector"])
-def test_direct_comparison_rejects_wrong_observed_route(tmp_path, monkeypatch, fftw_available, corruption):
+def test_direct_comparison_rejects_wrong_observed_route(tmp_path, monkeypatch, fftw_available,
+                                                       small_comparison_resources, corruption):
     original = pipeline.disk_pipeline
 
     def altered(method, values, backend, directory, options):
@@ -98,4 +125,16 @@ def test_direct_comparison_rejects_wrong_observed_route(tmp_path, monkeypatch, f
         comparison.main(arguments(tmp_path))
     report = json.loads((tmp_path / "report.json").read_text())
     assert report["status"] == "failed" and report["error_type"] == "AssertionError"
+    assert not list((tmp_path / "work").iterdir())
+
+
+def test_direct_comparison_resource_skip_is_not_a_numerical_pass(tmp_path, monkeypatch, fftw_available):
+    from lpsd_benchmark import resources
+    monkeypatch.setattr(resources, "detect_resources", lambda *args, **kwargs: SimpleNamespace(
+        ram_budget=383 * 1024**2, disk_budget=2 * 1024**3, threads=1))
+    monkeypatch.setattr(pipeline, "disk_pipeline", lambda *args: pytest.fail("inadmissible computation"))
+    assert comparison.main(arguments(tmp_path)) == 1
+    report = json.loads((tmp_path / "report.json").read_text())
+    assert report["status"] == "failed"
+    assert report["cases"] == [{"n": 4096, "signal": "white", "status": "skipped_resource_budget"}]
     assert not list((tmp_path / "work").iterdir())

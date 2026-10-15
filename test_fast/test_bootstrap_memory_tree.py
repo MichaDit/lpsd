@@ -382,34 +382,46 @@ bounded_python_install "$@"
 
 
 @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Live Linux procfs memory")
-def test_real_setup_live_child_counter_cannot_disappear_from_sum(monkeypatch):
-    process = subprocess.Popen([sys.executable, "-c",
-                                'import time; data=bytearray(16*1024**2); print("ready",flush=True); time.sleep(20)'],
+@pytest.mark.parametrize("without_nspid", [False, True])
+def test_real_setup_live_child_counter_cannot_disappear_from_sum(monkeypatch, without_nspid):
+    import select
+    # Read the child's own procfs-visible PID. It need not equal Popen.pid
+    # when procfs was mounted by an ancestor namespace, and old kernels need
+    # not expose NSpid at all. No PID guessing or global PID scan is needed.
+    child = """
+import time
+from pathlib import Path
+data = bytearray(16*1024**2)
+visible = next(line.split()[1] for line in Path('/proc/self/status').read_text().splitlines()
+               if line.startswith('Pid:'))
+print(visible, flush=True)
+time.sleep(20)
+"""
+    process = subprocess.Popen([sys.executable, "-I", "-S", "-c", child],
                                stdout=subprocess.PIPE, text=True, start_new_session=True)
+    original = Path.read_text
+    if without_nspid:
+        def old_status(path, *args, **kwargs):
+            text = original(path, *args, **kwargs)
+            return "\n".join(line for line in text.splitlines() if not line.startswith("NSpid:")) + "\n"
+        monkeypatch.setattr(Path, "read_text", old_status)
     try:
-        assert process.stdout.readline().strip() == "ready"
+        assert select.select([process.stdout], [], [], 5.)[0], "Child did not become ready"
+        visible = int(process.stdout.readline().strip())
+        assert visible > 0 and process.poll() is None
         root = Path("/proc")
         owner = bootstrap._linux_setup_status(root / "self" / "status")["Pid"]
-        child_status = None
-        for directory in root.iterdir():
-            if not directory.name.isdecimal():
-                continue
-            try:
-                fields = bootstrap._linux_setup_status(directory / "status")
-            except OSError:
-                continue
-            if fields.get("PPid") == owner and fields.get("NSpid", ())[-1:] == (process.pid,):
-                child_status = directory / "status"
-                break
-        assert child_status is not None
-        assert bootstrap._linux_setup_status(child_status)["VmRSS"] >= 16 * 1024 ** 2
+        child_status = root / str(visible) / "status"
+        fields = bootstrap._linux_setup_status(child_status)
+        assert fields["Pid"] == visible and fields["PPid"] == owner
+        assert fields["VmRSS"] >= 16 * 1024 ** 2
         assert bootstrap.setup_process_memory() >= 16 * 1024 ** 2
-        original = Path.read_text
+        current_read = Path.read_text
 
         def read(path, *args, **kwargs):
             if path == child_status:
                 raise PermissionError("controlled live-child denial")
-            return original(path, *args, **kwargs)
+            return current_read(path, *args, **kwargs)
 
         with monkeypatch.context() as patch:
             patch.setattr(Path, "read_text", read)

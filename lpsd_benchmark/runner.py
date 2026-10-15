@@ -260,6 +260,73 @@ def _linux_process_snapshot(proc_root):
     return statuses, children
 
 
+def _read_smaps_anonymous(path, *, max_bytes=8 * 1024 ** 2):
+    """Read complete mapping counters with bounded scratch; None is unknown.
+
+    Anonymous includes private COW pages of file mappings. It is not PSS,
+    Private_Dirty, or total RSS. AnonHugePages is already included and must
+    not be added again. Procfs reads are sampled and not atomic snapshots.
+    """
+    if type(max_bytes) is not int or max_bytes < 1:
+        return None
+    total, consumed, mappings, previous_stop = 0, 0, 0, 0
+    counters = None
+    try:
+        with path.open("rb") as stream:
+            while True:
+                line = stream.readline(8193)
+                if not line:
+                    break
+                consumed += len(line)
+                if consumed > max_bytes or len(line) > 8192 or not line.endswith(b"\n"):
+                    return None
+                fields = line.split(None, 5)
+                if not fields:
+                    continue
+                span = fields[0].split(b"-")
+                if len(span) == 2 and len(fields) >= 5:
+                    if counters is not None:
+                        if set(counters) != {b"Rss:", b"Anonymous:"} or counters[b"Anonymous:"] > counters[b"Rss:"]:
+                            return None
+                        total += counters[b"Anonymous:"]
+                    if not all(part and all(byte in b"0123456789abcdefABCDEF" for byte in part) for part in span):
+                        return None
+                    first, stop = (int(part, 16) for part in span)
+                    if not 0 <= previous_stop <= first < stop:
+                        return None
+                    previous_stop = stop
+                    mappings += 1
+                    counters = {}
+                elif fields[0] in (b"Rss:", b"Anonymous:"):
+                    if (counters is None or fields[0] in counters or len(fields) != 3
+                            or fields[2] != b"kB" or not fields[1].isdigit()):
+                        return None
+                    value = int(fields[1]) * 1024
+                    if value >= 2 ** 60:
+                        return None
+                    counters[fields[0]] = value
+        if (not mappings or counters is None or set(counters) != {b"Rss:", b"Anonymous:"}
+                or counters[b"Anonymous:"] > counters[b"Rss:"]):
+            return None
+        return total + counters[b"Anonymous:"]
+    except (OSError, ValueError):
+        return None
+
+
+def _linux_smaps_anonymous(process_path):
+    """Older-kernel fallback for the same anonymous-RSS guard quantity.
+
+    Prefer the summed interface when present. An absent, denied, oversized or
+    malformed optional reading never becomes zero: retain the conservative
+    status-RSS fallback in the caller when neither interface is usable.
+    """
+    for name in ("smaps_rollup", "smaps"):
+        value = _read_smaps_anonymous(process_path / name)
+        if value is not None:
+            return value
+    return None
+
+
 class _MemorySample(tuple):
     """Two counters with optional, scalar evidence about their tree coverage.
 
@@ -291,6 +358,7 @@ class _LinuxMemoryReader:
         self.depth = len(parent.get("NSpid", ()))
         self.same_namespace = self.parent_pid == os.getpid()
         self.visible_pid = None
+        self.smaps_fallback = True
 
     def _resolve(self):
         if self.parent_pid is None:
@@ -349,7 +417,16 @@ class _LinuxMemoryReader:
                     return None, None
                 continue
             resident = fields.get("VmRSS")
-            private = fields.get("RssAnon", resident)
+            private = fields.get("RssAnon")
+            used_rss_fallback = False
+            if "RssAnon" not in fields:
+                # Old kernels may still expose precise Anonymous counters in
+                # smaps. Only read owned tree members, never every process in
+                # the PPid inventory. Modern status-counter paths stay fast.
+                private = _linux_smaps_anonymous(process_path) if self.smaps_fallback else None
+                if private is None:
+                    private = resident
+                    used_rss_fallback = True
             if (type(resident) is not int or resident < 0
                     or type(private) is not int or private < 0):
                 return None, None
@@ -364,10 +441,10 @@ class _LinuxMemoryReader:
             if snapshot is not None:
                 children = snapshot[1].get(pid, ())
             rss += resident
-            # Old kernels without RssAnon use a conservative RSS fallback.
+            # The fallback, when needed, includes mapped file pages.
             anonymous += private
             processes += 1
-            rss_fallback_processes += int("RssAnon" not in fields)
+            rss_fallback_processes += int(used_rss_fallback)
             pending.extend((child, pid) for child in children)
         metric = ("rss_fallback" if rss_fallback_processes == processes and processes
                   else "anonymous_rss_with_rss_fallback" if rss_fallback_processes
@@ -496,8 +573,14 @@ def execute_case(case, directory, deadline, timeout, *, command=None, interval=.
     case_end = min(deadline.end, wall + timeout)
     next_heartbeat = wall + 60.
     process = subprocess.Popen(arguments, **kwargs)
-    memory_reader = (_LinuxMemoryReader(process.pid).read if sys.platform.startswith("linux")
-                     else lambda: _memory_usage(process.pid))
+    if sys.platform.startswith("linux"):
+        reader = _LinuxMemoryReader(process.pid)
+        # RAM cases are guarded by total RSS and do not need a page-table
+        # walk merely to recover an unused old-kernel anonymous counter.
+        reader.smaps_fallback = case["storage"] == "disk"
+        memory_reader = reader.read
+    else:
+        memory_reader = lambda: _memory_usage(process.pid)
     status, reason, peak_rss = None, "", 0
     live_samples, missing_samples, rss_observed = 0, 0, False
     rss_fallback_samples = 0

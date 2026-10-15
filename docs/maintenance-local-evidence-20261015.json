@@ -1,0 +1,215 @@
+{
+  "schema": "lpsd-maintenance-evidence-v1",
+  "date": "2026-10-15",
+  "base_commit": "5b1f7eb21affdb1a1614dd535d6b0226d107ced2",
+  "historical_device_evidence_commit": "d8f5fc0750b7139ff220ec2e45d876da49b67061",
+  "host": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "python": "3.13.5"
+  },
+  "targeted_tests": {
+    "passed": 110,
+    "failed": 0,
+    "skipped": 0,
+    "xfailed": 0,
+    "scope": "29 FFTW discovery/integration, 40 smaps/guard, 9 launcher, 6 tiny-fixture isolation and 26 Linux bootstrap tests against unmodified memory-function excerpt",
+    "native_lpsd_full_suite_executed": false,
+    "current_windows_arm_macos_execution": false
+  },
+  "loader": {
+    "scope": "FFTW discovery only, same real system runtime, narrow C API adapter, warm process; not full LPSD or cold process timing",
+    "samples_per_pair": 10,
+    "pairs": [
+      {
+        "repeat": 0,
+        "order": [
+          "baseline",
+          "candidate"
+        ],
+        "baseline": 0.004564786600030857,
+        "candidate": 0.0028610086000298907
+      },
+      {
+        "repeat": 1,
+        "order": [
+          "candidate",
+          "baseline"
+        ],
+        "candidate": 0.002901045199996588,
+        "baseline": 0.004404604700039272
+      },
+      {
+        "repeat": 2,
+        "order": [
+          "baseline",
+          "candidate"
+        ],
+        "baseline": 0.004774124799996571,
+        "candidate": 0.0028740869000102977
+      },
+      {
+        "repeat": 3,
+        "order": [
+          "candidate",
+          "baseline"
+        ],
+        "candidate": 0.0029478988999926516,
+        "baseline": 0.004901296799971533
+      },
+      {
+        "repeat": 4,
+        "order": [
+          "baseline",
+          "candidate"
+        ],
+        "baseline": 0.004408172700004797,
+        "candidate": 0.003075323200027924
+      },
+      {
+        "repeat": 5,
+        "order": [
+          "candidate",
+          "baseline"
+        ],
+        "candidate": 0.0028499432999979034,
+        "baseline": 0.004314147100012633
+      },
+      {
+        "repeat": 6,
+        "order": [
+          "baseline",
+          "candidate"
+        ],
+        "baseline": 0.004223903799993422,
+        "candidate": 0.002801357999987886
+      },
+      {
+        "repeat": 7,
+        "order": [
+          "candidate",
+          "baseline"
+        ],
+        "candidate": 0.0027668373999858885,
+        "baseline": 0.004327828399982536
+      },
+      {
+        "repeat": 8,
+        "order": [
+          "baseline",
+          "candidate"
+        ],
+        "baseline": 0.004676624500007165,
+        "candidate": 0.002714820899973347
+      },
+      {
+        "repeat": 9,
+        "order": [
+          "candidate",
+          "baseline"
+        ],
+        "candidate": 0.002959226899974965,
+        "baseline": 0.004304829100010466
+      },
+      {
+        "repeat": 10,
+        "order": [
+          "baseline",
+          "candidate"
+        ],
+        "baseline": 0.004269481599976643,
+        "candidate": 0.003783770200016079
+      }
+    ],
+    "median_seconds_per_call": {
+      "baseline": 0.004404604700039272,
+      "candidate": 0.0028740869000102977
+    },
+    "ratio_of_medians": 1.5325231467508829,
+    "median_saved_seconds": 0.001530517800028974,
+    "requested_threads": 2,
+    "configured_threads": 2,
+    "platform": "Linux x86_64"
+  },
+  "guard": {
+    "scope": "Real local Linux child with 16 MiB anonymous plus 64 MiB file mapping; optional RssAnon status field omitted in reader only; actual smaps and actual supervision; not a spectrum/device benchmark",
+    "results": {
+      "baseline": {
+        "status": "failed",
+        "reason": "memory_limit",
+        "rss_measurement": "sampled",
+        "process_wall_s": 0.11659751499973936,
+        "peak_rss_bytes": 67960832,
+        "time_limit_s": 8,
+        "live_memory_observed": true,
+        "live_memory_samples": 6,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 6,
+        "memory_guard": {
+          "scope": "process_tree",
+          "measurement": "sampled",
+          "limit_bytes": 67108864,
+          "termination": "limit_exceeded",
+          "complete_tree_samples": 6,
+          "rss_fallback_samples": 6,
+          "last_bytes": 67960832,
+          "last_metric": "rss_fallback",
+          "last_sample_elapsed_s": 0.11322889199982455,
+          "peak_bytes": 67960832,
+          "peak_metric": "rss_fallback",
+          "peak_processes": 1,
+          "last_sample_tree_complete": true,
+          "last_processes": 1,
+          "last_source": "proc_ppid_scan",
+          "trigger_bytes": 67960832,
+          "trigger_metric": "rss_fallback"
+        }
+      },
+      "candidate": {
+        "status": "completed",
+        "reason": "",
+        "rss_measurement": "sampled",
+        "process_wall_s": 0.7299224949997551,
+        "peak_rss_bytes": 92205056,
+        "time_limit_s": 8,
+        "live_memory_observed": true,
+        "live_memory_samples": 32,
+        "live_memory_missing_samples": 0,
+        "live_memory_rss_fallback_samples": 0,
+        "memory_guard": {
+          "scope": "process_tree",
+          "measurement": "sampled",
+          "limit_bytes": 67108864,
+          "termination": "none",
+          "complete_tree_samples": 32,
+          "rss_fallback_samples": 0,
+          "last_bytes": 4694016,
+          "last_metric": "anonymous_rss",
+          "last_sample_elapsed_s": 0.709642668000015,
+          "peak_bytes": 21475328,
+          "peak_metric": "anonymous_rss",
+          "peak_processes": 1,
+          "last_sample_tree_complete": true,
+          "last_processes": 1,
+          "last_source": "proc_ppid_scan"
+        }
+      }
+    }
+  },
+  "recovery": {
+    "newer_unsaved_agent_source_recovered": false,
+    "saved_device_results_retained": true,
+    "older_archives_found": "2026-10-08 and 2026-10-12; no newer unpublished implementation found"
+  },
+  "source_sha256": {
+    "lpsd_benchmark/runner.py": "601830c10018d7c42378cf1130faeef920884934eeaf47bdacce33531260a367",
+    "lpsd_benchmark/worker.py": "0088510a25d5939855ebe10d4446ee1255656c8449cb0296e987abbff3dbc7fe",
+    "scripts/validate_local.py": "1b45841d7a14079dd34514ce4bc639b1c0c00db9be018fcd584087a98117afb6",
+    "test_fast/test_bootstrap_memory_tree.py": "33b1ed80937c2a5a0f3a8251f8a97211fea3758aed950de0a281cb2d4d69b93e",
+    "test_fast/test_comparison_admission_isolation.py": "eec0ff593f743ab7a5155bb1a239ee52909346350d7491d0cf6261cd51b416fb",
+    "test_fast/test_disk_algorithm_comparison.py": "e3ac4f12f3e4e1c3a96d8897e19cd0032bbf273948a40b189cd6392a60a1c875",
+    "test_fast/test_fftw_discovery.py": "428db8d81eb68bf3e57050ce8da4718fd9dd8f73f235447f2fff1e403ec21fc2",
+    "test_fast/test_linux_smaps_fallback.py": "7673b696affdd15ea393889869dad8b99579aff99e4f297a9b8eb14f0ed59a3e",
+    "test_fast/test_local_validation.py": "4ef75dbab6b590305fa6c60092333cd59b84aae7fda7e2020b887ca24870aaed"
+  }
+}

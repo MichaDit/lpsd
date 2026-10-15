@@ -98,51 +98,37 @@ class _FFTWUnavailable(ImportError):
         self.diagnostics = diagnostics
 
 
-def _load_fftw(bf, requested_threads, explicit=None, explicit_threads=None):
-    """Load genuine FFTW symbols, from system libraries or a pyFFTW wheel.
+def _initialize_fftw_wheel():
+    """Let the installed wheel initialize its own bundled dependencies once.
 
-    Loading a wheel does not replace FFTW by NumPy's FFT. Some wheels bundle
-    the threading symbols in the main DLL, others in a separate library.
-    Keep failures as closed categories, never exception text or library paths.
-    Search pthread and OpenMP runtimes, and keep wheel companions with their
-    own core instead of combining independent system and wheel FFTW builds.
+    Some wheels need their package initializer to load an OpenMP dependency
+    or register a Windows DLL directory. Use that initializer only after a
+    wheel-library load fails. Never edit the process library search path or
+    scan unrelated package directories for a vaguely matching dependency.
     """
-    candidates = []
-    if explicit:
-        candidates.append((str(explicit), "explicit"))
-    else:
-        system = ctypes.util.find_library("fftw3")
-        if system:
-            candidates.append((system, "system"))
-        try:
-            distribution = metadata.distribution("pyfftw")
-            for entry in distribution.files or ():
-                name = Path(entry).name.lower()
-                if (re.match(r"(?:lib)?fftw3[-._]", name)
-                        and any(marker in name for marker in (".so", ".dylib", ".dll"))):
-                    candidates.append((str(distribution.locate_file(entry)), "wheel"))
-        except metadata.PackageNotFoundError:
-            pass
-    candidates = list(dict.fromkeys(candidates))
-    def is_thread_library(name):
-        base = Path(name).name.lower()
-        return "threads" in base or "omp" in base
+    from importlib import import_module
+    try:
+        import_module("pyfftw")
+    except (ImportError, OSError, RuntimeError, ValueError, AttributeError):
+        return False
+    return True
 
-    # An explicit core path can have any filename, including "compiled".
-    # Its exported double-precision symbols decide whether it is usable.
-    primary = [(name, source) for name, source in candidates
-               if source == "explicit" or not is_thread_library(name)]
-    companions = [(name, source) for name, source in candidates if is_thread_library(name)]
-    system_threads = []
-    if requested_threads > 1:
-        for runtime in ("fftw3_threads", "fftw3_omp"):
-            found = ctypes.util.find_library(runtime)
-            if found:
-                system_threads.append((found, "system"))
+
+def _load_fftw(bf, requested_threads, explicit=None, explicit_threads=None):
+    """Load genuine FFTW symbols, lazily discovering optional runtimes.
+
+    A working system or explicit runtime does not enumerate/import pyFFTW.
+    Wheel core and thread companions stay in the same distribution directory.
+    A wheel OSError gets at most one dependency-initialization attempt, then
+    the same library pair is retried. Numerical FFT calls are still FFTW's C
+    API; importing pyFFTW here does not substitute a different FFT adapter.
+    Diagnostics retain closed failure categories, never paths or exceptions.
+    """
     failures = {}
     diagnostics = {"requested": requested_threads, "actual": 0, "status": "unavailable",
-                   "main_candidates": len(primary), "thread_attempts": 0, "failures": failures}
+                   "main_candidates": 0, "thread_attempts": 0, "failures": failures}
     fallback = None
+    wheel_initialized = False
 
     def fail(category):
         failures[category] = failures.get(category, 0) + 1
@@ -154,52 +140,111 @@ def _load_fftw(bf, requested_threads, explicit=None, explicit_threads=None):
             "failures": dict(failures)}
         return backend
 
-    for name, source in primary:
-        # Validate the core once so a later missing symbol or init failure can
-        # be attributed to the threading attempt, without parsing exceptions.
+    def wheel_dependencies():
+        nonlocal wheel_initialized
+        if wheel_initialized:
+            return False
+        wheel_initialized = True  # Also remember an unsuccessful initialization.
+        return _initialize_fftw_wheel()
+
+    def candidates():
+        # Count discovered candidates, not libraries we have not searched.
+        # In particular, stop before optional metadata work when the system
+        # runtime already satisfies the requested thread configuration.
+        if explicit:
+            diagnostics["main_candidates"] = 1
+            yield str(explicit), "explicit", ()
+            return
+        system = ctypes.util.find_library("fftw3")
+        if system:
+            diagnostics["main_candidates"] += 1
+            yield system, "system", ()
         try:
-            core = bf.FFTWLibrary(name, None, 1)
-        except OSError:
-            fail("main_load_failed")
-            continue
-        except AttributeError:
-            fail("main_symbols_missing")
-            continue
-        except (RuntimeError, ValueError):
-            fail("main_runtime_rejected")
+            distribution = metadata.distribution("pyfftw")
+        except metadata.PackageNotFoundError:
+            return
+        libraries = []
+        for entry in distribution.files or ():
+            name = Path(entry).name.lower()
+            if (re.match(r"(?:lib)?fftw3[-._]", name)
+                    and any(marker in name for marker in (".so", ".dylib", ".dll"))):
+                libraries.append(str(distribution.locate_file(entry)))
+        libraries = list(dict.fromkeys(libraries))
+        companions, primary = [], []
+        for name in libraries:
+            base = Path(name).name.lower()
+            (companions if "threads" in base or "omp" in base else primary).append(name)
+        diagnostics["main_candidates"] += len(primary)
+        for name in primary:
+            yield name, "wheel", companions
+
+    def system_threads():
+        for runtime in ("fftw3_threads", "fftw3_omp"):
+            found = ctypes.util.find_library(runtime)
+            if found:
+                yield found, "system"
+
+    def thread_candidates(name, source, companions):
+        if explicit_threads:
+            yield str(explicit_threads), "explicit"
+        if source == "wheel":
+            for library in companions:
+                if Path(library).parent == Path(name).parent:
+                    yield library, "wheel"
+        elif source == "system":
+            yield from system_threads()
+        # An explicit core may have any filename, including "compiled".
+        # Test its own integrated threading symbols before system companions.
+        yield name, "main_library"
+        if source == "explicit":
+            yield from system_threads()
+
+    for name, source, companions in candidates():
+        core = None
+        for attempt in range(2):
+            try:
+                core = bf.FFTWLibrary(name, None, 1)
+            except OSError:
+                fail("main_load_failed")
+                if attempt == 0 and source == "wheel" and wheel_dependencies():
+                    continue
+            except AttributeError:
+                fail("main_symbols_missing")
+            except (RuntimeError, ValueError):
+                fail("main_runtime_rejected")
+            break
+        if core is None:
             continue
         if requested_threads == 1:
             return select(core, source, "none", "single_thread_requested")
         if fallback is None:
             fallback = core, source
-        thread_candidates = [(str(explicit_threads), "explicit")] if explicit_threads else []
-        if source == "wheel":
-            thread_candidates.extend((library, origin) for library, origin in companions
-                                     if Path(library).parent == Path(name).parent)
-        elif source == "system":
-            thread_candidates.extend(system_threads)
-        # Integrated threading symbols are common in Windows wheels. For an
-        # explicit core, prefer its own runtime before system companions.
-        thread_candidates.append((name, "main_library"))
-        if source == "explicit":
-            thread_candidates.extend(system_threads)
-        for thread_library, thread_source in dict.fromkeys(thread_candidates):
-            diagnostics["thread_attempts"] += 1
-            try:
-                backend = bf.FFTWLibrary(name, thread_library, requested_threads)
-            except OSError:
-                fail("thread_load_failed")
-            except AttributeError:
-                fail("thread_symbols_missing")
-            except RuntimeError:
-                fail("thread_init_failed")
-            except ValueError:
-                fail("thread_runtime_rejected")
-            else:
-                runtime = ("integrated" if thread_library == name else "openmp"
-                           if "omp" in Path(thread_library).name.lower() else "pthreads"
-                           if "threads" in Path(thread_library).name.lower() else "unspecified")
-                return select(backend, source, thread_source, "enabled", runtime)
+        seen = set()
+        for thread_library, thread_source in thread_candidates(name, source, companions):
+            pair = thread_library, thread_source
+            if pair in seen:
+                continue
+            seen.add(pair)
+            for attempt in range(2):
+                diagnostics["thread_attempts"] += 1
+                try:
+                    backend = bf.FFTWLibrary(name, thread_library, requested_threads)
+                except OSError:
+                    fail("thread_load_failed")
+                    if attempt == 0 and source == "wheel" and wheel_dependencies():
+                        continue
+                except AttributeError:
+                    fail("thread_symbols_missing")
+                except RuntimeError:
+                    fail("thread_init_failed")
+                except ValueError:
+                    fail("thread_runtime_rejected")
+                else:
+                    runtime = ("integrated" if thread_library == name else "openmp"
+                               if "omp" in Path(thread_library).name.lower() else "pthreads"
+                               if "threads" in Path(thread_library).name.lower() else "unspecified")
+                    return select(backend, source, thread_source, "enabled", runtime)
+                break
     if fallback is not None:
         return select(*fallback, "none", "fallback_single_thread")
     raise _FFTWUnavailable(diagnostics)
