@@ -536,7 +536,9 @@ def calibration_matches(case, row):
 
 def predict_seconds(case, completed, safety_factor=4.0):
     """Conservative whole-process forecast; never report this as a timing."""
-    matching = [row for row in completed if calibration_matches(case, row)]
+    matching = [row for row in completed if calibration_matches(case, row)
+                and type(row.get("process_wall_s")) in (int, float)
+                and math.isfinite(row["process_wall_s"]) and row["process_wall_s"] > 0]
     if not matching:
         # Small calibration cases get a bounded opportunity on an unknown
         # machine. They are the only starts without measured scaling evidence.
@@ -551,7 +553,17 @@ def predict_seconds(case, completed, safety_factor=4.0):
         size_cost = max(1., size_ratio ** 1.35)
         point_cost = max(1., point_ratio ** 1.20)
         storage_cost = 8. if row["storage"] == "ram" and case["storage"] == "disk" else 1.
-        # Process setup is included, which intentionally overestimates small
-        # cases and avoids optimistic extrapolation from raw FFT-only time.
-        estimates.append(max(1., row["process_wall_s"]) * size_cost * point_cost * storage_cost)
+        process = max(1., row["process_wall_s"])
+        estimate = process * size_cost
+        compute = row.get("compute_wall_s")
+        if (size_ratio > 1 and type(compute) in (int, float)
+                and math.isfinite(compute) and 0 <= compute <= row["process_wall_s"]):
+            # Keep setup, input generation and validation in the forecast,
+            # scaling ALL noncompute time linearly with N. Scaling imports
+            # with N**1.35 rejected short ARM runs despite ample time left.
+            # The complete-call compute cost keeps the original exponent.
+            # Missing/inconsistent telemetry retains the old whole-process
+            # estimate; equal/smaller sizes retain its exact arithmetic too.
+            estimate = (process - compute) * size_ratio + compute * size_cost
+        estimates.append(estimate * point_cost * storage_cost)
     return max(15.0, min(estimates) * safety_factor)
