@@ -23,7 +23,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from lpsd._helpers import _kaiser_alpha, _kaiser_rov, _ltf_plan
+from lpsd_fast.planning import _kaiser_alpha, _kaiser_rov, _ltf_plan
 
 try:
     from benchmarks._fftw_native import FFTWOperations
@@ -84,7 +84,10 @@ def library_evidence(library, symbol):
 class FFTWLibrary:
     """The actual double-precision FFTW C API, optionally with POSIX threads."""
 
-    _thread_runtime = None
+    # FFTW's planner thread count belongs to its core runtime. Multiple
+    # system/wheel cores may coexist; a single-thread backend must reset
+    # only its own previously initialized runtime before making a plan.
+    _thread_runtimes = {}
 
     def __init__(self, library=None, threads_library=None, threads=1):
         if threads < 1:
@@ -106,7 +109,7 @@ class FFTWLibrary:
             self.threadlib.fftw_plan_with_nthreads.restype = None
             if not self.threadlib.fftw_init_threads():
                 raise RuntimeError("fftw_init_threads failed")
-            FFTWLibrary._thread_runtime = self.threadlib
+            FFTWLibrary._thread_runtimes[self.lib._handle] = self.threadlib
         signatures = {
             "fftw_malloc": ([ct.c_size_t], ct.c_void_p),
             "fftw_free": ([ct.c_void_p], None),
@@ -161,7 +164,8 @@ class RealFFT:
             raw = np.ctypeslib.as_array(ct.cast(self.op, DOUBLE_PTR), shape=(2 * (n // 2 + 1),))
             self.y = raw.view(np.complex128)
             self.allocation_s = time.perf_counter() - started
-            thread_runtime = backend.threadlib or FFTWLibrary._thread_runtime
+            thread_runtime = (backend.threadlib
+                              or FFTWLibrary._thread_runtimes.get(lib._handle))
             if thread_runtime:
                 thread_runtime.fftw_plan_with_nthreads(backend.threads)
             lib.fftw_set_timelimit(-1.0 if time_limit is None else time_limit)

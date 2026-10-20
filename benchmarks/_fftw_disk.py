@@ -350,7 +350,7 @@ class DiskFFT:
 
             tick = time.perf_counter()
             thread_runtime = (getattr(backend, "threadlib", None)
-                              or getattr(type(backend), "_thread_runtime", None))
+                              or getattr(type(backend), "_thread_runtimes", {}).get(lib._handle))
             if thread_runtime is not None:
                 thread_runtime.fftw_plan_with_nthreads(backend.threads)
             lib.fftw_set_timelimit(-1.0)

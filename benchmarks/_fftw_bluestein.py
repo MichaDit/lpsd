@@ -198,7 +198,8 @@ class BluesteinRealFFT:
             self._kernel_fft = self._complex_view(self.kp, m)
             self._chirp = np.empty(n, dtype=np.complex128)
             self.allocation_s = time.perf_counter() - started
-            thread_runtime = backend.threadlib or getattr(type(backend), "_thread_runtime", None)
+            thread_runtime = (backend.threadlib
+                              or getattr(type(backend), "_thread_runtimes", {}).get(lib._handle))
             if thread_runtime:
                 thread_runtime.fftw_plan_with_nthreads(backend.threads)
             lib.fftw_set_timelimit(-1.0 if time_limit is None else time_limit)
