@@ -7,7 +7,20 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.10`; this is not an official upstream release.
+Its package version is `1.0.6+fast.11`; this is not an official upstream release.
+
+Version **fast.11** reduces import and parallel-dispatch overhead while keeping
+native arithmetic and the upstream reference unchanged. On the locally tested
+Linux x86-64 host, a fresh first call fell from 1.747 to 0.314 seconds; warmed
+10K/100K parallel Kaiser calls used 13–35% less wall time. Large-call results
+are mixed and remain listed alongside the improvements. FFTW thread runtimes
+are now isolated per loaded core library, and portable runtime forecasts no
+longer scale all process setup with the numerical exponent. See the
+[fast.11 measurements and local qualification](docs/performance-fast11.md),
+[physical-campaign analysis](docs/platform-followup-20261020.md), and
+[targeted device rerun](docs/device-rerun-fast11.md). New physical-platform
+speedups require those device measurements; the retained campaign is not
+relabelled as a fast.11 run.
 
 Version **fast.10** corrects the segment mean and variance in `lpsd_fast`.
 The default `statistics="corrected"` includes every actual segment; an explicit

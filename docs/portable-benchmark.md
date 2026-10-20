@@ -7,12 +7,15 @@ repository push permission, fork or pull request to report measurements.
 
 ## Start from a pinned revision
 
-The commands below pin the **fast.10 implementation**,
-`e0426c4bad9d7c5fccd54de935eea2d1ea1b2519`. The
-[fast.10 qualification](fast10-validation.md) records the statistics correction,
-portable diagnostics, tests and performance comparisons. The
-[device rerun guide](device-rerun-fast10.md) keeps the existing device budgets
-and separates the small preflight from the previously problematic large cases.
+The commands below pin the **fast.11 implementation**,
+`d63457f81183c68c0759c6e3999b07e72bcc82cc`. The
+[fast.11 qualification](performance-fast11.md) records the startup/dispatch
+changes, FFTW runtime isolation, conservative forecast correction and full
+local validation. The [device rerun guide](device-rerun-fast11.md) keeps the
+existing device budgets, requires complete saved results for admitted cases,
+and separates small preflight checks from the affected larger cases.
+The statistics correction remains documented in the historical
+[fast.10 qualification](fast10-validation.md).
 
 Both the wrapper and the downloaded source use the same full commit. When
 testing another revision, change both occurrences in the download command.
@@ -26,13 +29,13 @@ original revisions and estimator modes.
 Linux x86-64 / ARM64 and macOS, from a writable directory:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.sh | sh -s -- --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/d63457f81183c68c0759c6e3999b07e72bcc82cc/scripts/run_benchmark.sh | sh -s -- --revision d63457f81183c68c0759c6e3999b07e72bcc82cc
 ```
 
 Windows, in Windows PowerShell 5.1 or PowerShell 7:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.ps1'))) -Revision 'e0426c4bad9d7c5fccd54de935eea2d1ea1b2519'
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/d63457f81183c68c0759c6e3999b07e72bcc82cc/scripts/run_benchmark.ps1'))) -Revision 'd63457f81183c68c0759c6e3999b07e72bcc82cc'
 ```
 
 The command creates a fresh `lpsd-benchmark...` directory under the current
@@ -47,11 +50,11 @@ distribution; inspect the script first if that does not match your workflow.
 For an already downloaded checkout, the equivalent commands are:
 
 ```sh
-sh scripts/run_benchmark.sh --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519
+sh scripts/run_benchmark.sh --revision d63457f81183c68c0759c6e3999b07e72bcc82cc
 ```
 
 ```powershell
-& ./scripts/run_benchmark.ps1 -Revision 'e0426c4bad9d7c5fccd54de935eea2d1ea1b2519'
+& ./scripts/run_benchmark.ps1 -Revision 'd63457f81183c68c0759c6e3999b07e72bcc82cc'
 ```
 
 ## Select the statistics contract
@@ -107,13 +110,13 @@ these arguments changes the run:
 For example, the Unix command with a 32 GiB allocation ceiling is:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.sh | sh -s -- --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519 --ram-gib 32 --point-factors 1 2
+curl --proto '=https' --proto-redir '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 -fsSL https://raw.githubusercontent.com/MichaDit/lpsd/d63457f81183c68c0759c6e3999b07e72bcc82cc/scripts/run_benchmark.sh | sh -s -- --revision d63457f81183c68c0759c6e3999b07e72bcc82cc --ram-gib 32 --point-factors 1 2
 ```
 
 For PowerShell, pass additional arguments as an array:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/e0426c4bad9d7c5fccd54de935eea2d1ea1b2519/scripts/run_benchmark.ps1'))) -Revision 'e0426c4bad9d7c5fccd54de935eea2d1ea1b2519' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
+& ([scriptblock]::Create((Invoke-RestMethod -TimeoutSec 60 'https://raw.githubusercontent.com/MichaDit/lpsd/d63457f81183c68c0759c6e3999b07e72bcc82cc/scripts/run_benchmark.ps1'))) -Revision 'd63457f81183c68c0759c6e3999b07e72bcc82cc' -BenchmarkArgs @('--ram-gib','32','--point-factors','1','2')
 ```
 
 ### What the limits mean
@@ -717,19 +720,19 @@ The example refuses to overwrite an existing output file. Reconstruction checks
 completeness and byte integrity; numerical/schema validation and trust in a
 contributor's claimed measurements remain separate.
 
-## Development and CI
+## Local development validation
 
 `--source-dir /path/to/checkout` explicitly copies a local tree into the private
-environment. It is for PR/CI validation before the commit is downloadable and
+environment. It is for local validation before the commit is downloadable and
 does not claim that uncommitted source is a clean remote revision. Normal
 contributors should use the commit-pinned download route.
 
 ```sh
-sh scripts/run_benchmark.sh --revision e0426c4bad9d7c5fccd54de935eea2d1ea1b2519 --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
+sh scripts/run_benchmark.sh --revision d63457f81183c68c0759c6e3999b07e72bcc82cc --source-dir /path/to/checkout --compiler zig --sizes 100000 --profile performance --threads 2 --max-hours 0.25
 ```
 
 The bootstrap unit tests cover archive traversal/link rejection, checksum and
 size failures, private installer environment, deadline termination, consent
 gating and mocked GitHub setup. Tests never create public benchmark issues.
-Windows/macOS/ARM compatibility should be reported from the corresponding CI
-or physical-device run, not inferred from a successful Linux import.
+Windows/macOS/ARM compatibility should be reported from the corresponding
+physical-device run, not inferred from a successful Linux import.

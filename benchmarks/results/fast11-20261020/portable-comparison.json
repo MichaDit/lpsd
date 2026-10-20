@@ -1,0 +1,410 @@
+{
+  "schema": "lpsd-portable-integration-comparison-v1",
+  "status": "passed",
+  "scope": "One baseline run and a verified fast.11 run, followed by a second final-file check; integration qualification, not a repeated speed estimate. Corrected statistics; N=100000; 469/938 outputs; two threads; 1GiB RAM and disk budgets.",
+  "cases": [
+    {
+      "n": 100000,
+      "method": "fftw",
+      "storage": "ram",
+      "point_factor": 1.0,
+      "signal": "white",
+      "statistics": "not_applicable",
+      "requested_statistics": "corrected",
+      "actual_points": 469,
+      "target_points": 1000,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.009506341997621348,
+      "fast11_compute_wall_s": 0.010947997001494514,
+      "baseline_process_wall_s": 2.0245710529998178,
+      "fast11_process_wall_s": 0.4059973479998007
+    },
+    {
+      "n": 100000,
+      "method": "fftw",
+      "storage": "disk",
+      "point_factor": 1.0,
+      "signal": "white",
+      "statistics": "not_applicable",
+      "requested_statistics": "corrected",
+      "actual_points": 469,
+      "target_points": 1000,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.01235169600113295,
+      "fast11_compute_wall_s": 0.016983310000796337,
+      "baseline_process_wall_s": 2.2324495120010397,
+      "fast11_process_wall_s": 0.40534808799930033
+    },
+    {
+      "n": 100000,
+      "method": "matched",
+      "storage": "ram",
+      "point_factor": 1.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 469,
+      "target_points": 1000,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.05098437800188549,
+      "fast11_compute_wall_s": 0.0438885699986713,
+      "baseline_process_wall_s": 1.9269144009995216,
+      "fast11_process_wall_s": 0.40543956699912087
+    },
+    {
+      "n": 100000,
+      "method": "matched",
+      "storage": "disk",
+      "point_factor": 1.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 469,
+      "target_points": 1000,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.07919661100095254,
+      "fast11_compute_wall_s": 0.0695195420012169,
+      "baseline_process_wall_s": 1.9230669690005016,
+      "fast11_process_wall_s": 0.4059899870007939
+    },
+    {
+      "n": 100000,
+      "method": "lpsd",
+      "storage": "ram",
+      "point_factor": 1.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 469,
+      "target_points": 1000,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.07446746200002963,
+      "fast11_compute_wall_s": 0.06107162700209301,
+      "baseline_process_wall_s": 1.922909934000927,
+      "fast11_process_wall_s": 0.40531106699927477
+    },
+    {
+      "n": 100000,
+      "method": "lpsd",
+      "storage": "disk",
+      "point_factor": 1.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 469,
+      "target_points": 1000,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.08034464699812816,
+      "fast11_compute_wall_s": 0.07910796600117465,
+      "baseline_process_wall_s": 2.0278492549987277,
+      "fast11_process_wall_s": 0.4061782079988916
+    },
+    {
+      "n": 100000,
+      "method": "fftw",
+      "storage": "ram",
+      "point_factor": 2.0,
+      "signal": "white",
+      "statistics": "not_applicable",
+      "requested_statistics": "corrected",
+      "actual_points": 938,
+      "target_points": 2425,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.010312962000170955,
+      "fast11_compute_wall_s": 0.010390527997515164,
+      "baseline_process_wall_s": 1.723263780000707,
+      "fast11_process_wall_s": 0.4057117729971651
+    },
+    {
+      "n": 100000,
+      "method": "fftw",
+      "storage": "disk",
+      "point_factor": 2.0,
+      "signal": "white",
+      "statistics": "not_applicable",
+      "requested_statistics": "corrected",
+      "actual_points": 938,
+      "target_points": 2425,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.014069034998101415,
+      "fast11_compute_wall_s": 0.01851431999966735,
+      "baseline_process_wall_s": 1.928088803000719,
+      "fast11_process_wall_s": 0.40604075499868486
+    },
+    {
+      "n": 100000,
+      "method": "matched",
+      "storage": "ram",
+      "point_factor": 2.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 938,
+      "target_points": 2425,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.10245194999879459,
+      "fast11_compute_wall_s": 0.0772621469986916,
+      "baseline_process_wall_s": 2.1347563990020717,
+      "fast11_process_wall_s": 0.4055659240002569
+    },
+    {
+      "n": 100000,
+      "method": "matched",
+      "storage": "disk",
+      "point_factor": 2.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 938,
+      "target_points": 2425,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.13050648900025408,
+      "fast11_compute_wall_s": 0.10626785700151231,
+      "baseline_process_wall_s": 2.1362325129994133,
+      "fast11_process_wall_s": 0.5071896389999893
+    },
+    {
+      "n": 100000,
+      "method": "lpsd",
+      "storage": "ram",
+      "point_factor": 2.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 938,
+      "target_points": 2425,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.17585489900011453,
+      "fast11_compute_wall_s": 0.16324823900140473,
+      "baseline_process_wall_s": 2.3410699849991943,
+      "fast11_process_wall_s": 0.609794027001044
+    },
+    {
+      "n": 100000,
+      "method": "lpsd",
+      "storage": "disk",
+      "point_factor": 2.0,
+      "signal": "white",
+      "statistics": "corrected",
+      "requested_statistics": "corrected",
+      "actual_points": 938,
+      "target_points": 2425,
+      "actual_threads": 2,
+      "hashes_identical": {
+        "input_sha256": true,
+        "frequency_sha256": true,
+        "psd_sha256": true,
+        "nsd_sha256": true,
+        "native_sha256": true
+      },
+      "validity_checks": {
+        "finite": true,
+        "psd_nonnegative": true,
+        "nsd_matches_sqrt_psd": true,
+        "input_unchanged": true,
+        "frequency_matches_plan": true
+      },
+      "baseline_compute_wall_s": 0.17699545100185787,
+      "fast11_compute_wall_s": 0.1571363430011843,
+      "baseline_process_wall_s": 2.241358815001149,
+      "fast11_process_wall_s": 0.6101456150026934
+    }
+  ],
+  "all_case_hashes_identical": true,
+  "all_validity_checks_passed": true,
+  "relative_output_recheck_hashes_identical": true,
+  "fftw_threads_enabled": 2,
+  "case_counts": {
+    "baseline": 12,
+    "fast11": 12,
+    "fast11-relative-recheck": 12,
+    "fast11-incomplete": 11
+  },
+  "raw_run_elapsed_s": {
+    "baseline": 24.79578604299968,
+    "fast11": 5.454628543997387,
+    "fast11-relative-recheck": 5.972112889998243,
+    "fast11-incomplete": 5.157590948001598
+  },
+  "initial_checkpoint_anomaly": {
+    "report": "portable-fast11-incomplete.json",
+    "saved_state": "running",
+    "saved_rows": 11,
+    "console_claimed_completed_cases": 12,
+    "exit_code": 0,
+    "qualification": "excluded as incomplete; retained without changing rows or state",
+    "cause": "not established; not reproduced in absolute-path and relative-path rechecks"
+  },
+  "final_file_receipts": [
+    {
+      "status": "passed",
+      "state": "completed",
+      "cases": 12,
+      "sha256": "2528d4f4790a67df4d3dce2d6256f8322ef18a8e70906e4a409ec1d1b7e2a306",
+      "elapsed_seconds": 5.454628543997387,
+      "verification": "Read complete saved file immediately after successful child exit; absolute output path."
+    },
+    {
+      "status": "passed",
+      "state": "completed",
+      "cases": 12,
+      "sha256": "7d94042fd46cbcda296f68d811b8c2b2345997c5944321ef756f411e94b337ec",
+      "elapsed_seconds": 5.972112889998243,
+      "verification": "Read complete saved file immediately after successful child exit; relative output path."
+    }
+  ]
+}
