@@ -21,7 +21,7 @@ import pandas as pd
 from . import __version__
 from ._resources import host_available_memory
 from .planning import _asdrms, _kaiser_alpha, _kaiser_rov, _ltf_plan
-from ._windows import COSINE_WINDOWS, COSINE_WINDOW_NAMES
+from ._windows import COSINE_NAMES, get_cosine_coefficients, resolve_cosine_window
 
 _LIB = None
 _LIB_LOCK = threading.Lock()
@@ -35,7 +35,6 @@ _WINDOW_NAMES = {
     'hamming': np.hamming, 'blackman': np.blackman,
     'bartlett': np.bartlett, 'boxcar': np.ones,
 }
-_WINDOW_NAMES.update(COSINE_WINDOW_NAMES)
 
 
 def _requested_outputs(outputs, csd):
@@ -64,10 +63,12 @@ def _requested_outputs(outputs, csd):
 
 def _resolve_window(window_function):
     if isinstance(window_function, str):
-        try:
-            return _WINDOW_NAMES[window_function.lower()]
-        except KeyError as exc:
-            raise ValueError(f'Unknown window; choose from {tuple(_WINDOW_NAMES)} or supply a callable.') from exc
+        name = window_function.lower()
+        if name in _WINDOW_NAMES:
+            return _WINDOW_NAMES[name]
+        if name in COSINE_NAMES:
+            return resolve_cosine_window(name)
+        raise ValueError(f'Unknown window; choose from {tuple(_WINDOW_NAMES) + COSINE_NAMES} or supply a callable.')
     if not callable(window_function):
         raise TypeError('window_function must be a recognized name or a callable.')
     return window_function
@@ -131,59 +132,61 @@ def _native():
             filename = Path(__file__).parent / '_native' / ('liblpsd_fast' + suffix)
             if not filename.is_file():
                 raise RuntimeError('Native library is missing. Run: python -m lpsd_fast.build --native')
-            _LIB = ct.CDLL(str(filename))
-            fn = _LIB.fast_dft
+            # Publish only a completely bound handle. A failed lookup must
+            # not leave a partially configured library in the shared cache.
+            lib = ct.CDLL(str(filename))
+            fn = lib.fast_dft
             dp = ct.POINTER(ct.c_double)
             fn.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
                            dp, dp, ct.c_long, ct.c_long, dp, dp,
                            ct.c_double, ct.c_int, ct.c_bool, ct.c_int]
             fn.restype = ct.c_int
-            _LIB.fast_dft_profile.argtypes = fn.argtypes + [dp, dp]
-            _LIB.fast_dft_profile.restype = ct.c_int
-            selected = _LIB.fast_dft_selected
+            lib.fast_dft_profile.argtypes = fn.argtypes + [dp, dp]
+            lib.fast_dft_profile.restype = ct.c_int
+            selected = lib.fast_dft_selected
             selected.argtypes = fn.argtypes + [ct.c_bool, ct.c_bool]
             selected.restype = ct.c_int
-            _LIB.fast_dft_selected_profile.argtypes = selected.argtypes + [dp, dp]
-            _LIB.fast_dft_selected_profile.restype = ct.c_int
-            _LIB.fast_dft_selected_bounded.argtypes = selected.argtypes + [
+            lib.fast_dft_selected_profile.argtypes = selected.argtypes + [dp, dp]
+            lib.fast_dft_selected_profile.restype = ct.c_int
+            lib.fast_dft_selected_bounded.argtypes = selected.argtypes + [
                 ct.c_double, dp, dp, ct.POINTER(ct.c_long)]
-            _LIB.fast_dft_selected_bounded.restype = ct.c_int
+            lib.fast_dft_selected_bounded.restype = ct.c_int
             try:
-                corrected = _LIB.fast_dft_selected_corrected
-                corrected_boxcar = _LIB.fast_dft_boxcar_corrected
+                corrected = lib.fast_dft_selected_corrected
+                corrected_boxcar = lib.fast_dft_boxcar_corrected
             except AttributeError as exc:
-                _LIB = None
                 raise RuntimeError('Corrected-statistics native symbols are missing. Run: '
                                    'python -m lpsd_fast.build --native') from exc
-            corrected.argtypes = _LIB.fast_dft_selected_bounded.argtypes
+            corrected.argtypes = lib.fast_dft_selected_bounded.argtypes
             corrected.restype = ct.c_int
-            _LIB.native_segment_fma_supported.argtypes = []
-            _LIB.native_segment_fma_supported.restype = ct.c_int
-            _LIB.fast_dft_boxcar.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
+            lib.native_segment_fma_supported.argtypes = []
+            lib.native_segment_fma_supported.restype = ct.c_int
+            lib.fast_dft_boxcar.argtypes = [dp, dp, dp, dp, ct.POINTER(ct.c_long),
                                             dp, ct.c_long, ct.c_long, dp, dp,
                                             ct.c_double, ct.c_double, ct.c_int, ct.c_bool,
                                             dp, dp, ct.POINTER(ct.c_long)]
-            _LIB.fast_dft_boxcar.restype = ct.c_int
-            corrected_boxcar.argtypes = _LIB.fast_dft_boxcar.argtypes
+            lib.fast_dft_boxcar.restype = ct.c_int
+            corrected_boxcar.argtypes = lib.fast_dft_boxcar.argtypes
             corrected_boxcar.restype = ct.c_int
-            _LIB.window_sums.argtypes = [dp, ct.c_long, dp, dp]
-            _LIB.window_sums.restype = ct.c_int
-            _LIB.generate_kaiser.argtypes = [dp, ct.c_long, ct.c_double]
-            _LIB.generate_kaiser.restype = ct.c_int
-            _LIB.generate_kaiser_series.argtypes = _LIB.generate_kaiser.argtypes
-            _LIB.generate_kaiser_series.restype = ct.c_int
-            _LIB.generate_window.argtypes = [dp, ct.c_long, ct.c_int, ct.c_double]
-            _LIB.generate_window.restype = ct.c_int
-            _LIB.generate_cosine_window.argtypes = [dp, ct.c_long, dp, ct.c_int]
-            _LIB.generate_cosine_window.restype = ct.c_int
-            _LIB.generate_coefficients.argtypes = [dp, dp, dp, ct.c_long, ct.c_double]
-            _LIB.generate_coefficients.restype = ct.c_int
-            _LIB.generate_coefficients_blocked.argtypes = _LIB.generate_coefficients.argtypes
-            _LIB.generate_coefficients_blocked.restype = ct.c_int
-            _LIB.native_long_double_mantissa_bits.argtypes = []
-            _LIB.native_long_double_mantissa_bits.restype = ct.c_int
-            _LIB.native_inline_mean_supported.argtypes = []
-            _LIB.native_inline_mean_supported.restype = ct.c_int
+            lib.window_sums.argtypes = [dp, ct.c_long, dp, dp]
+            lib.window_sums.restype = ct.c_int
+            lib.generate_kaiser.argtypes = [dp, ct.c_long, ct.c_double]
+            lib.generate_kaiser.restype = ct.c_int
+            lib.generate_kaiser_series.argtypes = lib.generate_kaiser.argtypes
+            lib.generate_kaiser_series.restype = ct.c_int
+            lib.generate_window.argtypes = [dp, ct.c_long, ct.c_int, ct.c_double]
+            lib.generate_window.restype = ct.c_int
+            lib.generate_cosine_window.argtypes = [dp, ct.c_long, dp, ct.c_int]
+            lib.generate_cosine_window.restype = ct.c_int
+            lib.generate_coefficients.argtypes = [dp, dp, dp, ct.c_long, ct.c_double]
+            lib.generate_coefficients.restype = ct.c_int
+            lib.generate_coefficients_blocked.argtypes = lib.generate_coefficients.argtypes
+            lib.generate_coefficients_blocked.restype = ct.c_int
+            lib.native_long_double_mantissa_bits.argtypes = []
+            lib.native_long_double_mantissa_bits.restype = ct.c_int
+            lib.native_inline_mean_supported.argtypes = []
+            lib.native_inline_mean_supported.restype = ct.c_int
+            _LIB = lib
         return _LIB.fast_dft
 
 
@@ -317,6 +320,30 @@ def _array(data):
     return result
 
 
+def _parallel_frequency_map(one, size, workers):
+    """Use one task per worker, keeping dynamic single-frequency scheduling.
+
+    Claiming an index takes a short lock; native work and memory reservations
+    stay outside it. This avoids a Future for every point without estimating
+    their costs or tying several expensive points to one worker.
+    """
+    computed = [None] * size
+    indices = iter(range(size))
+    index_lock = threading.Lock()
+
+    def run(_):
+        while True:
+            with index_lock:
+                j = next(indices, None)
+            if j is None:
+                return
+            computed[j] = one(j)
+
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='lpsd') as pool:
+        list(pool.map(run, range(min(workers, size))))
+    return computed
+
+
 def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                  workers, kernel, max_working_mb, window_cache_mb, profile, outputs, csd,
                  statistics='legacy'):
@@ -351,8 +378,8 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
                        if name in outputs or (name == 'psd' and spectrum))
     window_kind = next((kind for kind, fn_window in enumerate(_WINDOW_FUNCTIONS)
                         if window_function is fn_window), None)
-    cosine_coefficients = next((coefficients for fn_window, coefficients in COSINE_WINDOWS
-                                if window_function is fn_window), None)
+    cosine_coefficients = (get_cosine_coefficients(window_function)
+                           if window_kind is None else None)
     if cosine_coefficients is not None:
         cosine_coefficients = np.asarray(cosine_coefficients, dtype=np.float64)
     known_window = window_kind is not None or cosine_coefficients is not None
@@ -528,8 +555,7 @@ def _run_channel(x1, x2, fs, plan, window_function, psll, overlap, order,
     if workers == 1:
         computed = list(map(one, range(nf)))
     else:
-        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='lpsd') as pool:
-            computed = list(pool.map(one, range(nf)))
+        computed = _parallel_frequency_map(one, nf, workers)
     assembly_started = time.perf_counter()
     # Match upstream's output precision and the point at which ASD is rounded.
     output = np.asarray(computed, dtype=np.complex64)

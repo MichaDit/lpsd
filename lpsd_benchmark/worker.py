@@ -634,6 +634,10 @@ def run(case, directory):
     from benchmarks import matched_smoothing
     source_paths = [Path(api.__file__), Path(bf.__file__), Path(matched_smoothing.__file__), Path(__file__),
                     Path(__file__).with_name("resources.py")]
+    source_paths.extend(Path(api.__file__).parent / name for name in
+                        ("__init__.py", "planning.py", "_windows.py", "prepared.py", "_resources.py"))
+    source_paths.extend(Path(bf.__file__).parent / name for name in
+                        ("fftw_comparison_signals.py", "fftw_comparison_metrics.py"))
     if method != "lpsd":
         source_paths.append(Path(bf.__file__).parent / "_fftw_native.py")
         if case.get("window_storage") == "fft_input_then_blocked":

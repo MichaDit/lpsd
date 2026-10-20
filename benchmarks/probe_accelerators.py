@@ -179,7 +179,7 @@ def plan_workload(n, frequencies=1000, averages=100, psll=200.0, overlap=None):
                        "n_min_bins": 1, "min_segment_length": 0},
         "source_sha256": {
             "lpsd_fast.api": hashlib.sha256(Path(inspect.getsourcefile(_frequency_plan)).read_bytes()).hexdigest(),
-            "lpsd._helpers": hashlib.sha256(Path(inspect.getsourcefile(_kaiser_rov)).read_bytes()).hexdigest(),
+            _kaiser_rov.__module__: hashlib.sha256(Path(inspect.getsourcefile(_kaiser_rov)).read_bytes()).hexdigest(),
         },
         "native_vs_planner_segment_count_differences": sum(
             count != int(planned) for count, planned in zip(counts, plan[4])),

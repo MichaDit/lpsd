@@ -30,11 +30,16 @@ must remain with this component. The full NumPy license is included as
 [`LICENSE.numpy.txt`](../lpsd_fast/_native/LICENSE.numpy.txt), and the project
 license remains in [`LICENSE`](../LICENSE).
 
-The fast package also reuses `_ltf_plan`, `_asdrms`, `_kaiser_alpha` and
-`_kaiser_rov` from `lpsd._helpers`. Planning and polynomial detrending are
-shared with the original module rather than maintained as duplicate source
-copies. The combined distribution is named `lpsd`; `lpsd_fast` is the opt-in
-module within that distribution.
+The fast package's `planning.py` contains verbatim copies of `_ltf_plan`,
+`_asdrms`, `_kaiser_alpha`, `_kaiser_rov` and their `_myround` dependency from
+the pinned `lpsd._helpers`. A source-equivalence test compares all five syntax
+trees against the byte-pinned reference, preventing a separate estimator
+from developing unnoticed. This small NumPy-only subset avoids importing
+the reference wrapper and SciPy detrending for native computations. The
+original reference files remain unchanged. Polynomial detrending still
+shares the original `polyreg.c`; flat-top callbacks are resolved to the
+original function objects when requested. The combined distribution is named
+`lpsd`; `lpsd_fast` is the opt-in module within that distribution.
 
 ## Reproducibility materials
 

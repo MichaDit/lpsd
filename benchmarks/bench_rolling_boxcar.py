@@ -11,6 +11,7 @@ import argparse
 import inspect
 from datetime import datetime, timezone
 import hashlib
+import importlib
 import importlib.util
 import json
 from pathlib import Path
@@ -35,7 +36,7 @@ def load_package(root, name):
 
 
 def evidence(module):
-    api = sys.modules[module.__name__ + ".api"]
+    api = importlib.import_module(module.__name__ + ".api")
     api._native()
     package = Path(module.__file__).resolve().parent
     library = Path(api._LIB._name).resolve()

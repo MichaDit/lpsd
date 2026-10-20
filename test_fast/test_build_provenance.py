@@ -1,6 +1,7 @@
 """Reject stale native source attribution, while identifying older reports."""
 import ctypes as ct
 import hashlib
+import importlib
 import json
 from pathlib import Path
 import sys
@@ -97,6 +98,10 @@ def evidence_fixture(tmp_path, monkeypatch, *, bound):
 
 
 def test_evidence_accepts_bound_sources_and_records_actual_shared_helpers(tmp_path, monkeypatch):
+    # This test deliberately exercises shared-source attribution. Do not
+    # rely on another test's flat-top import during collection.
+    for name in ("lpsd._helpers", "lpsd.flattop"):
+        importlib.import_module(name)
     module, common, library, _ = evidence_fixture(tmp_path, monkeypatch, bound=True)
     report = evidence(module)
     assert report["native_source_binding"] == "verified"

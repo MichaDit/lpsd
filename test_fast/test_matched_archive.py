@@ -1,5 +1,6 @@
 """A downloaded source archive must run without Git or a checkout marker."""
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -25,4 +26,5 @@ def test_archive_provenance_keeps_hashes_without_requiring_git(monkeypatch, supp
     assert result["commit_origin"] == ("pinned_archive" if supplied == "a" * 40 else "unavailable")
     assert result["source_sha256"]
     assert all(len(digest) == 64 for digest in result["source_sha256"].values())
+    assert str(Path(api.__file__).with_name("planning.py").resolve()) in result["source_sha256"]
     assert len(result["native_binary_sha256"]) == 64

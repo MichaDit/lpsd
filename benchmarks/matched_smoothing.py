@@ -46,6 +46,9 @@ def _source_metadata():
         checkout = Path(_lpsd_api.__file__).resolve().parent.parent
         files = [Path(__file__).resolve(), Path(_fftw.__file__).resolve(),
                  Path(_lpsd_api.__file__).resolve(),
+                 checkout / "lpsd_fast" / "__init__.py",
+                 checkout / "lpsd_fast" / "planning.py",
+                 checkout / "lpsd_fast" / "_windows.py",
                  checkout / "lpsd_fast" / "prepared.py",
                  checkout / "benchmarks" / "_fftw_native.py",
                  checkout / "benchmarks" / "_bounded_window.py",

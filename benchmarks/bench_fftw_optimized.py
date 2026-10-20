@@ -15,6 +15,7 @@ from contextlib import ExitStack
 from datetime import datetime, timezone
 import gc
 import hashlib
+import importlib
 import importlib.util
 import json
 import os
@@ -180,7 +181,7 @@ def main():
     if args.auto_low_cache and args.total_cache_mb is None:
         parser.error("--auto-low-cache requires --total-cache-mb")
     old_package = load_module("lpsd_fast_baseline", args.baseline_repo / "lpsd_fast/__init__.py", package=True)
-    old_api = sys.modules["lpsd_fast_baseline.api"]
+    old_api = importlib.import_module("lpsd_fast_baseline.api")
     old_bf = load_module("fftw_baseline", args.baseline_repo / "benchmarks/bench_fftw.py")
     old_hybrid = load_module("matched_smoothing_baseline", args.baseline_hybrid.resolve())
     old_hybrid._fftw, old_hybrid._lpsd_api = old_bf, old_api

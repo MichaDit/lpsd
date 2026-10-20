@@ -3,7 +3,6 @@
 SPDX-License-Identifier: GPL-3.0-or-later
 """
 import numpy as np
-from scipy.fft import irfft, rfft, rfftfreq
 
 
 CASES = ("white", "pink", "brown", "mixed_tones", "offbin_tone", "dc_nanovolt")
@@ -33,6 +32,7 @@ def signal(name, n, fs, seed):
     tones = []
 
     def colored(alpha, corner):
+        from scipy.fft import irfft, rfft, rfftfreq
         z = rng.standard_normal(n) * sigma
         transform = rfft(z, workers=1)
         f = rfftfreq(n, 1 / fs)

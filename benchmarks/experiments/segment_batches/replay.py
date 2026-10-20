@@ -10,6 +10,7 @@ import argparse
 import ctypes as ct
 from datetime import datetime, timezone
 import hashlib
+import importlib
 import importlib.util
 import json
 import os
@@ -51,7 +52,7 @@ def load_pair(artifacts):
     package = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = package
     spec.loader.exec_module(package)
-    api = sys.modules[module_name + ".api"]
+    api = importlib.import_module(module_name + ".api")
     api._native()
     declarations = api._LIB
     libraries = {}
