@@ -16,6 +16,59 @@ timing assertions. GitHub Actions workflows have been removed; use
 [local validation](../docs/local-validation.md). Dependency versions are
 resolved from package requirements, without pinning a particular NumPy build.
 
+## Performance-sensitive edge cases
+
+The fast.13 follow-up adds **nine cases in existing test modules** and
+strengthens one existing failure test. Each targets avoidable work or a
+resource-admission error; none imposes a wall-clock threshold.
+
+| Case | Retained check | Why it matters |
+|---|---|---|
+| Failed parallel frequency | Stop unstarted points; join active readers | A failed call must not keep evaluating the rest of the spectrum. |
+| Failed prepared call | Stop remaining group points; join readers; reuse the same pool and obtain identical output on retry | An allocation failure must not drain the remaining plan or poison a reusable instance. |
+| Full/packed disk FFT, incomplete final batches | Refill twice without new plans or scratch allocations; compare PSD with NumPy FFT | A hidden full-size complex scratch array adds `16*N` bytes to a bounded disk path. |
+| Prime-length Bluestein, NumPy/native helpers | At most one preparation FFT and two FFTs per call; noise then exact zero | Repeating kernel preparation adds an unnecessary third FFT; stale convolution padding corrupts reuse. |
+| First full/packed disk call | Fresh process rejects `numpy.testing` imports while checking actual PSD/NSD, energy and cleanup | Protects the measured fast.12 first-call improvement, which ordinary pytest processes can hide. |
+| Nested cgroup v1/v2 limits | A roomy leaf obeys its parent's RAM and CPU limits | The small simulated hierarchy changes a 10M FFT from eight workers/RAM to two workers/disk without allocating a large input. |
+
+Temporary mutation probes confirmed that these guards reject continued work
+after failure, extra scratch allocation, an extra FFT, the old lazy testing
+import and ignored ancestor limits. The existing numerical checks still passed
+with the extra FFT/allocation, demonstrating why the work/resource assertions
+are needed. Probe mutations are not retained in the repository.
+
+Additional ordinary prime/odd sizes, zero/DC signals, array layouts and cache
+sizes were omitted because existing tests already cover them. No dependency,
+benchmark framework or broad parameter matrix was added.
+
+The final synchronized failure probes observed **72 to 2 coefficient calls**
+for the ordinary API and **26 to 2 native calls** for the prepared API after
+the fixes. These are operation counts for the injected failures, not wall-time
+speedups. Both tests also passed ten separate repetitions. Their five-second
+waits only detect deadlocks; they do not set performance targets.
+
+Local qualification on **21 October 2026**, Linux x86-64/GCC, Python 3.12.14:
+
+```sh
+python scripts/validate_local.py --output-parent .validation/fast13 --stage-timeout 900
+```
+
+Fresh reference/fast builds passed, followed by **2,712 fast-suite passes**,
+**18 upstream passes**, **six skips** and **one known expected failure**.
+All 191 recorded source hashes still matched after the run. The sdist and
+Linux wheel built successfully; the installed wheel passed the isolated
+smoke check in a separate environment outside the checkout.
+
+Existing platform checks exercise Windows memory-counter C layouts above
+4 GiB, macOS Mach layouts/port release, path flavours, FFTW library isolation
+and architecture/tag decisions locally. The six skips retain unavailable
+CUDA, actual Windows/macOS/PowerShell queries and the inapplicable FP64
+long-double path. The expected failure remains the documented relative
+accuracy limit near an off-bin tone's spectral null. No foreign OS/CPU binary
+was executed: Windows, macOS, ARM64 and Raspberry Pi runtime qualification
+requires those runtimes; the local environment has no corresponding emulator
+or cross-toolchain. No GitHub Actions or remote-device run was used.
+
 ## Reference and numerical contract
 
 The reference is the unchanged `lpsd` package shipped in this repository, with

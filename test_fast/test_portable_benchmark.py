@@ -359,6 +359,58 @@ def test_cgroup_active_clean_file_cache_does_not_force_100m_to_disk(tmp_path, mo
     assert mode == "ram" and skipped is None
 
 
+@pytest.mark.parametrize("legacy", [False, True], ids=["cgroup-v2", "cgroup-v1"])
+def test_nested_cgroup_parent_limits_workers_and_ram_admission(tmp_path, monkeypatch, legacy):
+    # A roomy leaf does not override its service/container's shared limits.
+    root = Path("/sys/fs/cgroup")
+    memory = root / "memory" if legacy else root
+    cpu = root / "cpu,cpuacct" if legacy else root
+    files = {Path("/proc/self/cgroup"): (
+        "4:memory:/job/worker\n3:cpu,cpuacct:/job/worker\n" if legacy
+        else "0::/job/worker\n")}
+    if legacy:
+        files.update({
+            memory / "job/worker/memory.limit_in_bytes": str(32 * resources.GIB),
+            memory / "job/worker/memory.usage_in_bytes": str(64 * resources.MIB),
+            cpu / "job/worker/cpu.cfs_quota_us": "-1",
+            cpu / "job/worker/cpu.cfs_period_us": "100000",
+        })
+        parent = {
+            memory / "job/memory.limit_in_bytes": str(resources.GIB),
+            memory / "job/memory.usage_in_bytes": str(256 * resources.MIB),
+            cpu / "job/cpu.cfs_quota_us": "250000",
+            cpu / "job/cpu.cfs_period_us": "100000",
+        }
+    else:
+        files.update({memory / "job/worker/memory.max": "max",
+                      cpu / "job/worker/cpu.max": "max 100000"})
+        parent = {memory / "job/memory.max": str(resources.GIB),
+                  memory / "job/memory.current": str(256 * resources.MIB),
+                  cpu / "job/cpu.max": "250000 100000"}
+    files.update(parent)
+    monkeypatch.setattr(resources, "_read", lambda path: files.get(Path(path), ""))
+    monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(virtual_memory=lambda:
+                        SimpleNamespace(total=8 * resources.GIB, available=6 * resources.GIB)))
+    monkeypatch.setattr(resources.os, "cpu_count", lambda: 16)
+    monkeypatch.setattr(resources.os, "sched_getaffinity", lambda pid: set(range(8)), raising=False)
+    monkeypatch.setattr(resources.shutil, "disk_usage", lambda path: SimpleNamespace(free=8 * resources.GIB))
+    monkeypatch.setattr(resources, "ram_backed_work_directory", lambda path: False)
+
+    detected = resources.detect_resources(tmp_path, threads=16)
+    assert detected.threads == 2 and detected.cpu_capacity == 2.5
+    assert detected.total_ram == resources.GIB
+    mode, _, _, skipped = resources.select_storage(10_000_000, "fftw", "white", "auto", detected)
+    assert mode == "disk" and skipped is None
+
+    # Without the parent cap, the same 10M workload fits RAM and uses 8 workers.
+    for path in parent:
+        del files[path]
+    detected = resources.detect_resources(tmp_path, threads=16)
+    assert detected.threads == 8
+    mode, _, _, skipped = resources.select_storage(10_000_000, "fftw", "white", "auto", detected)
+    assert mode == "ram" and skipped is None
+
+
 @pytest.mark.parametrize("legacy", [False, True])
 @pytest.mark.parametrize("shared,dirty,writeback,unevictable,expected", [
     (300, 100, 50, 50, 500),

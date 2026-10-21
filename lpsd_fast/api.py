@@ -326,18 +326,28 @@ def _parallel_frequency_map(one, size, workers):
     Claiming an index takes a short lock; native work and memory reservations
     stay outside it. This avoids a Future for every point without estimating
     their costs or tying several expensive points to one worker.
+    After a failure, stop new claims while the executor joins active readers.
     """
     computed = [None] * size
     indices = iter(range(size))
     index_lock = threading.Lock()
+    failed = False
 
     def run(_):
+        nonlocal failed
         while True:
             with index_lock:
+                if failed:
+                    return
                 j = next(indices, None)
             if j is None:
                 return
-            computed[j] = one(j)
+            try:
+                computed[j] = one(j)
+            except BaseException:
+                with index_lock:
+                    failed = True
+                raise
 
     with ThreadPoolExecutor(max_workers=workers, thread_name_prefix='lpsd') as pool:
         list(pool.map(run, range(min(workers, size))))

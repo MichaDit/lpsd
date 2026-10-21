@@ -154,6 +154,43 @@ def test_measure_plans_are_initialized_before_kernel_preparation(fftw):
         json.dumps(description, allow_nan=False)
 
 
+@pytest.mark.parametrize("mode", ["numpy", "native"])
+def test_prepared_prime_transform_reuses_kernel_plans_and_buffers(fftw, monkeypatch, mode):
+    """Recomputing the kernel would add a third FFT to every repeated call."""
+    execute = fftw.lib.fftw_execute
+    executions = []
+
+    def counted_execute(plan):
+        executions.append(plan)
+        return execute(plan)
+
+    def setup_during_execute(*args, **kwargs):
+        pytest.fail("Prepared execution must reuse FFTW plans and work buffers")
+
+    monkeypatch.setattr(fftw.lib, "fftw_execute", counted_execute)
+    n = 1009
+    values = np.random.default_rng(718).normal(size=n)
+    inputs = (values, np.zeros(n))
+    expected = [np.fft.rfft(x) for x in inputs]
+    outputs = np.empty((len(inputs), n // 2 + 1), dtype=np.complex128)
+    with BluesteinRealFFT(fftw, n, native_ops=mode) as fft:
+        assert len(executions) <= 1
+        executions.clear()
+        with monkeypatch.context() as patch:
+            patch.setattr(fftw.lib, "fftw_plan_dft_1d", setup_during_execute)
+            patch.setattr(fftw.lib, "fftw_malloc", setup_during_execute)
+            patch.setattr(np, "empty", setup_during_execute)
+            for source, output in zip(inputs, outputs):
+                fft.x[:] = source
+                before = len(executions)
+                fft.execute()
+                assert len(executions) - before <= 2
+                output[:] = fft.y
+    np.testing.assert_allclose(outputs[0], expected[0], rtol=5e-13,
+                               atol=5e-14 * np.sum(np.abs(values)))
+    np.testing.assert_array_equal(outputs[1], expected[1])
+
+
 def test_native_optional_fallback_and_required_mode(fftw):
     api._native()
     with BluesteinRealFFT(fftw, 31, native_ops="auto", operations_library=api._LIB) as fft:

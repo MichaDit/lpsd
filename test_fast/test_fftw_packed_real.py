@@ -74,6 +74,39 @@ def test_original_n_power_parseval_and_refill(fftw, tmp_path, n, kind):
         transform.execute()
 
 
+@pytest.mark.parametrize("adapter,n,options", [
+    (DiskFFT, 10000, {"factors": (125, 80)}),
+    (PackedRealDiskFFT, 20000, {"packed_factors": (125, 80),
+                              "reconstruction_elements": 7}),
+])
+def test_prepared_partial_batches_reuse_plans_and_work_buffers(
+        fftw, tmp_path, monkeypatch, adapter, n, options):
+    """Refill must not repeat expensive setup, including the short last batches."""
+    values = np.random.default_rng(718).normal(size=n)
+    inputs = (values, values[::-1])
+    expected = [bf.one_sided_psd(np.fft.rfft(x), n, 50., n) for x in inputs]
+    outputs = np.empty((len(inputs), n // 2 + 1))
+
+    def setup_during_execute(*args, **kwargs):
+        pytest.fail("Prepared execution must reuse FFTW plans and work buffers")
+
+    with adapter(fftw, n, tmp_path / "reuse.c128", memory_mb=.03,
+                 column_strategy="strided", **options) as transform:
+        core = transform if adapter is DiskFFT else transform._core
+        assert core.a % core.row_batch and core.b % core.column_batch
+        with monkeypatch.context() as patch:
+            patch.setattr(fftw.lib, "fftw_plan_many_dft", setup_during_execute)
+            patch.setattr(fftw.lib, "fftw_malloc", setup_during_execute)
+            patch.setattr(np, "empty", setup_during_execute)
+            for source, output in zip(inputs, outputs):
+                transform.x[:] = source
+                transform.execute()
+                transform.power_into(output, 50., n)
+        np.testing.assert_allclose(outputs, expected, rtol=1e-11, atol=0.)
+        assert transform.execution_count == len(inputs)
+    assert [path.name for path in tmp_path.iterdir()] == ["reuse.c128"]
+
+
 @pytest.mark.parametrize("factors", [(1, 60), (60, 1), (6, 10), (5, 12)])
 def test_inner_factors_and_partner_order(fftw, tmp_path, factors):
     n = 120

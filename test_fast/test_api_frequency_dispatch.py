@@ -45,47 +45,66 @@ def test_frequency_dispatch_keeps_each_output_and_profile_index(monkeypatch, sta
     np.testing.assert_array_equal(values, original)
 
 
-def test_frequency_failure_waits_for_running_input_readers(monkeypatch):
+def test_frequency_failure_stops_new_work_and_waits_for_running_input_readers(monkeypatch):
     original = api._coefficients
     entered = threading.Event()
     release = threading.Event()
     finished = threading.Event()
     count_lock = threading.Lock()
     calls = 0
-    timer = None
+    submissions = 0
 
     class WindowFailure(RuntimeError):
         pass
 
+    class ObservedPool(api.ThreadPoolExecutor):
+        def submit(self, fn, *args, **kwargs):
+            nonlocal submissions
+            submission = submissions
+            submissions += 1
+
+            def run(*args, **kwargs):
+                if submission == 0:
+                    assert entered.wait(5), 'Reader did not start before the failing worker'
+                try:
+                    return fn(*args, **kwargs)
+                finally:
+                    if submission == 1:
+                        finished.set()
+
+            future = super().submit(run, *args, **kwargs)
+
+            def release_after_failure(done):
+                if not done.cancelled() and done.exception() is not None:
+                    release.set()
+
+            future.add_done_callback(release_after_failure)
+            return future
+
     def coefficients(*args, **kwargs):
-        nonlocal calls, timer
+        nonlocal calls
         with count_lock:
             call = calls
             calls += 1
         if call == 0:
             entered.set()
             assert release.wait(5), 'Failing peer did not release the running worker'
-            try:
-                return original(*args, **kwargs)
-            finally:
-                finished.set()
+            return original(*args, **kwargs)
         if call == 1:
             assert entered.wait(5)
-            timer = threading.Timer(.02, release.set)
-            timer.start()
             raise WindowFailure('deliberate frequency failure')
         return original(*args, **kwargs)
 
+    monkeypatch.setattr(api, 'ThreadPoolExecutor', ObservedPool)
     monkeypatch.setattr(api, '_coefficients', coefficients)
     try:
         with pytest.raises(WindowFailure, match='deliberate'):
             api.lpsd(np.ones(4097), sample_rate=50., n_frequencies=96,
                      n_averages=8, workers=2, outputs='psd')
         assert finished.is_set(), 'The API returned while a frequency worker was still running'
+        assert calls == 2, 'A failed call kept computing unstarted frequencies'
     finally:
         release.set()
-        if timer is not None:
-            timer.join()
 
 
 def test_failed_late_native_binding_does_not_cache_a_partial_handle(monkeypatch):

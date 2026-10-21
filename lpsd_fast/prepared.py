@@ -435,10 +435,18 @@ class PreparedLPSDSubset:
                     gate.release(reserved)
 
             computed = [None] * len(self.frequencies)
+            # Stop within groups even while the caller awaits an earlier Future.
+            stopped = threading.Event()
 
             def group(indices):
-                for j in indices:
-                    computed[j] = one(j)
+                try:
+                    for j in indices:
+                        if stopped.is_set():
+                            return
+                        computed[j] = one(j)
+                except BaseException:
+                    stopped.set()
+                    raise
 
             if self._pool is None:
                 for indices in self._tasks:

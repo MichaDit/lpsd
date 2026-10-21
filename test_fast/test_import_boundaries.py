@@ -20,7 +20,8 @@ def isolated(code, blocked):
 import sys
 class RejectUnusedImports:
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split('.')[0] in {blocked!r}:
+        if any(fullname == name or fullname.startswith(name + '.')
+               for name in {blocked!r}):
             raise AssertionError('Unused dependency was imported: ' + fullname)
 sys.meta_path.insert(0, RejectUnusedImports())
 '''
@@ -65,6 +66,44 @@ from lpsd_fast.prepared import PreparedLPSDSubset
 values, tones = signal('white', 4097, 50., 613)
 assert values.shape == (4097,) and not tones
 ''', ('scipy', 'lpsd'))
+
+
+@pytest.mark.parametrize('algorithm', ('full', 'packed-real'))
+def test_first_disk_call_needs_no_numpy_testing(algorithm):
+    from benchmarks.bench_fftw import FFTWLibrary
+
+    try:
+        FFTWLibrary(os.environ.get('LPSD_TEST_FFTW_LIBRARY'))
+    except OSError as exc:
+        pytest.skip(f'Optional FFTW shared library unavailable: {exc}')
+    # pytest may already have imported numpy.testing in this process. Only a
+    # fresh interpreter exposes its avoidable first-call initialization cost.
+    isolated(f'''
+import os
+from pathlib import Path
+import tempfile
+from types import SimpleNamespace
+import numpy as np
+from benchmarks.bench_fftw import FFTWLibrary
+from benchmarks.bench_fftw_disk import disk_pipeline
+from lpsd_fast import api
+
+api._native()
+backend = FFTWLibrary(os.environ.get('LPSD_TEST_FFTW_LIBRARY'))
+samples = np.random.default_rng(613).normal(size=1000)
+args = SimpleNamespace(sample_rate=50., workers=1, smoothing_workers=1,
+                       low_working_mb=8., fft_memory_mb=.1,
+                       power_storage='workspace', disk_fft_algorithm={algorithm!r})
+with tempfile.TemporaryDirectory() as directory:
+    result, details = disk_pipeline('fftw', samples, backend, Path(directory), args)
+    assert len(result) > 2 and np.isfinite(result.to_numpy()).all()
+    assert (result.psd.to_numpy() >= 0).all()
+    assert np.array_equal(np.sqrt(result.psd.to_numpy().astype(np.complex64)).real,
+                          result.nsd.to_numpy())
+    assert details['parseval']['relative_error'] <= 1e-10
+    assert not list(Path(directory).iterdir())
+assert 'numpy.testing' not in sys.modules
+''', ('numpy.testing',))
 
 
 def test_lightweight_planning_function_bodies_match_pinned_upstream():

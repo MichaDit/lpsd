@@ -1,6 +1,7 @@
 """Prepared order-0 vectors must preserve the existing fast PSD estimator."""
 import ctypes as ct
 import json
+import threading
 
 import numpy as np
 import pytest
@@ -159,6 +160,69 @@ def test_plan_is_copied_and_close_is_idempotent():
     assert prepared._points == [] and prepared._pool is None
     with pytest.raises(RuntimeError, match='closed'):
         prepared.compute(x)
+
+
+def test_native_failure_stops_remaining_points_and_keeps_prepared_instance_reusable(monkeypatch):
+    n = 8193
+    plan = _ltf_plan(n, FS, OVERLAP, 1, 0, 64, 16)
+    x = _signal(n, 'white')
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    count_lock = threading.Lock()
+    calls = 0
+    submissions = 0
+    with PreparedLPSDSubset(n, FS, plan, workers=2, max_cache_mb=4) as prepared:
+        expected = prepared.compute(x)
+        pool, compute = prepared._pool, prepared._compute_fn
+        submit = pool.submit
+
+        def observed_submit(fn, *args, **kwargs):
+            nonlocal submissions
+            submission = submissions
+            submissions += 1
+
+            def run(*args, **kwargs):
+                if submission == 0:
+                    assert entered.wait(5), 'Reader did not start before the failing group'
+                try:
+                    return fn(*args, **kwargs)
+                finally:
+                    if submission == 1:
+                        finished.set()
+
+            future = submit(run, *args, **kwargs)
+
+            def release_after_failure(done):
+                if not done.cancelled() and done.exception() is not None:
+                    release.set()
+
+            future.add_done_callback(release_after_failure)
+            return future
+
+        def failing_compute(*args):
+            nonlocal calls
+            with count_lock:
+                call = calls
+                calls += 1
+            if call == 0:
+                entered.set()
+                assert release.wait(5), 'Failing peer did not release the running reader'
+                return compute(*args)
+            if call == 1:
+                return 3  # Native allocation failure after another reader started.
+            return compute(*args)
+
+        with monkeypatch.context() as scoped:
+            scoped.setattr(pool, 'submit', observed_submit)
+            scoped.setattr(prepared, '_compute_fn', failing_compute)
+            try:
+                with pytest.raises(RuntimeError, match='native allocation failed'):
+                    prepared.compute(x)
+                assert finished.is_set(), 'The failed call returned with an active reader'
+                assert calls == 2, 'The failed call kept computing unstarted points'
+            finally:
+                release.set()
+        assert prepared._pool is pool
+        assert prepared.compute(x).tobytes() == expected.tobytes()
 
 
 @pytest.mark.parametrize('bad', (np.zeros(4), np.ones((4097, 1)),

@@ -7,7 +7,15 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.12`; this is not an official upstream release.
+Its package version is `1.0.6+fast.13`; this is not an official upstream release.
+
+Version **fast.13** adds focused regression tests for costly edge cases and
+stops remaining frequency work after a failure in ordinary and prepared LPSD
+calls. Active input readers still finish before the error returns; prepared
+instances remain reusable. Tests also guard FFT plan/buffer reuse, prime-length
+convolution work, first-call imports and nested container limits. The native
+numerical kernels are unchanged. See the
+[edge-case tests and local validation](test_fast/README.md#performance-sensitive-edge-cases).
 
 Version **fast.12** removes first-use test-framework initialization from the
 disk FFT energy diagnostic while retaining its reference-relative tolerance.
