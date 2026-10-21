@@ -113,7 +113,11 @@ def source_manifest(source):
     pending, hashes = [source], {}
     while pending:
         path = pending.pop()
-        relative = os.path.relpath(path, source.parent).replace(os.sep, "/")
+        try:
+            relative = os.path.relpath(path, source.parent).replace(os.sep, "/")
+        except ValueError:
+            # A resolved header can be on another Windows volume.
+            relative = path.as_posix()
         if relative in hashes:
             continue
         content = path.read_bytes()

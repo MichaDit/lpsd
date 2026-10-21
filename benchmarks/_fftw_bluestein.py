@@ -62,6 +62,8 @@ def _dimensions(n, chirp_block_size, convolution_length=None):
             )
     if m > np.iinfo(np.int32).max:
         raise ValueError("Bluestein convolution exceeds FFTW's INT_MAX 1D interface")
+    if m > np.iinfo(np.intp).max // 16:
+        raise ValueError("Bluestein buffer byte count exceeds the platform index range")
     return n, m, min(n, chirp_block_size)
 
 

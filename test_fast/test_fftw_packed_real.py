@@ -265,6 +265,10 @@ def test_billion_sample_layout_without_allocation(monkeypatch):
     def forbidden(*args, **kwargs):
         pytest.fail("A scalar memory estimate must not allocate mapped arrays")
     monkeypatch.setattr(np, "memmap", forbidden)
+    if np.iinfo(np.intp).max < 16_000_000_000:
+        with pytest.raises(ValueError, match="platform-addressable workspace"):
+            PackedRealDiskFFT.memory_estimate(1_000_000_000, 128)
+        return
     result = PackedRealDiskFFT.memory_estimate(1_000_000_000, 128)
     assert result["inner_n"] == 500_000_000
     assert result["packed_complex_region_bytes"] == 8_000_000_000

@@ -129,8 +129,10 @@ def main(argv=None):
               ("build-fast", [sys.executable, "-m", "lpsd_fast.build"], None)]
     for name, suite in (("regressions", "test_fast"), ("upstream", "test")):
         xml = directory / (name+".xml")
+        # Long tracebacks can repr a memmap after finally has unmapped it,
+        # crashing while reporting the original failure. Keep errors/JUnit.
         stages.append((name, [sys.executable, "-m", "pytest", "-o", "addopts=", "-o", "junit_family=legacy",
-                              "-q", "-ra", suite, "--junitxml", str(xml)], xml))
+                              "-q", "-ra", "--tb=short", suite, "--junitxml", str(xml)], xml))
     save()
     print(f"Local validation directory: {directory}", flush=True)
     try:

@@ -3,6 +3,7 @@ import ctypes as ct
 import hashlib
 import importlib
 import json
+import ntpath
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -30,6 +31,30 @@ def test_source_manifest_follows_relative_includes_and_breaks_cycles(tmp_path):
     assert builder.source_manifest(source) == expected
     common.write_text("#define VALUE 8.0\n")
     assert builder.source_manifest(source)["../common.h"] != expected["../common.h"]
+
+
+def test_source_manifest_keeps_headers_on_another_windows_volume(tmp_path, monkeypatch):
+    source = tmp_path / "source" / "probe.c"
+    header = tmp_path / "headers" / "api.h"
+    common = header.parent / "common.h"
+    source.parent.mkdir()
+    header.parent.mkdir()
+    source.write_text(f'#include "{header.as_posix()}"\n')
+    header.write_text('#include "common.h"\n')
+    common.write_text('#include "api.h"\n#define VALUE 7.0\n')
+    relative, windows_relative = builder.os.path.relpath, ntpath.relpath
+
+    def across_volumes(path, start):
+        if path.is_relative_to(header.parent):
+            # Exercise the real Windows error on hosts with only one volume.
+            return windows_relative("D:/headers/" + path.name, "C:/source")
+        return relative(path, start)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(builder.os.path, "relpath", across_volumes)
+        manifest = builder.source_manifest(source)
+    assert manifest == {"probe.c": digest(source), header.as_posix(): digest(header),
+                        common.as_posix(): digest(common)}
 
 
 def test_actual_build_binds_recursive_project_sources_to_binary(tmp_path):

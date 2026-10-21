@@ -230,6 +230,17 @@ def test_constructor_guards_precede_backend_access_and_allocation(options, error
         BluesteinRealFFT(None, **arguments)
 
 
+@pytest.mark.parametrize("convolution_length", [None, 2**27])
+def test_convolution_buffer_must_fit_platform_even_without_memory_cap(
+        monkeypatch, convolution_length):
+    # Input/output/chirp still fit; the convolution alone exceeds the
+    # 32-bit array range (or wraps size_t with the default power-of-two M).
+    monkeypatch.setattr(np, "intp", np.int32)
+    with pytest.raises(ValueError, match="platform index range"):
+        BluesteinRealFFT(None, 2**26 + 1, max_working_mb=None,
+                         convolution_length=convolution_length, native_ops="numpy")
+
+
 def test_memory_bound_and_close_invalidate_bound_pointers(fftw):
     n, m, block = 31, 47, 7
     estimate = BluesteinRealFFT.memory_estimate(n, block, m)

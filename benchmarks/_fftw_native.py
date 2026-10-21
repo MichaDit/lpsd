@@ -188,13 +188,13 @@ class FFTWOperations:
         if (transform.ndim != 1 or len(transform) != bins or n < 2 or
                 sample_rate <= 0 or window_square_sum <= 0 or
                 cuts.ndim != 1 or groups < 1 or cuts[0] != 1 or cuts[-1] != bins or
-                np.any(np.diff(cuts) <= 0)):
+                np.any(cuts[1:] <= cuts[:-1])):
             raise ValueError("Cuts must partition all positive FFT bins exactly once")
         density = np.empty(groups) if density is None else _output(density, groups, "density")
         band_powers = np.empty(groups) if band_powers is None else _output(band_powers, groups, "band_powers")
         if self.lib is None:
             powers = self.power(transform, n, sample_rate, window_square_sum)
-            sums = np.add.reduceat(powers, cuts[:-1])
+            sums = np.add.reduceat(powers, cuts[:-1].astype(np.intp, copy=False))
             np.divide(sums, np.diff(cuts), out=density)
             np.multiply(sums, sample_rate / n, out=band_powers)
         elif self.lib.fftw_ops_log_power(transform.ctypes.data_as(_DP), n,
@@ -248,9 +248,11 @@ class _BoundFFTWOperations:
                     or not cuts.flags.aligned or cuts[0] != 1 or cuts[-1] != self.bins):
                 raise ValueError("Bound cuts must partition all positive FFT bins exactly once")
             counts = np.diff(cuts)
-            if np.any(counts <= 0):
+            if np.any(cuts[1:] <= cuts[:-1]):
                 raise ValueError("Bound cuts must partition all positive FFT bins exactly once")
-            self.cuts, self._starts, self._counts = cuts, cuts[:-1], counts
+            self.cuts, self._counts = cuts, counts
+            # Keep int64 for the C ABI; NumPy's index width is platform-specific.
+            self._starts = cuts[:-1].astype(np.intp, copy=False)
             groups = len(counts)
             if density is not None or band_powers is not None:
                 self.density = _output(density, groups, "density")

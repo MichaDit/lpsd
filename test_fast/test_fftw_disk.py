@@ -412,6 +412,11 @@ def test_billion_sample_memory_estimate_has_no_large_allocations(monkeypatch):
         patch.setattr(disk_module.np, "memmap", forbidden)
         patch.setattr(disk_module.np, "empty", forbidden)
         patch.setattr(disk_module.np, "arange", forbidden)
+        if np.iinfo(np.intp).max < 16_000_000_000:
+            with pytest.raises(ValueError, match="platform index range"):
+                DiskFFT.memory_estimate(1_000_000_000, memory_mb=256,
+                                        resident_memory_mb=8192)
+            return
         memory = DiskFFT.memory_estimate(1_000_000_000, memory_mb=256, resident_memory_mb=8192)
         memory128 = DiskFFT.memory_estimate(1_000_000_000, memory_mb=128, resident_memory_mb=8192)
         old = DiskFFT.memory_estimate(1_000_000_000, memory_mb=128,

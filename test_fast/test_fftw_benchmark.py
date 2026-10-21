@@ -27,6 +27,77 @@ def fftw(adapter):
         pytest.skip(f"Optional FFTW shared library unavailable: {exc}")
 
 
+@pytest.mark.parametrize("n", [2**28 - 2, 2**29 + 2])
+@pytest.mark.parametrize("in_place", [False, True])
+def test_real_fft_checks_padded_buffer_bytes_before_backend_access(
+        adapter, monkeypatch, n, in_place):
+    # The first size fits as real input, but its padded complex output does
+    # not fit a 32-bit NumPy view. The second would wrap size_t to 16/32 bytes.
+    monkeypatch.setattr(np, "intp", np.int32)
+    with pytest.raises(ValueError, match="platform index range"):
+        adapter.RealFFT(None, n, in_place=in_place)
+
+
+def test_numpy_integer_fft_length_does_not_wrap_allocation_byte_counts(adapter):
+    n = np.int32(2**29 + 2)
+    requested = []
+    backend = SimpleNamespace(lib=SimpleNamespace(
+        fftw_malloc=lambda amount: requested.append(amount)))
+    # This allocator always returns NULL: no large buffer or plan is created.
+    if np.iinfo(np.intp).max < 16 * (int(n) // 2 + 1):
+        with pytest.raises(ValueError, match="platform index range"):
+            adapter.RealFFT(backend, n)
+        assert requested == []
+    else:
+        with pytest.raises(MemoryError, match="aligned allocation failed"):
+            adapter.RealFFT(backend, n)
+        assert requested == [8 * int(n), 16 * (int(n) // 2 + 1)]
+
+
+@pytest.mark.parametrize("path", ["baseline", "unbound", "bound"])
+def test_log_group_indices_fit_numpy_address_width(adapter, monkeypatch, path):
+    from benchmarks._fftw_native import FFTWOperations
+
+    cuts = np.array([1, 3, 5], dtype=np.int64)
+    transform = np.arange(1, 6, dtype=np.float64).astype(np.complex128)
+    powers = np.array([.0625, .5, 1.125, 2., 1.5625])
+    operations = FFTWOperations("numpy")
+    reduceat, indices = np.add.reduceat, []
+
+    def checked_reduceat(values, starts):
+        # Match the actual 32-bit NumPy rule even on a 64-bit test host.
+        assert np.can_cast(starts.dtype, np.intp, casting="safe")
+        indices.append(starts)
+        return reduceat(values, starts)
+
+    binding = None
+    with monkeypatch.context() as patch:
+        patch.setattr(np, "intp", np.int32)
+        patch.setattr(np, "add", SimpleNamespace(reduceat=checked_reduceat))
+        if path == "baseline":
+            compute = lambda: adapter.aggregate_power(powers, cuts, 2., 8)
+        elif path == "unbound":
+            compute = lambda: operations.log_power(transform, 8, 2., 8., cuts)
+        else:
+            binding = operations.bind_output_only(
+                time_buffer=np.empty(8), transform=transform, n=8,
+                sample_rate=2., window_square_sum=8., powers=powers,
+                scratch=np.empty(5), cuts=cuts)
+            compute = binding.aggregate_power
+        try:
+            first, second = compute(), compute()
+            if binding is not None:
+                assert indices[0] is indices[1]  # Prepared calls reuse converted starts.
+                assert binding.cuts is cuts and cuts.dtype == np.dtype("int64")
+        finally:
+            if binding is not None:
+                binding.close()
+    for density, bands in (first, second):
+        np.testing.assert_array_equal(density, [.8125, 1.78125])
+        np.testing.assert_array_equal(bands, [.40625, .890625])
+    np.testing.assert_array_equal(cuts, [1, 3, 5])
+
+
 @pytest.mark.parametrize("n", [31, 32, 63, 64])
 @pytest.mark.parametrize("sample_rate", [1.0, 123.5])
 def test_psd_parseval_and_all_positive_bins(adapter, fftw, n, sample_rate):

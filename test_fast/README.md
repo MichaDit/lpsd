@@ -5,8 +5,8 @@ Run from the repository root, with GCC available:
 ```sh
 python -m pip install '.[test]'
 make compile
-python -m pytest -o addopts='' -q -ra test_fast
-python -m pytest -o addopts='' -q -ra test
+python -m pytest -o addopts='' -q -ra --tb=short test_fast
+python -m pytest -o addopts='' -q -ra --tb=short test
 ```
 
 The suite uses deterministic small and moderate-size signals, including
@@ -64,10 +64,11 @@ Existing platform checks exercise Windows memory-counter C layouts above
 and architecture/tag decisions locally. The six skips retain unavailable
 CUDA, actual Windows/macOS/PowerShell queries and the inapplicable FP64
 long-double path. The expected failure remains the documented relative
-accuracy limit near an off-bin tone's spectral null. No foreign OS/CPU binary
-was executed: Windows, macOS, ARM64 and Raspberry Pi runtime qualification
-requires those runtimes; the local environment has no corresponding emulator
-or cross-toolchain. No GitHub Actions or remote-device run was used.
+accuracy limit near an off-bin tone's spectral null. At this fast.13 checkpoint,
+no foreign OS/CPU binary was executed. The later
+[fast.14 platform follow-up](../docs/cross-platform-validation-20261021.md)
+installs additional runtimes, QEMU and cross-compilers and records their
+actual coverage separately. No GitHub Actions or remote-device run was used.
 
 ## Reference and numerical contract
 

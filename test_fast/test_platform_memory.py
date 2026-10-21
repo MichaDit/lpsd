@@ -35,7 +35,8 @@ struct memory_status {
     uint64_t total_physical, available_physical, total_pagefile;
     uint64_t available_pagefile, total_virtual, available_virtual, extended;
 };
-int GlobalMemoryStatusEx(struct memory_status *status) {
+/* Keep a system API name out of MinGW's DLL auto-export filters. */
+int lpsd_test_GlobalMemoryStatusEx(struct memory_status *status) {
     if (status->length != sizeof(*status)) return 0;
     status->total_physical = UINT64_C(32) << 30;
     status->available_physical = query_state == 2 ? UINT64_C(64) << 30 :
@@ -45,7 +46,9 @@ int GlobalMemoryStatusEx(struct memory_status *status) {
 ''')
     target = temporary / ('platform_memory.dll' if os.name == 'nt' else 'platform_memory.so')
     build_shared(source, target)
-    return ct.CDLL(str(target))
+    library = ct.CDLL(str(target))
+    library.GlobalMemoryStatusEx = library.lpsd_test_GlobalMemoryStatusEx
+    return library
 
 
 @pytest.mark.parametrize('state,expected', ((0, 11 * 16384), (1, None), (2, None), (3, None)))

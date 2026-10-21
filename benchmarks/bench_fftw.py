@@ -13,6 +13,7 @@ import ctypes.util
 import hashlib
 import json
 import math
+import operator
 import os
 from pathlib import Path
 import platform
@@ -140,8 +141,13 @@ class RealFFT:
     """
 
     def __init__(self, backend, n, planner="estimate", time_limit=None, *, in_place=False):
+        n = operator.index(n)
         if n < 2 or n > np.iinfo(np.int32).max:
             raise ValueError("Require 2 <= n <= INT_MAX for FFTW's 1D interface")
+        # The padded complex output is the largest individual buffer in
+        # either layout. Its NumPy view and FFTW size_t must both fit.
+        if n // 2 + 1 > np.iinfo(np.intp).max // 16:
+            raise ValueError("FFTW buffer byte count exceeds the platform index range")
         if planner not in PLANNERS:
             raise ValueError("Unknown planner")
         if time_limit is not None and (not math.isfinite(time_limit) or time_limit < 0):
@@ -325,10 +331,13 @@ def one_sided_psd(transform, n, sample_rate, window_square_sum, out=None, scratc
 
 
 def aggregate_power(psd, cuts, sample_rate, n):
+    cuts = np.asarray(cuts)
     counts = np.diff(cuts)
-    if cuts[0] != 1 or cuts[-1] != len(psd) or np.any(counts <= 0):
+    if cuts[0] != 1 or cuts[-1] != len(psd) or np.any(cuts[1:] <= cuts[:-1]):
         raise ValueError("Cuts must partition all positive FFT bins exactly once")
-    sums = np.add.reduceat(psd, cuts[:-1])
+    # Validated endpoints/order keep this narrowing safe on 32-bit NumPy.
+    starts = cuts[:-1].astype(np.intp, casting="same_kind", copy=False)
+    sums = np.add.reduceat(psd, starts)
     return sums / counts, sums * (sample_rate / n)
 
 

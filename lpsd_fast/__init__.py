@@ -1,5 +1,5 @@
 """Parallel native implementation of the LPSD 1.0.6 estimator."""
-__version__ = "1.0.6+fast.13"
+__version__ = "1.0.6+fast.14"
 
 __all__ = ["lpsd", "lcsd", "lnsd", "available_workers"]
 

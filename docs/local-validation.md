@@ -33,15 +33,24 @@ The equivalent manual commands, with dependencies already installed, are:
 ```sh
 python build_native.py
 python -m lpsd_fast.build
-python -m pytest -o addopts= -o junit_family=legacy -q -ra test_fast
-python -m pytest -o addopts= -o junit_family=legacy -q -ra test
+python -m pytest -o addopts= -o junit_family=legacy -q -ra --tb=short test_fast
+python -m pytest -o addopts= -o junit_family=legacy -q -ra --tb=short test
 ```
 
 `junit_family=legacy` preserves the existing per-test recorded properties
 without the incompatible xUnit2 warning. This does not relax an assertion.
+Short tracebacks preserve the original error and JUnit when a failing test
+has already closed a memory mapping: formatting its array contents in a
+long traceback can otherwise crash the test process. The launcher has a
+small subprocess regression for this failure-reporting path.
 Build/runtime changes and unit-test results belong to the same source and
 binary hashes. Do not label a missing dependency, partial run or expected
 failure as an executed passing test.
+
+The [additional local platform validation](cross-platform-validation-20261021.md)
+records execution under Wine and QEMU, cross-compilation for macOS and
+Windows ARM64, and the limits of those checks. Emulated timings do not
+replace measurements on the physical target hardware.
 
 ## Physical benchmark follow-up
 

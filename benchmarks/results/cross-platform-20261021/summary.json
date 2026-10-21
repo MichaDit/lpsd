@@ -1,0 +1,1738 @@
+{
+  "schema": "lpsd-cross-platform-validation-v1",
+  "date": "2026-10-21",
+  "version": "1.0.6+fast.14",
+  "baseline_commit": "3317b77ca0aca40a9639f3b02da657da193a6bb8",
+  "scope": "Local functional, numerical, ABI and packaging checks; no GitHub Actions, remote jobs or emulated hardware performance claims.",
+  "source_inventory": {
+    "definition": "scripts.validate_local.source_hashes",
+    "file_count": 191,
+    "fingerprint_sha256": "3f296325eb344678273f897fa9b7af5639a95c8f6559da4c48862cb6ec47456c",
+    "fingerprint_encoding": "UTF-8 JSON of the path-to-SHA256 map, sorted keys and compact comma/colon separators",
+    "native_C_sources_unchanged_from_baseline": true
+  },
+  "linux_x86_64": {
+    "runtime": {
+      "system": "Linux",
+      "machine": "x86_64",
+      "python": "3.12.14",
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "scipy": "1.17.0",
+      "pytest": "9.1.1"
+    },
+    "command": [
+      "python",
+      "scripts/validate_local.py",
+      "--output-parent",
+      ".validation/fast14-publish",
+      "--stage-timeout",
+      "900"
+    ],
+    "source_inventory_matches": false,
+    "stages": [
+      {
+        "name": "build-reference",
+        "returncode": 0,
+        "timed_out": false,
+        "wall_seconds": 5.2878946579985495,
+        "status": "passed"
+      },
+      {
+        "name": "build-fast",
+        "returncode": 0,
+        "timed_out": false,
+        "wall_seconds": 17.90865899900018,
+        "status": "passed"
+      },
+      {
+        "name": "regressions",
+        "returncode": 0,
+        "timed_out": false,
+        "wall_seconds": 177.97631951899893,
+        "status": "passed",
+        "counts": {
+          "tests": 2731,
+          "passed": 2725,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 5,
+          "xfailed": 1
+        }
+      },
+      {
+        "name": "upstream",
+        "returncode": 0,
+        "timed_out": false,
+        "wall_seconds": 38.082332042002236,
+        "status": "passed",
+        "counts": {
+          "tests": 18,
+          "passed": 18,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      }
+    ],
+    "native_builds": {
+      "reference": {
+        "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "compiler_target": "x86_64-linux-gnu",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC"
+        ],
+        "link_flags": [
+          "-shared",
+          "-lm"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_mant_dig": 64,
+          "long_double_bytes": 16
+        },
+        "binary_sha256": "338912a25267a08737a78bfe47eeda64cc124b954b1baffd71a904dce30d95fc"
+      },
+      "fast": {
+        "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "compiler_target": "x86_64-linux-gnu",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC",
+          "-fopenmp-simd",
+          "-DLPSD_HAVE_TARGET_CLONES=1"
+        ],
+        "link_flags": [
+          "-shared",
+          "-lm"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_mant_dig": 64,
+          "long_double_bytes": 16
+        },
+        "binary_sha256": "5bf5c0f4b1e194adf3573f6e1aa248aaede07d1b89f0cd8b768f0b80d8ac9745"
+      }
+    },
+    "skips_and_expected_failures": [
+      {
+        "case": "::test_fast.test_cuda_experiment",
+        "message": "collection skipped"
+      },
+      {
+        "case": "::test_fast.test_cuda_packed",
+        "message": "collection skipped"
+      },
+      {
+        "case": "test_fast.test_benchmark_memory_measurement::test_real_macos_owned_child_memory_probe",
+        "type": "pytest.skip",
+        "message": "Real macOS RSS/USS API qualification"
+      },
+      {
+        "case": "test_fast.test_inline_mean::test_native_inline_dots_match_original_residual_vectors_bitwise",
+        "type": "pytest.skip",
+        "message": "Native long double differs from FP64; original residual path remains active"
+      },
+      {
+        "case": "test_fast.test_known_limits::test_known_offbin_tone_uniform_relative_accuracy",
+        "type": "pytest.xfail",
+        "message": "Off-bin pure-tone sidelobes approach a spectral null: reordered dot products do not provide a uniform 2e-6 relative PSD guarantee. Absolute ASD is gated separately."
+      },
+      {
+        "case": "test_fast.test_platform_memory::test_native_platform_available_memory_query_succeeds",
+        "type": "pytest.skip",
+        "message": "Native platform query"
+      }
+    ],
+    "full_suite_source_fingerprint_sha256": "461161b6499901b4212867b3fcf9668afa91effb5b59808236538aa511b2a1f5",
+    "changes_after_full_suite": [
+      "test_fast/test_platform_memory.py"
+    ],
+    "production_sources_match_final": true,
+    "final_platform_fixture_check": {
+      "source_fingerprint_sha256": "3f296325eb344678273f897fa9b7af5639a95c8f6559da4c48862cb6ec47456c",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "-o",
+        "addopts=",
+        "-o",
+        "junit_family=legacy",
+        "-q",
+        "-ra",
+        "--tb=short",
+        "test_fast/test_platform_memory.py",
+        "--junitxml",
+        ".validation/fast14-publish/final-platform-abi.xml"
+      ],
+      "returncode": 0,
+      "counts": {
+        "tests": 15,
+        "passed": 14,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 1,
+        "xfailed": 0
+      },
+      "note": "Existing cases repeated after a test-only C symbol rename; not added to the full-suite pass count."
+    },
+    "packaging": {
+      "sdist": "lpsd-1.0.6+fast.14.tar.gz",
+      "wheel": "lpsd-1.0.6+fast.14-py3-none-linux_x86_64.whl",
+      "build_status": "passed",
+      "install_status": "passed",
+      "isolated_smoke_status": "passed",
+      "source_fingerprint_sha256": "3f296325eb344678273f897fa9b7af5639a95c8f6559da4c48862cb6ec47456c",
+      "production_source_members_verified": 30,
+      "production_sources_match_final_checkout": true,
+      "libraries": [
+        {
+          "library": "ltpda_dft.so",
+          "binary_sha256": "338912a25267a08737a78bfe47eeda64cc124b954b1baffd71a904dce30d95fc",
+          "compiler_target": "x86_64-linux-gnu",
+          "flags": [
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off",
+            "-fPIC"
+          ],
+          "floating_point": {
+            "double_mant_dig": 53,
+            "long_double_mant_dig": 64,
+            "long_double_bytes": 16
+          },
+          "native": false
+        },
+        {
+          "library": "liblpsd_fast.so",
+          "binary_sha256": "5bf5c0f4b1e194adf3573f6e1aa248aaede07d1b89f0cd8b768f0b80d8ac9745",
+          "compiler_target": "x86_64-linux-gnu",
+          "flags": [
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off",
+            "-fPIC",
+            "-fopenmp-simd",
+            "-DLPSD_HAVE_TARGET_CLONES=1"
+          ],
+          "floating_point": {
+            "double_mant_dig": 53,
+            "long_double_mant_dig": 64,
+            "long_double_bytes": 16
+          },
+          "native": false
+        }
+      ],
+      "commands": [
+        [
+          "python",
+          "-m",
+          "build",
+          "--no-isolation",
+          "--outdir",
+          ".validation/fast14-publish/dist"
+        ],
+        [
+          "isolated-venv/python",
+          "-m",
+          "pip",
+          "install",
+          "--no-index",
+          "--no-deps",
+          "--ignore-installed",
+          "lpsd-1.0.6+fast.14-py3-none-linux_x86_64.whl"
+        ],
+        [
+          "isolated-venv/python",
+          "-I",
+          "checkout/test_fast/wheel_smoke.py"
+        ]
+      ],
+      "smoke_working_directory": "outside checkout",
+      "archive_hash_storage": "Recorded locally; containing source-archive digests are not nested into their own evidence file."
+    }
+  },
+  "regressions_added": {
+    "buffer_size_boundaries": 7,
+    "numpy_index_width_paths": 3,
+    "closed_mapping_failure_reporting": 1,
+    "existing_billion_layout_checks_adjusted": 2,
+    "all_ten_new_fft_cases_failed_before_fix": true,
+    "large_allocations_attempted": false,
+    "windows_cross_volume_source_manifest": 1,
+    "windows_cross_volume_case_failed_before_fix": true,
+    "total_new_cases": 12
+  },
+  "closed_mapping_reporting_probe": {
+    "runtime": "native Linux Python 3.12.14 / NumPy 2.3.5 / pytest 9.1.1",
+    "mapped_float64_values": 4,
+    "auto_traceback_returncode": -11,
+    "short_traceback_returncode": 1,
+    "launcher_regression_passed_on": [
+      "Linux x86_64",
+      "Windows x64 under Wine 11.20"
+    ]
+  },
+  "linux_arm": {
+    "runtime": {
+      "distribution": "Ubuntu 24.04 Noble ports packages, extracted into isolated root filesystems",
+      "python": "3.12.3",
+      "numpy": "1.26.4",
+      "scipy": "1.11.4",
+      "pandas": "2.1.4",
+      "pytest": "8.4.2",
+      "fftw": "3.3.10",
+      "openblas": "0.3.26",
+      "glibc": "2.39",
+      "qemu": "8.2.2 (Ubuntu 1:8.2.2+ds-0ubuntu1.18)",
+      "proot": "5.5.0-25dc6a31",
+      "proot_sha256": "db185300a9daabbce86aca7632d8c7fdc4249f6f153171954013b70c5f491ec0",
+      "threads": {
+        "OPENBLAS_NUM_THREADS": 1,
+        "OMP_NUM_THREADS": 1
+      }
+    },
+    "run_commands": {
+      "broad_pre_aggregation_fix": [
+        "./python",
+        "-m",
+        "pytest",
+        "-q",
+        "test_fast/test_compatibility.py",
+        "test_fast/test_outputs.py",
+        "test_fast/test_statistics.py",
+        "test_fast/test_prepared_lpsd.py",
+        "test_fast/test_api_frequency_dispatch.py",
+        "test_fast/test_segment_starts.py",
+        "test_fast/test_direct_log_power.py",
+        "test_fast/test_fftw_benchmark.py",
+        "test_fast/test_fftw_bluestein.py",
+        "test_fast/test_fftw_packed_real.py",
+        "test_fast/test_inline_mean.py",
+        "test_fast/test_fftw_disk.py::test_billion_sample_memory_estimate_has_no_large_allocations",
+        "-k",
+        "not complete_spectra_user_accuracy_contract and not long_segment_batches_and_csd_fallback_use_corrected_statistics",
+        "--junitxml=/results/final-regressions.xml",
+        "--durations=20"
+      ],
+      "final_fft": [
+        "./python",
+        "-m",
+        "pytest",
+        "-q",
+        "test_fast/test_fftw_benchmark.py",
+        "test_fast/test_fftw_bluestein.py",
+        "test_fast/test_fftw_pipeline_ops.py",
+        "test_fast/test_fftw_in_place.py",
+        "test_fast/test_fftw_bounded_window.py",
+        "--tb=short",
+        "--junitxml=/results/final-fft.xml",
+        "--durations=20"
+      ],
+      "final_build_provenance": [
+        "./python",
+        "-m",
+        "pytest",
+        "-q",
+        "test_fast/test_build_provenance.py",
+        "-k",
+        "source_manifest or evidence",
+        "--tb=short",
+        "--junitxml=/results/final-build-provenance.xml"
+      ],
+      "final_platform_memory": [
+        "./python",
+        "-m",
+        "pytest",
+        "-q",
+        "test_fast/test_platform_memory.py",
+        "--tb=short",
+        "--junitxml=/results/final-platform-memory.xml"
+      ]
+    },
+    "source": {
+      "fingerprint_algorithm": "SHA-256 of UTF-8 JSON with sorted keys and compact comma/colon separators",
+      "broad_192_source_fingerprint": "bb30b16a684126b09f5623952815afce3d3e0b837adfe98a84d0df629003d930",
+      "final_192_source_fingerprint": "d1bcbc1bc232a2b1eff16a70ce55ef4bd1f3008797034c4c6f9358929cd9f896",
+      "final_validator_191_source_fingerprint": "3f296325eb344678273f897fa9b7af5639a95c8f6559da4c48862cb6ec47456c",
+      "inventory_difference": {
+        "arm_only": [
+          "MANIFEST.in",
+          "tools/audit_coauthors.py"
+        ],
+        "validator_only": [
+          "setup.cfg"
+        ]
+      },
+      "changed_since_broad_run": [
+        "benchmarks/_fftw_native.py",
+        "benchmarks/bench_fftw.py",
+        "lpsd_fast/build.py",
+        "scripts/validate_local.py",
+        "test_fast/test_build_provenance.py",
+        "test_fast/test_fftw_benchmark.py",
+        "test_fast/test_local_validation.py",
+        "test_fast/test_platform_memory.py"
+      ],
+      "validator_change_scope": "scripts/validate_local.py and test_fast/test_local_validation.py were synchronized after the broad run; these are not part of the ARM selections and were independently tested by the host/Windows workstreams.",
+      "native_C_changed_since_broad_run": false,
+      "post_aggregation_192_source_fingerprint": "4e574c49b4f0d44f44572a6e70cef8c47611efe7665b71cdeb630e0d46b9984a",
+      "post_aggregation_validator_191_source_fingerprint": "bd6aa9974619cdbc72f9b4b96f96120a23fe5c30bcb2beee63866f2d48b6e4dd",
+      "changed_since_final_fft": [
+        "lpsd_fast/build.py",
+        "test_fast/test_build_provenance.py",
+        "test_fast/test_platform_memory.py"
+      ],
+      "native_C_changed_since_final_fft": false,
+      "final_build_change_scope": "Between the final FFT run and the build-provenance follow-up, only lpsd_fast/build.py and test_fast/test_build_provenance.py changed. Five manifest/include/hash cases ran on both guests; no production C code or LPSD native binary changed. The later test-fixture correction has its own fourth run.",
+      "post_build_manifest_192_source_fingerprint": "9405494581a3aee18befe9a8496e050e07274c013b94129d11231721003c9cc9",
+      "post_build_manifest_validator_191_source_fingerprint": "461161b6499901b4212867b3fcf9668afa91effb5b59808236538aa511b2a1f5",
+      "changed_since_final_build_provenance": [
+        "test_fast/test_platform_memory.py"
+      ],
+      "native_C_changed_since_final_build_provenance": false,
+      "final_fixture_change_scope": "Only test_fast/test_platform_memory.py changed after the build-provenance run: use the distinct C stub symbol lpsd_test_GlobalMemoryStatusEx and alias its actual ctypes function as GlobalMemoryStatusEx. All 15 module cases were selected on both ARM guests, compiling the tiny C ABI fixture with the installed guest GCC. Production source and the four existing LPSD reference/fast binaries were unchanged."
+    },
+    "limitations": [
+      "User-mode emulation shares the host Linux kernel and does not qualify physical board firmware, native throughput, or full guest kernel integration.",
+      "The broad selection deselected 24 complete_spectra_user_accuracy_contract cases and 8 long_segment_batches_and_csd_fallback_use_corrected_statistics cases with prohibitively slow emulated long-double reference arithmetic. Other short, streaming, disk, prepared and corrected-statistics cases were executed.",
+      "The first fast.13 baseline runs were deliberately interrupted and are retained separately. Their partial passes are not included as successful qualifications or added to coverage counts.",
+      "The final union is latest-status evidence across the completed broad run, final FFT run, final build-provenance selection, and final platform-memory ABI fixture module, not a single full-suite execution. Repeated IDs count once."
+    ],
+    "architectures": {
+      "arm64": {
+        "machine": "aarch64",
+        "cpu": "cortex-a53",
+        "sizeof_c_long": 8,
+        "sizeof_pointer": 8,
+        "inline_mean": 0,
+        "builds": {
+          "reference": {
+            "compiler_version": "aarch64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+            "compiler_target": "aarch64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 113,
+              "long_double_bytes": 16
+            },
+            "binary_sha256": "9d95621dcc800cad69d2e9f57d5f67a890372b28623799f970fa3d27ba14e957"
+          },
+          "fast": {
+            "compiler_version": "aarch64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+            "compiler_target": "aarch64-linux-gnu",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 113,
+              "long_double_bytes": 16
+            },
+            "binary_sha256": "a0e68b16140fc69a030875c67afced6a1bb4e28b3dabf05d6684e9fa58b10af8"
+          }
+        },
+        "source_matches_main_validator_191": true,
+        "broad_pre_aggregation_fix": {
+          "source": "before aggregation fix; allocation guards already applied",
+          "exit_code": 0,
+          "executed": 527,
+          "passed": 526,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 1,
+          "deselected": 32,
+          "collected": 559,
+          "junit_duration_seconds": 457.028,
+          "nodeids_sha256": "53616914612609f84e0a457b700fce4bc07213f6877bc6a0c86b530065f83642",
+          "skip_details": {
+            "test_fast/test_inline_mean.py::test_native_inline_dots_match_original_residual_vectors_bitwise": "Native long double differs from FP64; original residual path remains active"
+          }
+        },
+        "final_fft": {
+          "source": "post-aggregation source manifest, before final build-manifest-only fix",
+          "exit_code": 0,
+          "executed": 188,
+          "passed": 188,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "deselected": 0,
+          "collected": 188,
+          "junit_duration_seconds": 48.212,
+          "nodeids_sha256": "cbfcb5a8c1020a765a647350f8976c77085e9f6dd601465614f603223a2cc572",
+          "skip_details": {}
+        },
+        "deduplicated_multi_run_evidence": {
+          "overlap_ids": 68,
+          "passed": 665,
+          "skipped": 2,
+          "failed": 0,
+          "errors": 0,
+          "nodeids_sha256": "e79e5716f0fc1029d8468263ded43f3ffd2d04949a3c2d6a7fd981afed68f4b3",
+          "note": "Unique test IDs including explicit skips, with latest observed status across the broad run, final FFT run, final build-provenance run and final platform-memory fixture module. This is not one full-suite run. Unrepeated numerical paths and all four LPSD reference/fast native binaries remained unchanged by subsequent build-manifest and fixture-only corrections.",
+          "run_count": 4,
+          "unique_test_ids": 667
+        },
+        "final_build_provenance": {
+          "source": "post-build-manifest source snapshot, before final platform-memory fixture-only correction",
+          "exit_code": 0,
+          "executed": 5,
+          "passed": 5,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "deselected": 2,
+          "collected": 7,
+          "junit_duration_seconds": 2.872,
+          "nodeids_sha256": "aa35e747a8896d8122a4760f9c33b5f2ad2a7dfa53e052151c8af51719462bf3",
+          "skip_details": {},
+          "deselection_reason": "The two tests that perform actual native compilation were deliberately excluded; no ARM C libraries were rebuilt."
+        },
+        "final_platform_memory": {
+          "source": "final source manifest after platform-memory ABI fixture fix",
+          "exit_code": 0,
+          "executed": 15,
+          "passed": 14,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 1,
+          "deselected": 0,
+          "collected": 15,
+          "junit_duration_seconds": 26.111,
+          "nodeids_sha256": "248c00e377216f0fd3bc0fa0ca51cccd1dab202d818c13fe53154db89f06c2bb",
+          "skip_details": {
+            "test_fast/test_platform_memory.py::test_native_platform_available_memory_query_succeeds": "Native platform query"
+          },
+          "scope": "Full platform-memory module; actual guest C ABI stub exercises structure layout, 64-bit memory fields, Mac host-right release, and failure paths. The real native Darwin/Windows query is appropriately skipped on the Linux guests."
+        }
+      },
+      "armhf": {
+        "machine": "armv7l",
+        "cpu": "cortex-a7",
+        "sizeof_c_long": 4,
+        "sizeof_pointer": 4,
+        "inline_mean": 1,
+        "builds": {
+          "reference": {
+            "compiler_version": "arm-linux-gnueabihf-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+            "compiler_target": "arm-linux-gnueabihf",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 53,
+              "long_double_bytes": 8
+            },
+            "binary_sha256": "bb2128ddb9e4e5123158ea11cd5e3c9bed328b9c517bca26f106a821145fac12"
+          },
+          "fast": {
+            "compiler_version": "arm-linux-gnueabihf-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+            "compiler_target": "arm-linux-gnueabihf",
+            "flags": [
+              "-O3",
+              "-std=c11",
+              "-fno-fast-math",
+              "-ffp-contract=off",
+              "-fPIC",
+              "-fopenmp-simd"
+            ],
+            "link_flags": [
+              "-shared",
+              "-lm"
+            ],
+            "floating_point": {
+              "double_mant_dig": 53,
+              "long_double_mant_dig": 53,
+              "long_double_bytes": 8
+            },
+            "binary_sha256": "0ff59f00811186b633c840f8aa1d92b14b0a47490c0f7921d7e13c90b7ba1fff"
+          }
+        },
+        "source_matches_main_validator_191": true,
+        "broad_pre_aggregation_fix": {
+          "source": "before aggregation fix; allocation guards already applied",
+          "exit_code": 1,
+          "executed": 527,
+          "passed": 519,
+          "failed": 8,
+          "errors": 0,
+          "skipped": 0,
+          "deselected": 32,
+          "collected": 559,
+          "junit_duration_seconds": 460.774,
+          "nodeids_sha256": "53616914612609f84e0a457b700fce4bc07213f6877bc6a0c86b530065f83642",
+          "skip_details": {}
+        },
+        "final_fft": {
+          "source": "post-aggregation source manifest, before final build-manifest-only fix",
+          "exit_code": 0,
+          "executed": 188,
+          "passed": 188,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "deselected": 0,
+          "collected": 188,
+          "junit_duration_seconds": 53.174,
+          "nodeids_sha256": "cbfcb5a8c1020a765a647350f8976c77085e9f6dd601465614f603223a2cc572",
+          "skip_details": {}
+        },
+        "deduplicated_multi_run_evidence": {
+          "overlap_ids": 68,
+          "passed": 666,
+          "skipped": 1,
+          "failed": 0,
+          "errors": 0,
+          "nodeids_sha256": "e79e5716f0fc1029d8468263ded43f3ffd2d04949a3c2d6a7fd981afed68f4b3",
+          "note": "Unique test IDs including explicit skips, with latest observed status across the broad run, final FFT run, final build-provenance run and final platform-memory fixture module. This is not one full-suite run. Unrepeated numerical paths and all four LPSD reference/fast native binaries remained unchanged by subsequent build-manifest and fixture-only corrections.",
+          "run_count": 4,
+          "unique_test_ids": 667
+        },
+        "original_eight_failures_and_three_new_regressions": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        "final_build_provenance": {
+          "source": "post-build-manifest source snapshot, before final platform-memory fixture-only correction",
+          "exit_code": 0,
+          "executed": 5,
+          "passed": 5,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "deselected": 2,
+          "collected": 7,
+          "junit_duration_seconds": 1.541,
+          "nodeids_sha256": "aa35e747a8896d8122a4760f9c33b5f2ad2a7dfa53e052151c8af51719462bf3",
+          "skip_details": {},
+          "deselection_reason": "The two tests that perform actual native compilation were deliberately excluded; no ARM C libraries were rebuilt."
+        },
+        "final_platform_memory": {
+          "source": "final source manifest after platform-memory ABI fixture fix",
+          "exit_code": 0,
+          "executed": 15,
+          "passed": 14,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 1,
+          "deselected": 0,
+          "collected": 15,
+          "junit_duration_seconds": 7.301,
+          "nodeids_sha256": "248c00e377216f0fd3bc0fa0ca51cccd1dab202d818c13fe53154db89f06c2bb",
+          "skip_details": {
+            "test_fast/test_platform_memory.py::test_native_platform_available_memory_query_succeeds": "Native platform query"
+          },
+          "scope": "Full platform-memory module; actual guest C ABI stub exercises structure layout, 64-bit memory fields, Mac host-right release, and failure paths. The real native Darwin/Windows query is appropriately skipped on the Linux guests."
+        }
+      }
+    },
+    "allocation_probe": {
+      "n": 536870914,
+      "before_callback_byte_counts": {
+        "real": [
+          16,
+          32
+        ],
+        "real_in_place": [
+          32
+        ],
+        "bluestein": [
+          16,
+          32,
+          48,
+          48
+        ]
+      },
+      "after": [
+        {
+          "transform": "real",
+          "exception": "ValueError",
+          "message": "FFTW buffer byte count exceeds the platform index range",
+          "size_t_bytes": 4,
+          "requested_lengths_seen_by_c_callback": []
+        },
+        {
+          "transform": "real_in_place",
+          "exception": "ValueError",
+          "message": "FFTW buffer byte count exceeds the platform index range",
+          "size_t_bytes": 4,
+          "requested_lengths_seen_by_c_callback": []
+        },
+        {
+          "transform": "bluestein",
+          "exception": "ValueError",
+          "message": "Bluestein buffer byte count exceeds the platform index range",
+          "size_t_bytes": 4,
+          "requested_lengths_seen_by_c_callback": []
+        }
+      ],
+      "method": "RealFFT, in-place RealFFT and Bluestein reject byte-count overflow before any c_size_t NULL-allocator callback; no large allocations were attempted."
+    }
+  },
+  "macos": {
+    "validation_kind": "cross_compile_and_link_only",
+    "runtime_executed": false,
+    "compiler": "Zig 0.15.2, bundled Clang 20.1.2 and Darwin libc headers/libSystem stubs",
+    "compiler_tarball_sha256": "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239",
+    "flags": [
+      "-O3",
+      "-std=c11",
+      "-fno-fast-math",
+      "-ffp-contract=off",
+      "-fPIC",
+      "-dynamiclib",
+      "-lm"
+    ],
+    "fast_extra_flags": [
+      "-fopenmp-simd"
+    ],
+    "abi_probe_static_assertions_per_architecture": 9,
+    "resource_abi_probe_source_sha256": "e3dfd40c36c0e24517a98b4a02de84ddba25f2254ff53196ebefb614bf44c1ab",
+    "architectures": {
+      "arm64": {
+        "target": "aarch64-macos.11.0",
+        "long_double_mantissa_bits": 53,
+        "long_double_bytes": 8,
+        "long_bytes": 8,
+        "inline_mean_compile_branch": true,
+        "libraries": [
+          {
+            "file": "arm64/liblpsd_fast.so",
+            "sha256": "702492a25d887255ca3f573dfb96c3d03f36b18df31bd576886d7e6275499ba0",
+            "bytes": 189152,
+            "mach_o_type": "MH_DYLIB",
+            "dependencies": [
+              "/usr/lib/libSystem.B.dylib"
+            ],
+            "minimum_macos": "11.0.0",
+            "project_exports_match_host": true,
+            "project_export_count": 50
+          },
+          {
+            "file": "arm64/ltpda_dft.so",
+            "sha256": "bd5b82d47b5bf0cc00168d67e90a59d04bc9b409f6535c7412f8c6c912b0a387",
+            "bytes": 133584,
+            "mach_o_type": "MH_DYLIB",
+            "dependencies": [
+              "/usr/lib/libSystem.B.dylib"
+            ],
+            "minimum_macos": "11.0.0",
+            "project_exports_match_host": true,
+            "project_export_count": 14
+          }
+        ],
+        "resource_abi_probe": {
+          "sha256": "a2f37bdf0715dfe8c5e78290960ff393af649cd940347d99bfd3e8b466ff51a6",
+          "mach_o_type": "MH_DYLIB",
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ],
+          "minimum_macos": "11.0.0",
+          "imports": [
+            "dyld_stub_binder",
+            "___stack_chk_fail",
+            "___stack_chk_guard",
+            "_host_statistics",
+            "_mach_host_self",
+            "_mach_port_deallocate",
+            "_mach_task_self_"
+          ]
+        }
+      },
+      "x86_64": {
+        "target": "x86_64-macos.11.0",
+        "long_double_mantissa_bits": 64,
+        "long_double_bytes": 16,
+        "long_bytes": 8,
+        "inline_mean_compile_branch": false,
+        "libraries": [
+          {
+            "file": "x86_64/liblpsd_fast.so",
+            "sha256": "99c6b5b7dd203224c1d69da7aebdb1308c300ae08920a1c0a8fb3097df43b0c7",
+            "bytes": 176072,
+            "mach_o_type": "MH_DYLIB",
+            "dependencies": [
+              "/usr/lib/libSystem.B.dylib"
+            ],
+            "minimum_macos": "11.0.0",
+            "project_exports_match_host": true,
+            "project_export_count": 50
+          },
+          {
+            "file": "x86_64/ltpda_dft.so",
+            "sha256": "277fb39f20b75ffe15cca978d1ea7bbcc020cbc6d8a1b799981dc7c4579c987a",
+            "bytes": 104454,
+            "mach_o_type": "MH_DYLIB",
+            "dependencies": [
+              "/usr/lib/libSystem.B.dylib"
+            ],
+            "minimum_macos": "11.0.0",
+            "project_exports_match_host": true,
+            "project_export_count": 14
+          }
+        ],
+        "resource_abi_probe": {
+          "sha256": "fe6cf5e25b84d0ae70b8f08f2ed506dda469133183bcd02082d22d44c15188d9",
+          "mach_o_type": "MH_DYLIB",
+          "dependencies": [
+            "/usr/lib/libSystem.B.dylib"
+          ],
+          "minimum_macos": "11.0.0",
+          "imports": [
+            "dyld_stub_binder",
+            "___stack_chk_fail",
+            "___stack_chk_guard",
+            "_host_statistics",
+            "_mach_host_self",
+            "_mach_port_deallocate",
+            "_mach_task_self_"
+          ]
+        }
+      }
+    },
+    "darling_attempt": {
+      "official_release": "v0.1.20260608",
+      "package_version": "0.1.20260609~noble",
+      "archive_sha256": "27469ef3932da2e91dd7fb34b70e3628a3e54b7af9fb5480051f44af35eca1fd",
+      "startup_passed": false,
+      "direct_namespace_probe": "EPERM",
+      "user_namespace_probe": "passed",
+      "runtime_error": "Cannot mount overlay: Invalid argument"
+    }
+  },
+  "wine_runtime_probes": {
+    "wine_version": "wine-11.20",
+    "python_version": "3.12.10",
+    "numpy_version": "2.3.5",
+    "installation": "Official WineHQ Ubuntu Noble packages extracted locally with dpkg-deb -x; no system package or existing prefix modified",
+    "ucrt": "The three short API probes used Wine builtin UCRT; the complete suite later required official Microsoft Windows SDK 10.0.26100.1 UCRT because builtin cimagl is unimplemented.",
+    "packages": [
+      {
+        "url": "https://dl.winehq.org/wine-builds/ubuntu/pool/main/w/wine/wine-devel-amd64_11.20~noble-1_amd64.deb",
+        "size_bytes": 147050040,
+        "sha256": "bed86afc5a9b076c53802a9e4bc0456734ed43df5090a3a11fab800f365fb620"
+      },
+      {
+        "url": "https://dl.winehq.org/wine-builds/ubuntu/pool/main/w/wine/wine-devel_11.20~noble-1_amd64.deb",
+        "size_bytes": 11598282,
+        "sha256": "c92cfdb8435d105e87446b5b3c55ce2cc0496ec25de142d87110b60f28d4a6ce"
+      }
+    ],
+    "package_index": "https://dl.winehq.org/wine-builds/ubuntu/dists/noble/main/binary-amd64/Packages.gz",
+    "verification": "Both package sizes and SHA256 hashes verified against the downloaded official package index",
+    "primary_sources": [
+      "https://raw.githubusercontent.com/wine-mirror/wine/wine-9.0/dlls/kernelbase/file.c",
+      "https://raw.githubusercontent.com/wine-mirror/wine/wine-11.20/dlls/kernelbase/file.c",
+      "https://raw.githubusercontent.com/wine-mirror/wine/wine-11.20/dlls/ntdll/unix/file.c"
+    ],
+    "probes": [
+      {
+        "script": "probe_symlink.py",
+        "exit_code": 0,
+        "result": "File and directory symlinks both exist and are identified as symlinks; reparse tag 0xa000000c. Resolves the observed Wine 9 stub behavior."
+      },
+      {
+        "script": "probe_copy2.py",
+        "exit_code": 0,
+        "result": "shutil.copy2 copied 357 bytes exactly and produced a distinct file. Resolves the missing CopyFile2 API blocker observed in Wine 9; wheel packaging itself delegated to the Windows agent."
+      },
+      {
+        "script": "probe_file_identity.py",
+        "exit_code": 0,
+        "result": "Runtime anomaly persists on both C: and Z:. Before mapping, two distinct files have different nonzero inode identifiers and samefile=False. While both are memory mapped, st_dev=st_ino=0 and samefile=True despite different paths. Not treated as a production-library defect."
+      }
+    ]
+  },
+  "powershell": {
+    "version": "7.6.6",
+    "runtime": "official Linux x64 binary archive",
+    "archive_sha256": "ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc",
+    "bootstrap_module": {
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0
+    },
+    "included_in_native_linux_total": true
+  },
+  "windows_cross_volume_build_fix": {
+    "initial_setup_errors": 36,
+    "cause": "os.path.relpath cannot express a header on a different Windows volume",
+    "targeted_windows_starts_and_build_tests": {
+      "passed": 57,
+      "failed": 0,
+      "errors": 0
+    },
+    "native_windows_relevance": "Checkout on D: with TEMP on C: has the same failure as the local C:/Z: reproduction",
+    "unchanged_contract": [
+      "recursive quoted includes",
+      "cycle detection",
+      "all source/header byte hashes",
+      "before/after build source comparison"
+    ]
+  },
+  "windows_platform_abi_fixture_fix": {
+    "initial_failures": 4,
+    "cause": "The C stub defined GlobalMemoryStatusEx, but MinGW DLL auto-export filtering omitted that system API symbol from the PE export table.",
+    "actual_windows_memory_query_passed": true,
+    "change": "Private C name lpsd_test_GlobalMemoryStatusEx with a Python function-pointer alias preserves the existing ABI tests and other DLL exports.",
+    "production_code_changed": false,
+    "new_test_cases": 0
+  },
+  "windows": {
+    "full_validation": {
+      "counts": {
+        "errors": 0,
+        "failed": 59,
+        "passed": 2615,
+        "skipped": 56,
+        "tests": 2731,
+        "xfailed": 1
+      },
+      "stages": [
+        {
+          "name": "build-reference",
+          "returncode": 0,
+          "status": "passed",
+          "timed_out": false,
+          "wall_seconds": 4.467000000000553
+        },
+        {
+          "name": "build-fast",
+          "returncode": 0,
+          "status": "passed",
+          "timed_out": false,
+          "wall_seconds": 11.922999999998865
+        },
+        {
+          "counts": {
+            "errors": 0,
+            "failed": 59,
+            "passed": 2615,
+            "skipped": 56,
+            "tests": 2731,
+            "xfailed": 1
+          },
+          "name": "regressions",
+          "returncode": 1,
+          "status": "failed",
+          "timed_out": false,
+          "wall_seconds": 558.2200000000012
+        }
+      ],
+      "status": "failed"
+    },
+    "latest_deduplicated": {
+      "counts": {
+        "errors": 0,
+        "failed": 55,
+        "passed": 2633,
+        "skipped": 42,
+        "tests": 2731,
+        "xfailed": 1
+      },
+      "failure_groups": [
+        {
+          "cause": "Wine returns identical zero file identifiers for different files while mapped.",
+          "count": 1,
+          "message": "AssertionError: Regex pattern did not match.\n  Expected regex: 'must be finite'\n  Actual message: 'Input and scratch mapped regions must not overlap.'",
+          "nodeids": [
+            "test_fast/test_lpsd_disk.py::test_finite_validation_is_chunked_and_checks_final_block"
+          ]
+        },
+        {
+          "cause": "Wine returns identical zero file identifiers for different files while mapped.",
+          "count": 1,
+          "message": "ValueError: External powers must use a different file/inode",
+          "nodeids": [
+            "test_fast/test_disk_pipelines.py::test_pipeline_preserves_caller_files_and_cleans_only_owned_work[None-external-packed-real]"
+          ]
+        },
+        {
+          "cause": "Wine returns identical zero file identifiers for different files while mapped.",
+          "count": 36,
+          "message": "ValueError: Input and scratch mapped regions must not overlap.",
+          "nodeids": [
+            "test_fast/test_lpsd_disk.py::test_all_streaming_subset_accepts_one_slot_map",
+            "test_fast/test_lpsd_disk.py::test_exception_returns_every_gate_and_scratch_reservation",
+            "test_fast/test_lpsd_disk.py::test_low_plan_mask_matches_prepared_and_public_points[dc_nanovolt-10000]",
+            "test_fast/test_lpsd_disk.py::test_low_plan_mask_matches_prepared_and_public_points[dc_nanovolt-4096]",
+            "test_fast/test_lpsd_disk.py::test_low_plan_mask_matches_prepared_and_public_points[offbin_tone-10000]",
+            "test_fast/test_lpsd_disk.py::test_low_plan_mask_matches_prepared_and_public_points[offbin_tone-4096]",
+            "test_fast/test_lpsd_disk.py::test_low_plan_mask_matches_prepared_and_public_points[white-10000]",
+            "test_fast/test_lpsd_disk.py::test_low_plan_mask_matches_prepared_and_public_points[white-4096]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[1-dc_nanovolt-10000]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[1-dc_nanovolt-4096]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[1-offbin_tone-10000]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[1-offbin_tone-4096]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[1-white-10000]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[1-white-4096]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[8-dc_nanovolt-10000]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[8-dc_nanovolt-4096]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[8-offbin_tone-10000]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[8-offbin_tone-4096]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[8-white-10000]",
+            "test_fast/test_lpsd_disk.py::test_mapped_psd_nsd_match_public_eight_worker_path[8-white-4096]",
+            "test_fast/test_lpsd_disk.py::test_nsd_only_recomputes_and_never_uses_optional_fma[1]",
+            "test_fast/test_lpsd_disk.py::test_nsd_only_recomputes_and_never_uses_optional_fma[8]",
+            "test_fast/test_lpsd_disk.py::test_progress_callback_failure_preserves_resource_cleanup_and_retry",
+            "test_fast/test_lpsd_disk.py::test_progress_preserves_spectrum_and_releases_before_callback[False]",
+            "test_fast/test_lpsd_disk.py::test_progress_preserves_spectrum_and_releases_before_callback[True]",
+            "test_fast/test_lpsd_disk.py::test_short_input_window_and_coefficient_fallbacks[1-17]",
+            "test_fast/test_lpsd_disk.py::test_short_input_window_and_coefficient_fallbacks[1-31]",
+            "test_fast/test_lpsd_disk.py::test_short_input_window_and_coefficient_fallbacks[1-63]",
+            "test_fast/test_lpsd_disk.py::test_short_input_window_and_coefficient_fallbacks[8-17]",
+            "test_fast/test_lpsd_disk.py::test_short_input_window_and_coefficient_fallbacks[8-31]",
+            "test_fast/test_lpsd_disk.py::test_short_input_window_and_coefficient_fallbacks[8-63]",
+            "test_fast/test_lpsd_disk_resources.py::test_one_million_ram_plan_can_keep_eight_large_points_but_mapped_pool_stays_n[1000-6573014]",
+            "test_fast/test_lpsd_disk_resources.py::test_one_million_ram_plan_can_keep_eight_large_points_but_mapped_pool_stays_n[2240-8000000]",
+            "test_fast/test_lpsd_scratch_retirement.py::test_ram_input_and_external_scratch_keep_the_existing_lifecycle[True]",
+            "test_fast/test_statistics.py::test_disk_corrected_mean_with_owned_mappings_and_independent_reference[off]",
+            "test_fast/test_statistics.py::test_disk_corrected_mean_with_owned_mappings_and_independent_reference[on]"
+          ]
+        },
+        {
+          "cause": "Wine returns identical zero file identifiers for different files while mapped.",
+          "count": 17,
+          "message": "ValueError: powers must use a separate file from the transform workspace",
+          "nodeids": [
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[fftw-dc_nanovolt-10000-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[fftw-dc_nanovolt-4095-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[fftw-offbin_tone-10000-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[fftw-offbin_tone-4095-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[fftw-white-10000-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[fftw-white-4095-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[matched-dc_nanovolt-10000-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[matched-dc_nanovolt-4095-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[matched-offbin_tone-10000-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[matched-offbin_tone-4095-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[matched-white-10000-external]",
+            "test_fast/test_disk_pipelines.py::test_complete_disk_estimator_matches_existing_pipeline[matched-white-4095-external]",
+            "test_fast/test_disk_pipelines.py::test_pipeline_preserves_caller_files_and_cleans_only_owned_work[None-external-full]",
+            "test_fast/test_fftw_disk.py::test_full_original_dft_powers_and_refill[factors0]",
+            "test_fast/test_fftw_disk.py::test_full_original_dft_powers_and_refill[factors1]",
+            "test_fast/test_fftw_disk.py::test_full_original_dft_powers_and_refill[factors2]",
+            "test_fast/test_fftw_disk.py::test_full_original_dft_powers_and_refill[factors3]"
+          ]
+        }
+      ],
+      "method": "Replace identical node IDs first with the 15-case platform-memory rerun and then the exact 23-case optional-FFTW rerun. Do not add overlapping counts; original full-suite counts remain separate.",
+      "qualification_status": "Incomplete Windows qualification: 55 preserved failures due to the independently measured Wine mapped-file identity limitation.",
+      "skip_reasons": {
+        "Linux ELF dependency recovery requires local GCC": 1,
+        "Linux procfs/PID namespace guard": 1,
+        "Live Linux procfs memory": 2,
+        "Live Linux procfs process tree": 1,
+        "Native long double differs from FP64; original residual path remains active": 1,
+        "POSIX bootstrap uses shell and awk": 16,
+        "POSIX process group contract; Windows uses taskkill tree termination": 1,
+        "POSIX process-group contract; Windows uses taskkill /T": 1,
+        "POSIX shell entry point": 1,
+        "Real FFTW integration requires the optional installed runtime": 9,
+        "Real Linux allocator query": 1,
+        "Real Linux owned-process memory guard": 3,
+        "Real macOS RSS/USS API qualification": 1,
+        "Selected platform library does not expose C fenv control symbols": 1,
+        "collection skipped": 2
+      },
+      "xfail_reasons": {
+        "Off-bin pure-tone sidelobes approach a spectral null: reordered dot products do not provide a uniform 2e-6 relative PSD guarantee. Absolute ASD is gated separately.": 1
+      }
+    },
+    "mapped_file_probe": {
+      "cases": [
+        {
+          "different_paths": true,
+          "drive": "C:",
+          "file_a": {
+            "dev": 1124073472,
+            "ino": 1447396,
+            "size": 32
+          },
+          "file_b": {
+            "dev": 1124073472,
+            "ino": 1447463,
+            "size": 32
+          },
+          "mapped": false,
+          "samefile": false
+        },
+        {
+          "different_paths": true,
+          "drive": "C:",
+          "file_a": {
+            "dev": 0,
+            "ino": 0,
+            "size": 32
+          },
+          "file_b": {
+            "dev": 0,
+            "ino": 0,
+            "size": 32
+          },
+          "mapped": true,
+          "samefile": true
+        },
+        {
+          "different_paths": true,
+          "drive": "Z:",
+          "file_a": {
+            "dev": 1509949440,
+            "ino": 957965,
+            "size": 32
+          },
+          "file_b": {
+            "dev": 1509949440,
+            "ino": 958023,
+            "size": 32
+          },
+          "mapped": false,
+          "samefile": false
+        },
+        {
+          "different_paths": true,
+          "drive": "Z:",
+          "file_a": {
+            "dev": 0,
+            "ino": 0,
+            "size": 32
+          },
+          "file_b": {
+            "dev": 0,
+            "ino": 0,
+            "size": 32
+          },
+          "mapped": true,
+          "samefile": true
+        }
+      ],
+      "lpsd_numerical_code_called": false
+    },
+    "native_artifacts": [
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "96cfaa3a3a5363d911470b244d66c719680add90c5259b05d00d44d976bbc878",
+        "compiler": "x86_64-w64-mingw32-clang.exe",
+        "compiler_target": "x86_64-w64-windows-gnu",
+        "compiler_version": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 16,
+          "long_double_mant_dig": 64
+        },
+        "library": "src/lpsd/ltpda_dft.dll",
+        "native": false,
+        "source_origin": "final checkout",
+        "target_clones": false
+      },
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "ed2d058546a8622e9cc8a0fec7ab2cecf6a8c967ed69d5591318e340f77e6512",
+        "compiler": "x86_64-w64-mingw32-clang.exe",
+        "compiler_target": "x86_64-w64-windows-gnu",
+        "compiler_version": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fopenmp-simd"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 16,
+          "long_double_mant_dig": 64
+        },
+        "library": "src/lpsd_fast/_native/liblpsd_fast.dll",
+        "native": false,
+        "source_origin": "final checkout",
+        "target_clones": false
+      },
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "4dda2fa4dd8f8be5b45207bdd0ef4a705bb41a6321071330219c16ab36a79d93",
+        "compiler": "x86_64-w64-mingw32-gcc",
+        "compiler_target": "x86_64-w64-mingw32",
+        "compiler_version": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC",
+          "-fopenmp-simd"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 16,
+          "long_double_mant_dig": 64
+        },
+        "library": "gcc-cross/liblpsd_fast.dll",
+        "native": false,
+        "source_origin": "final checkout",
+        "target_clones": false
+      },
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "42b6c514fcfa51a4467b4111e0f150cd1a99b789fa955707dc08c1f701eca3fc",
+        "compiler": "x86_64-w64-mingw32-gcc",
+        "compiler_target": "x86_64-w64-mingw32",
+        "compiler_version": "x86_64-w64-mingw32-gcc (GCC) 13-posix",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fPIC"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 16,
+          "long_double_mant_dig": 64
+        },
+        "library": "gcc-cross/ltpda_dft.dll",
+        "native": false,
+        "source_origin": "final checkout",
+        "target_clones": false
+      },
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "5630fdcd38bb70a35684f134d04dce561a231736ac9bab38183b3214921afa45",
+        "compiler": "aarch64-w64-mingw32-clang.exe",
+        "compiler_target": "aarch64-w64-windows-gnu",
+        "compiler_version": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 8,
+          "long_double_mant_dig": 53
+        },
+        "library": "arm64-build/abi_probe.dll",
+        "native": false,
+        "source_origin": "validation probe",
+        "target_clones": false
+      },
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "ab85e7f31738f285ed1ef54b86bd2412e798c61b1a96ad7714abe8950c77c1ae",
+        "compiler": "aarch64-w64-mingw32-clang.exe",
+        "compiler_target": "aarch64-w64-windows-gnu",
+        "compiler_version": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off",
+          "-fopenmp-simd"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 8,
+          "long_double_mant_dig": 53
+        },
+        "library": "arm64-build/liblpsd_fast.dll",
+        "native": false,
+        "source_origin": "final checkout",
+        "target_clones": false
+      },
+      {
+        "all_source_hashes_match": true,
+        "binary_sha256": "e8a9182ac152a564e84674f9b5f75c959d76406fa61cccbb3fd4be1886e065cc",
+        "compiler": "aarch64-w64-mingw32-clang.exe",
+        "compiler_target": "aarch64-w64-windows-gnu",
+        "compiler_version": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+        "flags": [
+          "-O3",
+          "-std=c11",
+          "-fno-fast-math",
+          "-ffp-contract=off"
+        ],
+        "floating_point": {
+          "double_mant_dig": 53,
+          "long_double_bytes": 8,
+          "long_double_mant_dig": 53
+        },
+        "library": "arm64-build/ltpda_dft.dll",
+        "native": false,
+        "source_origin": "final checkout",
+        "target_clones": false
+      }
+    ],
+    "platform_memory_rerun": {
+      "cause": "LLVM-MinGW/LLD omitted the defined GlobalMemoryStatusEx stub from automatic PE exports. A private C symbol plus a Python attribute alias preserves the actual ABI checks and all other exports.",
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "passed": 15,
+        "skipped": 0,
+        "tests": 15,
+        "xfailed": 0
+      },
+      "native_windows_memory_api_case_passed": true,
+      "resolved_nodeids": [
+        "test_fast/test_platform_memory.py::test_windows_reads_available_physical_bytes_without_32_bit_truncation[0-5368709120]",
+        "test_fast/test_platform_memory.py::test_windows_reads_available_physical_bytes_without_32_bit_truncation[1-None]",
+        "test_fast/test_platform_memory.py::test_windows_reads_available_physical_bytes_without_32_bit_truncation[2-None]",
+        "test_fast/test_platform_memory.py::test_windows_reads_available_physical_bytes_without_32_bit_truncation[3-0]"
+      ],
+      "status": "passed"
+    },
+    "prior_attempts": [
+      {
+        "later_result": "Both small API probes pass under Wine 11.20, and the final wheel builds/installs/runs.",
+        "limits": [
+          "CreateSymbolicLinkW returned success without creating the link.",
+          "CopyFile2 was unimplemented, preventing wheel packaging."
+        ],
+        "runtime": "Wine 9",
+        "status": "superseded"
+      },
+      {
+        "exception": "Unimplemented ucrtbase.dll.cimagl during independent NumPy clongdouble periodograms.",
+        "junit_available": false,
+        "later_result": "Official Microsoft UCRT passes the previously unreachable numerical modules and the complete final regression run produces JUnit.",
+        "returncode": 2147483904,
+        "runtime": "Wine 11.20 with builtin UCRT",
+        "source_fingerprint": "before final cross-volume helper correction",
+        "status": "aborted; not counted as completed tests"
+      }
+    ],
+    "reproducible_commands": [
+      {
+        "scope": "Full regression suite, before the test-only fixture rename",
+        "cwd": "checkout",
+        "command": [
+          "python.exe",
+          "scripts/validate_local.py",
+          "--output-parent",
+          "../logs/qualification-final-ucrt",
+          "--stage-timeout",
+          "1800"
+        ]
+      },
+      {
+        "scope": "Final platform-memory fixture module",
+        "cwd": "checkout",
+        "command": [
+          "python.exe",
+          "-m",
+          "pytest",
+          "-o",
+          "addopts=",
+          "-o",
+          "junit_family=legacy",
+          "-q",
+          "-ra",
+          "--tb=short",
+          "test_fast/test_platform_memory.py",
+          "--junitxml=../logs/wine11-ucrt-platform-memory-final.xml"
+        ]
+      },
+      {
+        "scope": "Separate upstream suite",
+        "cwd": "checkout",
+        "command": [
+          "python.exe",
+          "-m",
+          "pytest",
+          "-o",
+          "addopts=",
+          "-o",
+          "junit_family=legacy",
+          "-q",
+          "-ra",
+          "--tb=short",
+          "test",
+          "--junitxml=../logs/wine11-ucrt-upstream.xml"
+        ]
+      },
+      {
+        "scope": "Windows wheel build",
+        "cwd": "checkout",
+        "command": [
+          "python.exe",
+          "-m",
+          "build",
+          "--wheel",
+          "--no-isolation",
+          "--outdir",
+          "../dist"
+        ]
+      },
+      {
+        "scope": "Wheel installation without dependency changes",
+        "cwd": "checkout",
+        "command": [
+          "python.exe",
+          "-m",
+          "pip",
+          "install",
+          "--no-index",
+          "--no-deps",
+          "--target",
+          "../wheel-site",
+          "../dist/lpsd-1.0.6+fast.14-py3-none-win_amd64.whl"
+        ]
+      },
+      {
+        "scope": "Installed-wheel smoke with an isolated Windows interpreter, outside checkout",
+        "cwd": "parent of checkout",
+        "command": [
+          "python-wheel/python.exe",
+          "checkout/test_fast/wheel_smoke.py"
+        ]
+      },
+      {
+        "scope": "Previously skipped optional FFTW cases, after installing pyFFTW without dependency upgrades",
+        "cwd": "checkout",
+        "command": [
+          "python.exe",
+          "-m",
+          "pytest",
+          "@fftw-optional-rerun-nodeids.txt",
+          "-q",
+          "--tb=short",
+          "--junitxml=../logs/wine11-ucrt-pyfftw-rerun.xml"
+        ],
+        "nodeid_file_contents": [
+          "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_gates_actual_float32_outputs_at_3ppm[1e-06-True]",
+          "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_gates_actual_float32_outputs_at_3ppm[1e-05-False]",
+          "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_rejects_wrong_observed_route[abi]",
+          "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_rejects_wrong_observed_route[half_n]",
+          "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_rejects_wrong_observed_route[power_vector]",
+          "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_resource_skip_is_not_a_numerical_pass",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-4]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-4]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-4]",
+          "test_fast/test_native_working_controls.py::test_tiny_complete_calls_apply_cap_and_preserve_input_and_spectra[matched-ram-offbin_tone]",
+          "test_fast/test_native_working_controls.py::test_tiny_complete_calls_apply_cap_and_preserve_input_and_spectra[matched-disk-white]",
+          "test_fast/test_portable_fft_algorithm.py::test_worker_executes_packed_route_with_input_and_output_provenance[fftw]",
+          "test_fast/test_portable_fft_algorithm.py::test_worker_executes_packed_route_with_input_and_output_provenance[matched]",
+          "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[ram-4096-full-1.0-white]",
+          "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[ram-4093-fft_input_then_blocked-2.0-dc_nanovolt]",
+          "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[disk-4096-blocked-1.0-white]",
+          "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[ram-257-full-1.0-white]"
+        ]
+      }
+    ],
+    "runtime": {
+      "ctypes_sizes": {
+        "long": 4,
+        "longdouble": 8,
+        "size_t": 8
+      },
+      "fftw": "Full suite: official fftw-3.3.5-dll64.zip passed explicitly to supported tests. Final 23-case rerun: official pyFFTW 0.15.1 wheel provides the byte-identical FFTW 3.3.5 double-precision DLL via the normal metadata discovery path.",
+      "machine": "AMD64",
+      "numpy_longdouble": {
+        "bytes": 8,
+        "mantissa_bits": 53
+      },
+      "packages": {
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "psutil": "7.2.2",
+        "pytest": "9.1.1",
+        "scipy": "1.17.0",
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0"
+      },
+      "platform": "Windows-10-10.0.19045-SP0",
+      "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+      "system": "Windows",
+      "ucrt": {
+        "archive_sha256": "b4730a467a8f29145fc0136b2b3f626767e985f6aa6e32f1352953c38d6ff5d2",
+        "file_count": 46,
+        "override": "mscoree,mshtml=;ucrtbase=n,b",
+        "source_archive": "microsoft.windows.sdk.cpp.10.0.26100.1.nupkg",
+        "ucrtbase_sha256": "d404dc9aa843d53d7e276dd078b2cac8d7aa905e2838a1fe8385278e19ba3810",
+        "source_url": "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp/10.0.26100.1/microsoft.windows.sdk.cpp.10.0.26100.1.nupkg"
+      },
+      "wine": "11.20"
+    },
+    "schema": "lpsd-windows-local-validation-v1",
+    "scope": "Windows x64 binaries executed locally under Wine on Linux; Windows ARM64 compilation/link/ABI checks only. No native Windows hardware or emulator-derived performance claim.",
+    "source": {
+      "changes_after_full_suite": {
+        "test_fast/test_platform_memory.py": {
+          "final_sha256": "2f7a0558a9b08c79e21613cd8eeca42e815d66b509b59c19cbce90cab1cb4e87",
+          "full_suite_sha256": "3b54fd7b42aec96baa56db5174f87c52b316e9f43f569f829d9f73b40e2a7ceb"
+        }
+      },
+      "file_count": 191,
+      "final_fingerprint": "3f296325eb344678273f897fa9b7af5639a95c8f6559da4c48862cb6ec47456c",
+      "final_source_matches_main_checkout": true,
+      "fingerprint_method": "SHA256 of UTF-8 json.dumps(source_sha256,sort_keys=True,separators=(comma,colon))",
+      "full_suite_fingerprint": "461161b6499901b4212867b3fcf9668afa91effb5b59808236538aa511b2a1f5",
+      "post_full_suite_change_scope": "Only the test-platform-memory C stub symbol and Python alias changed. No production source or assertion changed; reran all 15 affected tests."
+    },
+    "supplemental_overlapping_runs": {
+      "cross_volume_starts_and_builds": {
+        "counts": {
+          "errors": 0,
+          "failed": 0,
+          "passed": 57,
+          "skipped": 0,
+          "tests": 57,
+          "xfailed": 0
+        }
+      },
+      "gcc_cross_compiler_numerics": {
+        "counts": {
+          "errors": 0,
+          "failed": 2,
+          "passed": 391,
+          "skipped": 0,
+          "tests": 393,
+          "xfailed": 0
+        },
+        "failures_cause": "The same independently reproduced mapped-file identity limitation; no numerical assertion failed.",
+        "runtime": "Wine 9 plus Microsoft UCRT",
+        "scope": "Eight numerical modules; ran before final Python intp/build-helper/test-fixture corrections. All C sources and GCC DLLs match final native sources.",
+        "selection": [
+          "test_fast/test_compatibility.py",
+          "test_fast/test_statistics.py",
+          "test_fast/test_outputs.py",
+          "test_fast/test_fast_mode.py",
+          "test_fast/test_layouts.py",
+          "test_fast/test_prepared_lpsd.py",
+          "test_fast/test_fftw_benchmark.py",
+          "test_fast/test_fftw_bluestein.py"
+        ]
+      },
+      "launcher_regressions": {
+        "counts": {
+          "errors": 0,
+          "failed": 0,
+          "passed": 10,
+          "skipped": 0,
+          "tests": 10,
+          "xfailed": 0
+        }
+      },
+      "ucrt_statistics_streaming_windows": {
+        "counts": {
+          "errors": 0,
+          "failed": 2,
+          "passed": 171,
+          "skipped": 0,
+          "tests": 173,
+          "xfailed": 0
+        }
+      }
+    },
+    "upstream": {
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "passed": 18,
+        "skipped": 0,
+        "tests": 18,
+        "xfailed": 0
+      },
+      "run_separately": true,
+      "status": "passed"
+    },
+    "version": "1.0.6+fast.14",
+    "wheel": {
+      "build_status": "passed",
+      "bytes": 358827,
+      "filename": "lpsd-1.0.6+fast.14-py3-none-win_amd64.whl",
+      "install_status": "passed",
+      "isolated_smoke_status": "passed",
+      "libraries": [
+        {
+          "binary_sha256": "ebfca16756bc7b2ccfe45acc4d9aba591cbbbc6a0d95593228118ece1cb0c4c0",
+          "compiler_target": "x86_64-w64-windows-gnu",
+          "flags": [
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off"
+          ],
+          "floating_point": {
+            "double_mant_dig": 53,
+            "long_double_bytes": 16,
+            "long_double_mant_dig": 64
+          },
+          "member": "lpsd/ltpda_dft.dll",
+          "native": false
+        },
+        {
+          "binary_sha256": "b7e192c8242241917fcf013ac662e466616743401f4e81071de03f3cc40aadb6",
+          "compiler_target": "x86_64-w64-windows-gnu",
+          "flags": [
+            "-O3",
+            "-std=c11",
+            "-fno-fast-math",
+            "-ffp-contract=off",
+            "-fopenmp-simd"
+          ],
+          "floating_point": {
+            "double_mant_dig": 53,
+            "long_double_bytes": 16,
+            "long_double_mant_dig": 64
+          },
+          "member": "lpsd_fast/_native/liblpsd_fast.dll",
+          "native": false
+        }
+      ],
+      "python_c_header_payload_matches_final_checkout": true,
+      "verified_source_members": 30,
+      "wheel_tag": "py3-none-win_amd64"
+    },
+    "windows_arm64": {
+      "compiler": "LLVM-MinGW Clang 22.1.8",
+      "executed": false,
+      "scope": "Built and linked both production PE ARM64 DLLs plus a static-assert ABI probe using Windows LLVM-MinGW. Native C sources match final checkout.",
+      "static_assertions": {
+        "MEMORYSTATUSEX_bytes": 64,
+        "long_bytes": 4,
+        "long_double_bytes": 8,
+        "long_double_mantissa_bits": 53,
+        "pointer_bytes": 8,
+        "size_t_bytes": 8,
+        "ullAvailPhys_offset": 16
+      },
+      "target": "aarch64-w64-windows-gnu"
+    },
+    "pyfftw_rerun": {
+      "assertions_or_source_changed": false,
+      "counts": {
+        "errors": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 9,
+        "tests": 23,
+        "xfailed": 0
+      },
+      "dependency_changes": "Only pyFFTW 0.15.1 installed into the isolated Windows runtime with --no-deps --no-index; existing dependency versions unchanged.",
+      "passed_nodeids": [
+        "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_gates_actual_float32_outputs_at_3ppm[1e-05-False]",
+        "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_gates_actual_float32_outputs_at_3ppm[1e-06-True]",
+        "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_rejects_wrong_observed_route[abi]",
+        "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_rejects_wrong_observed_route[half_n]",
+        "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_rejects_wrong_observed_route[power_vector]",
+        "test_fast/test_disk_algorithm_comparison.py::test_direct_comparison_resource_skip_is_not_a_numerical_pass",
+        "test_fast/test_native_working_controls.py::test_tiny_complete_calls_apply_cap_and_preserve_input_and_spectra[matched-disk-white]",
+        "test_fast/test_native_working_controls.py::test_tiny_complete_calls_apply_cap_and_preserve_input_and_spectra[matched-ram-offbin_tone]",
+        "test_fast/test_portable_fft_algorithm.py::test_worker_executes_packed_route_with_input_and_output_provenance[fftw]",
+        "test_fast/test_portable_fft_algorithm.py::test_worker_executes_packed_route_with_input_and_output_provenance[matched]",
+        "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[disk-4096-blocked-1.0-white]",
+        "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[ram-257-full-1.0-white]",
+        "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[ram-4093-fft_input_then_blocked-2.0-dc_nanovolt]",
+        "test_fast/test_smoothing_controls.py::test_tiny_complete_matched_calls_forward_the_option_and_keep_spectra[ram-4096-full-1.0-white]"
+      ],
+      "remaining_skip_cause": "Nine test_fftw_discovery integration cases explicitly require ctypes.util.find_library('fftw3') before calling _load_fftw. A normal pyFFTW wheel is discovered through distribution metadata by the other 14 successful cases; its unchanged DLL filename does not satisfy that separate system-library precondition.",
+      "runtime_addition": {
+        "bytes": 2633571,
+        "core_library_matches_explicit_fftw335": true,
+        "filename": "pyfftw-0.15.1-cp312-cp312-win_amd64.whl",
+        "metadata_url": "https://pypi.org/pypi/pyfftw/json",
+        "native_files": {
+          "pyfftw/libfftw3-3.dll": {
+            "bytes": 2712765,
+            "sha256": "001a835d2f25ac0661580d67db5622157c28481c06a7f3ef45ad939839bf54a1"
+          },
+          "pyfftw/libfftw3f-3.dll": {
+            "bytes": 2772692,
+            "sha256": "42ca18fff35dd12890e04478bc990005b3969cb744f6843976bd436ccd7f0a4c"
+          },
+          "pyfftw/libfftw3l-3.dll": {
+            "bytes": 1247967,
+            "sha256": "ce78fcd1866e7a5ebec3fdd50b3c7cd58c738059d16877ad01649b725bb72a9a"
+          },
+          "pyfftw/pyfftw.cp312-win_amd64.pyd": {
+            "bytes": 256000,
+            "sha256": "8123acb6acae1e65b02d46625ccb07683e1e0c95645c1f7d37317cbf88c525af"
+          }
+        },
+        "package": "pyFFTW",
+        "pypi_expected_sha256": "74fe153d6bec682cd85b5601df09cb84ce6e3cc901172a3ce86da7544e457e4c",
+        "requires_dist": [
+          "numpy>=1.20",
+          "dask[array]>=1.0; extra == \"dask\"",
+          "numpy>=1.20; extra == \"dask\"",
+          "scipy>=1.8.0; extra == \"scipy\""
+        ],
+        "sha256": "74fe153d6bec682cd85b5601df09cb84ce6e3cc901172a3ce86da7544e457e4c",
+        "url": "https://files.pythonhosted.org/packages/ab/c0/3f4513921fd3cb40986bc6fe4a33e87c5aef671edff483db6f7c4a5f8309/pyfftw-0.15.1-cp312-cp312-win_amd64.whl",
+        "version": "0.15.1"
+      },
+      "selection": "Exactly the 23 node IDs skipped for missing optional FFTW in the full suite; all IDs are listed in passed_nodeids and skipped_nodeids.",
+      "skip_reasons": {
+        "Real FFTW integration requires the optional installed runtime": 9
+      },
+      "skipped_nodeids": [
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-1]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-2]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-4]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-1]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-2]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-4]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-1]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-2]",
+        "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-4]"
+      ],
+      "source_fingerprint": "3f296325eb344678273f897fa9b7af5639a95c8f6559da4c48862cb6ec47456c",
+      "status": "passed with 9 preserved system-library-only skips",
+      "warnings": "11 pytest cleanup warnings for old temporary symlink directories under Wine; no numerical assertion failures."
+    }
+  }
+}

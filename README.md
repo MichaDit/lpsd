@@ -7,7 +7,21 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.13`; this is not an official upstream release.
+Its package version is `1.0.6+fast.14`; this is not an official upstream release.
+
+Version **fast.14** checks FFTW buffer byte sizes before allocation on 32-bit
+platforms, normalizes NumPy integer lengths before size arithmetic, and fixes
+32-bit NumPy indices in logarithmic FFT grouping while retaining the native
+64-bit boundary ABI. Ten small FFT regressions cover these defects; the
+existing billion-sample layout tests now verify rejection on 32-bit hosts.
+A separate regression protects error/JUnit reporting after a memory mapping
+has been closed. Native build manifests also retain recursive header hashes
+when source and headers are on different Windows volumes, with one focused
+regression for that failure.
+An existing platform-memory ABI fixture also uses a private C symbol name
+so Windows linkers retain its export.
+The [additional local platform checks](docs/cross-platform-validation-20261021.md)
+document Wine, QEMU and cross-compiler coverage and their execution limits.
 
 Version **fast.13** adds focused regression tests for costly edge cases and
 stops remaining frequency work after a failure in ordinary and prepared LPSD
