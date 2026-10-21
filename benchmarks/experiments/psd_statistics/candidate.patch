@@ -1,0 +1,107 @@
+--- a/lpsd_fast/_native/fast_dft.c
++++ b/lpsd_fast/_native/fast_dft.c
+@@ -702,6 +702,36 @@
+                                    statistics && ii == navg - 1,
+                                    Mr_r, Mr_i, M2_r, M2_i);
+     }
++}
++
++/* Real auto spectra have an exactly zero imaginary periodogram whenever
++ * their real power is finite. Keep the real Welford operations in their
++ * original order, avoiding the redundant complex arithmetic. Nonfinite
++ * powers or preceding means retain the full original exceptional path. */
++static LPSD_ALWAYS_INLINE void update_psd_statistics(long int ii, long int navg,
++                                        double real, double imag,
++                                        bool statistics, bool corrected,
++                                        double *Mr_r, double *Mr_i,
++                                        double *M2_r, double *M2_i)
++{
++    if (corrected) {
++        const double power = real * real - (-1.0 * imag) * imag;
++        if (isfinite(power) && isfinite(*Mr_r)) {
++            if (ii == 0) {
++                *Mr_r = power;
++                *Mr_i = 0.0;
++            } else {
++                const double difference = power - *Mr_r;
++                *Mr_r += difference / (double)(ii + 1);
++                if (statistics) {
++                    *M2_r += difference * (power - *Mr_r) + 0.0;
++                }
++            }
++            return;
++        }
++    }
++    update_statistics(ii, navg, real, imag, real, imag, statistics, corrected,
++                      Mr_r, Mr_i, M2_r, M2_i);
+ }
+ 
+ static LPSD_TARGET_CLONES int fast_dft_impl_ready(double *Pr_r, double *Pr_i, double *Vr_r, double *Vr_i,
+@@ -942,7 +972,7 @@
+                     projected_r, projected_i, segLen, rr, ri);
+             }
+             for (int b = 0; b < 8; ++b) {
+-                update_statistics(ii + b, navg, rr[b], ri[b], rr[b], ri[b],
++                update_psd_statistics(ii + b, navg, rr[b], ri[b],
+                                              statistics, corrected_statistics,
+                                              &Mr_r, &Mr_i, &M2_r, &M2_i);
+             }
+@@ -977,7 +1007,7 @@
+                 segments[4], segments[5], segments[6], segments[7],
+                 projected_r, projected_i, segLen, rr, ri);
+             for (int b = 0; b < 8; ++b) {
+-                update_statistics(ii + b, navg, rr[b], ri[b], rr[b], ri[b],
++                update_psd_statistics(ii + b, navg, rr[b], ri[b],
+                                              statistics, corrected_statistics,
+                                              &Mr_r, &Mr_i, &M2_r, &M2_i);
+             }
+@@ -1008,7 +1038,7 @@
+                                        segments[2], segments[3],
+                                        projected_r, projected_i, segLen, rr, ri);
+             for (int b = 0; b < 4; ++b) {
+-                update_statistics(ii + b, navg, rr[b], ri[b], rr[b], ri[b],
++                update_psd_statistics(ii + b, navg, rr[b], ri[b],
+                                              statistics, corrected_statistics,
+                                              &Mr_r, &Mr_i,
+                                              &M2_r, &M2_i);
+@@ -1081,9 +1111,15 @@
+             goto restart_csd_segments;
+         }
+ 
+-        update_statistics(ii, navg, rxsum1, ixsum1, rxsum2, ixsum2,
+-                                     statistics, corrected_statistics,
+-                                     &Mr_r, &Mr_i, &M2_r, &M2_i);
++        if (csd) {
++            update_statistics(ii, navg, rxsum1, ixsum1, rxsum2, ixsum2,
++                              statistics, corrected_statistics,
++                              &Mr_r, &Mr_i, &M2_r, &M2_i);
++        } else {
++            update_psd_statistics(ii, navg, rxsum1, ixsum1,
++                                  statistics, corrected_statistics,
++                                  &Mr_r, &Mr_i, &M2_r, &M2_i);
++        }
+     }
+ 
+     if (profile) {
+--- a/lpsd_fast/_native/rolling_boxcar.c
++++ b/lpsd_fast/_native/rolling_boxcar.c
+@@ -237,7 +237,7 @@
+             }
+             return status;
+         }
+-        update_statistics(ii, navg, rr, ri, rr, ri,
++        update_psd_statistics(ii, navg, rr, ri,
+                                      statistics, corrected_statistics,
+                                      &Mr_r, &Mr_i, &M2_r, &M2_i);
+     }
+--- a/lpsd_fast/_native/streaming_lpsd.c
++++ b/lpsd_fast/_native/streaming_lpsd.c
+@@ -312,7 +312,7 @@
+     double Mr_r = 0.0, Mr_i = 0.0, unused_r = 0.0, unused_i = 0.0;
+     for (long int segment = 0; segment < navg; ++segment) {
+         const double rr = (double)projections_r[segment], ri = (double)projections_i[segment];
+-        update_statistics(segment, navg, rr, ri, rr, ri, false,
++        update_psd_statistics(segment, navg, rr, ri, false,
+                           corrected_statistics,
+                           &Mr_r, &Mr_i, &unused_r, &unused_i);
+     }

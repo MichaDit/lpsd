@@ -7,7 +7,16 @@ The original `lpsd` implementation is included as the reference API.
 
 The fork starts from **upstream v1.0.6**, commit
 `2fd15da6930d19f5978f7e37b7b0785ce560f7d3`, with its Git history preserved.
-Its package version is `1.0.6+fast.11`; this is not an official upstream release.
+Its package version is `1.0.6+fast.12`; this is not an official upstream release.
+
+Version **fast.12** removes first-use test-framework initialization from the
+disk FFT energy diagnostic while retaining its reference-relative tolerance.
+Invalid nonfinite energies now fail explicitly. It also fixes the two
+Windows-specific discovery-test assertions and separates reported CPU
+capacity from the requested worker limit. The native numerical kernels and
+estimator defaults remain unchanged after a rejected optimization experiment.
+See the [new physical-results analysis](docs/device-analysis-fast12-20261021.md)
+and [fast.12 local measurements and qualification](docs/performance-fast12.md).
 
 Version **fast.11** reduces import and parallel-dispatch overhead while keeping
 native arithmetic and the upstream reference unchanged. On the locally tested
@@ -174,7 +183,7 @@ it does not require FFTW, Python development headers or NumPy C headers.
 The build supports GCC/Clang on Linux x86-64 and AArch64, Apple Clang on
 Apple Silicon, and locally tested MinGW GCC on Windows x64.
 See [platform validation and build options](docs/platforms.md)
-for the actual CI evidence and remaining limits.
+for the historical CI and local evidence and remaining limits.
 
 ```bash
 git clone https://github.com/MichaDit/lpsd.git
@@ -382,9 +391,10 @@ python benchmarks/bench_lpsd.py --backend fast --n 1000000 --workers 1 \
 
 The tests compare against pinned original sources, check numerical behavior,
 input handling and worker determinism. Known numerical limitations are
-reported separately from ordinary passing regression checks. The CI workflow
-also builds an sdist/wheel and imports the installed wheel from outside the
-checkout. See [test details](test_fast/README.md).
+reported separately from ordinary passing regression checks. GitHub Actions
+workflows have been removed; use [local validation](docs/local-validation.md).
+The local packaging gate also builds an sdist/wheel and imports the installed
+wheel from outside the checkout. See [test details](test_fast/README.md).
 
 The benchmark script times public API calls with identical seeded Series
 inputs for both backends. Input generation, warm-up and file output are

@@ -1,0 +1,148 @@
+{
+  "schema": "lpsd-rejected-native-experiment-v1",
+  "base_commit": "fa7052505b8a72a1c85d95f599cd188742a18421",
+  "decision": "rejected; no production C changes",
+  "host": {
+    "cpu": "Intel Xeon Platinum 8573C",
+    "architecture": "x86_64",
+    "affinity_cpus": 9,
+    "cpu_quota": 8
+  },
+  "builds": {
+    "baseline": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "baseline.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-fopenmp-simd",
+        "-DLPSD_HAVE_TARGET_CLONES=1"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": false,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": true,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "source_sha256": {
+        "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+        "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+        "fast_dft.c": "109d6219dc8e6588063863c0c1955b93dea33c69d2c94d17f94956e30cc14511",
+        "fast_dft.h": "f7eaac03b37288a15abce77ff9ad79152f7247895140629f2ebce520a122c0ae",
+        "fftw_bluestein_ops.h": "05f5da3638ed1e208d484be82b31e2315f33348a626dad6a2b3530221649ec88",
+        "fftw_direct_log_power.c": "c299e08981ea546c79d096508a3f288e0bfb5b001784021e71506ed960a8ae50",
+        "fftw_ops.h": "2d35b904675d0b8117108db757ae82b400c015b3c199a648340017143e98b25b",
+        "fftw_smoothing.h": "d44b025d190a20e139a1464bfec9b4e0e6c5dacf35a4eb4d27e1cecc7772e9c6",
+        "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+        "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+        "rolling_boxcar.c": "1bf63e6d39c7eae6043b17b5f20222252f5185a6ca9a82a717e3f26f6c6f6f7b",
+        "segment_starts.h": "041e6d464f7624cf0108d38a45bb12a30c2f527ee1aec0e41bd5fe45ed39cabc",
+        "streaming_lpsd.c": "905a8e7996f8dc4cdbc937f71da09c0811d783b57dfe38a6f82e44d92981417f"
+      },
+      "binary_sha256": "5bf5c0f4b1e194adf3573f6e1aa248aaede07d1b89f0cd8b768f0b80d8ac9745"
+    },
+    "candidate": {
+      "schema_version": 1,
+      "source": "fast_dft.c",
+      "library": "candidate.so",
+      "compiler": [
+        "cc"
+      ],
+      "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+      "compiler_target": "x86_64-linux-gnu",
+      "flags": [
+        "-O3",
+        "-std=c11",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fPIC",
+        "-fopenmp-simd",
+        "-DLPSD_HAVE_TARGET_CLONES=1"
+      ],
+      "link_flags": [
+        "-shared",
+        "-lm"
+      ],
+      "native": false,
+      "openmp_simd_flags": [
+        "-fopenmp-simd"
+      ],
+      "target_clones_requested": "auto",
+      "target_clones": true,
+      "macos_deployment_target": null,
+      "floating_point": {
+        "double_mant_dig": 53,
+        "long_double_mant_dig": 64,
+        "long_double_bytes": 16
+      },
+      "source_sha256": {
+        "../../lpsd/c_sources/polyreg.c": "394e2a29c80057317b0830a4825f9e6c049833904606d67e66585993510654c5",
+        "cosine_windows.c": "51c812b6d8c9de48457e090572d48f3efd970c9057333f701ab50ca6662a0d14",
+        "fast_dft.c": "5f15685aac8fbf4e6b0c40c0ba572a825e31ba1eb080e8bbd8aa0b8608038a5c",
+        "fast_dft.h": "f7eaac03b37288a15abce77ff9ad79152f7247895140629f2ebce520a122c0ae",
+        "fftw_bluestein_ops.h": "05f5da3638ed1e208d484be82b31e2315f33348a626dad6a2b3530221649ec88",
+        "fftw_direct_log_power.c": "c299e08981ea546c79d096508a3f288e0bfb5b001784021e71506ed960a8ae50",
+        "fftw_ops.h": "2d35b904675d0b8117108db757ae82b400c015b3c199a648340017143e98b25b",
+        "fftw_smoothing.h": "d44b025d190a20e139a1464bfec9b4e0e6c5dacf35a4eb4d27e1cecc7772e9c6",
+        "numpy_kaiser.c": "cea0dad126bf294327928a83089af369be2a35092166ee0c635fcfda22f3e3d2",
+        "projected_dd.c": "bde8941ceadca10cd323a039588612ad3b873486f9dcd9dc6b10b6361a3554a0",
+        "rolling_boxcar.c": "0355a19aa519f12b31b158f8022e1c0491ca3e2161f1fd44df88c25ae115cfa8",
+        "segment_starts.h": "041e6d464f7624cf0108d38a45bb12a30c2f527ee1aec0e41bd5fe45ed39cabc",
+        "streaming_lpsd.c": "2e7c311e3481bb847b7b645ae6336df117cdcebbbce50a30d60c717c6741a61a"
+      },
+      "binary_sha256": "4c6facb1206a7e11ba9a06ee09131645168ab5f205ef58b062032e725b26891d"
+    }
+  },
+  "native_screen": {
+    "state": "completed",
+    "comparison_count": 640,
+    "result": "all arrays and segment counts equal; NaNs compared as NaNs",
+    "timing_configurations": 22,
+    "pairs_per_configuration": 6
+  },
+  "api_screen": {
+    "state": "interrupted",
+    "completed_configurations": 4,
+    "pairs_per_completed_configuration": 6,
+    "completed_sample_counts": [
+      1000000
+    ],
+    "incomplete_sample_counts": [
+      10000000
+    ],
+    "process_returncode": 130,
+    "reason": "Screen deliberately stopped after mixed 1M results; no 10M timing group completed or retained."
+  },
+  "measured_script_sha256": {
+    "screen.py": "283759fd7e9fe497265501a6042af2a043fc1d9460cdcec761016bab2795abd1",
+    "api_screen.py": "a26a11c4641b1e2426eba5fa8b6d9cff637205ea0f69fc4a27e9a5664eb724b9"
+  },
+  "replay_note": "Replay files generalize the artifact directory and omit the uncompleted 10M API screen; timing and numerical loops are otherwise unchanged.",
+  "files_sha256": {
+    "README.md": "addcfb45cd7197e57e6f70539149a8dd292ba905e9edb932dfc92e005dd23f3d",
+    "api-screen.json": "c66429d69b5b5c64be1c64edabbd0b715727e31e56b1a978da4a8c9e1df9733e",
+    "api_screen.py": "66597b4aac91c127a7a0de164a912acabc13b2dc6c88ac114fac4eb195670615",
+    "candidate.patch": "7a2657d4168eb7b9142e4298dd8c9602f07bc2bec769141a44fd62bcb0d5277e",
+    "native-screen.json": "7a51e25fabb17c5ecdf9014b5f023ab10ff25c6afe16ee137e3614caea02d2c7",
+    "native_screen.py": "a81279e8a429a4da39a10bc8d7a5cc1450453998d793324a52d88d696d94e817"
+  }
+}

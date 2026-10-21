@@ -12,8 +12,8 @@ python -m pytest -o addopts='' -q -ra test
 The suite uses deterministic small and moderate-size signals, including
 longer native segment and overlap-reuse cases. It is a numerical regression
 suite; performance measurements belong in `benchmarks/` and are not
-timing assertions in shared CI. GitHub Actions runs the suite on Linux with
-Python 3.10 and 3.12 and portable GCC code generation. Dependency versions are
+timing assertions. GitHub Actions workflows have been removed; use
+[local validation](../docs/local-validation.md). Dependency versions are
 resolved from package requirements, without pinning a particular NumPy build.
 
 ## Reference and numerical contract
@@ -49,7 +49,7 @@ are not a confidence interval or a statistical accuracy claim.
 
 One narrow `xfail(strict=True, raises=AssertionError)` exposes the remaining
 relative-only rounding limit. It is visible with `-ra`, and an unexpected pass
-fails CI so that changed behavior is reviewed:
+fails the test run so that changed behavior is reviewed:
 
 1. An off-bin pure tone does not satisfy a uniform relative PSD tolerance of
    `2e-6` in its vanishing sidelobes. Its absolute ASD error is independently
@@ -75,8 +75,8 @@ Parallel results must match one worker bitwise for both scalar and auto.
 
 ## Packaging gate
 
-The separate CI job builds an sdist and then a platform wheel, installs the
-wheel in a clean virtual environment, and runs:
+For the local packaging gate, build an sdist and then a platform wheel,
+install the wheel in a clean virtual environment, and run:
 
 ```sh
 /path/to/clean-venv/bin/python -I /path/to/checkout/test_fast/wheel_smoke.py
@@ -86,7 +86,8 @@ Run it from outside the checkout. The script rejects source-tree imports,
 requires the original native backend, compares scalar outputs, exercises auto
 with a NumPy input and two workers, and checks distribution/module versions.
 This catches missing native libraries and accidental success from local build
-artifacts. CI does not publish distributions or use write credentials.
+artifacts. This local validation does not publish distributions or require
+write credentials.
 
 ## Selected outputs and window acceleration
 
@@ -160,8 +161,8 @@ conservative algorithm; they are not a universal arbitrary-signal error proof.
 
 `test_accelerator_probe.py` checks the inventory/payload reporter using
 controlled inputs. Finding a device or package is never counted as a successful
-GPU computation. The normal native and wheel CI jobs archive actual exposed
-accelerator prerequisites independently of the numerical tests.
+GPU computation. Record exposed accelerator prerequisites separately from
+numerical-test results when running these checks locally.
 
 ## Accuracy audit beyond small regressions
 
