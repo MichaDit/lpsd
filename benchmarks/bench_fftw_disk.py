@@ -167,6 +167,20 @@ def mapped_sum(values):
                for first in range(0, len(values), CHUNK))
 
 
+def _assert_parseval_energy(obtained, expected):
+    """Check scalar energies without importing NumPy's testing framework.
+
+    Retain the reference-relative 1e-10 tolerance and exact-zero condition.
+    Finite input can still overflow its squared energy; matching infinities
+    or NaNs must not make that diagnostic pass.
+    """
+    if (not math.isfinite(obtained) or not math.isfinite(expected)
+            or obtained < 0.0 or expected < 0.0
+            or abs(obtained - expected) > 1e-10 * abs(expected)):
+        raise AssertionError(
+            f"Parseval energy mismatch: FFT={obtained!r}, time={expected!r}")
+
+
 def frame_from_psd(frequencies, density):
     psd = np.array(density, dtype=np.float32, copy=True)
     nsd = np.sqrt(psd.astype(np.complex64)).real.copy()
@@ -315,7 +329,7 @@ def disk_pipeline(method, values, backend, directory, args, *, progress=None,
             metadata["fft"] = fft.metadata
             mark("ordered_one_sided_power_s")
             obtained = mapped_sum(powers) * args.sample_rate / n
-        np.testing.assert_allclose(obtained, expected, rtol=1e-10, atol=0.0)
+        _assert_parseval_energy(obtained, expected)
         metadata["parseval"] = {"time_power_v2": expected, "fft_power_v2": obtained,
                                 "relative_error": 0.0 if expected == 0.0 else abs(obtained - expected) / expected,
                                 "diagnostic_passes_included_in_timer": True}

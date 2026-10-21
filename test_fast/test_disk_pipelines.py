@@ -94,6 +94,39 @@ def _small_options(algorithm="full", storage="workspace"):
                            disk_fft_algorithm=algorithm)
 
 
+@pytest.mark.parametrize("obtained,expected,valid", [
+    (0.0, 0.0, True), (-0.0, 0.0, True),
+    (1.0 + 0.5e-10, 1.0, True), (1.0 - 0.5e-10, 1.0, True),
+    (1.0 + 2e-10, 1.0, False), (1.0 - 2e-10, 1.0, False),
+    (1e-30, 0.0, False), (0.0, 1e-30, False),
+    (1e200 * (1.0 + 0.5e-10), 1e200, True),
+    (1e-200 * (1.0 + 2e-10), 1e-200, False),
+    (float("inf"), float("inf"), False),
+    (float("nan"), float("nan"), False),
+    (float("nan"), 1.0, False), (1.0, float("inf"), False),
+    (-1.0, -1.0, False),
+])
+def test_parseval_scalar_gate_retains_tolerance_and_rejects_invalid_energy(
+        obtained, expected, valid):
+    if valid:
+        disk_benchmark._assert_parseval_energy(obtained, expected)
+    else:
+        with pytest.raises(AssertionError, match="Parseval energy mismatch"):
+            disk_benchmark._assert_parseval_energy(obtained, expected)
+
+
+@pytest.mark.parametrize("algorithm", ["full", "packed-real"])
+@pytest.mark.parametrize("method", ["fftw", "matched"])
+def test_invalid_frequency_energy_still_fails_and_cleans_workspace(
+        fftw, tmp_path, monkeypatch, algorithm, method):
+    original_sum = disk_benchmark.mapped_sum
+    monkeypatch.setattr(disk_benchmark, "mapped_sum", lambda values: original_sum(values) * 1.01)
+    values = np.random.default_rng(910).normal(size=1000)
+    with pytest.raises(AssertionError, match="Parseval energy mismatch"):
+        disk_pipeline(method, values, fftw, tmp_path, _small_options(algorithm))
+    assert not list(tmp_path.iterdir())
+
+
 @pytest.mark.parametrize("algorithm", ["full", "packed-real"])
 @pytest.mark.parametrize("method", ["fftw", "matched"])
 @pytest.mark.parametrize("level", [0., 7.])
