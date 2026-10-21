@@ -14,7 +14,7 @@ import hashlib
 from importlib import metadata
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import shutil
 import subprocess
@@ -42,14 +42,14 @@ def loader():
     return discovery_namespace()
 
 
-def install_discovery(monkeypatch, libraries, wheel=()):
+def install_discovery(monkeypatch, libraries, wheel=(), *, path_class=Path):
     queries = []
     def find(name):
         queries.append(name)
         return libraries.get(name)
     monkeypatch.setattr(ctypes.util, "find_library", find)
     monkeypatch.setattr(metadata, "distribution", lambda name: SimpleNamespace(
-        files=list(wheel), locate_file=lambda entry: Path("/wheel") / entry))
+        files=list(wheel), locate_file=lambda entry: path_class("/wheel") / entry))
     return queries
 
 
@@ -93,9 +93,14 @@ def test_openmp_is_probed_after_pthread_failure(loader, monkeypatch):
 
 
 @pytest.mark.parametrize("failure_at", ["core", "thread"])
-def test_wheel_initialization_retries_only_the_same_failed_library_pair(loader, monkeypatch, failure_at):
+@pytest.mark.parametrize("path_class", [PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+def test_wheel_initialization_retries_only_the_same_failed_library_pair(loader, monkeypatch, failure_at, path_class):
     wheel = ("libs/libfftw3-core.so", "libs/libfftw3_omp-runtime.so")
-    install_discovery(monkeypatch, {}, wheel)
+    # Exercise both path flavours on every host. The wheel locator returns
+    # native path strings, so literal POSIX separators are not a contract.
+    loader["Path"] = path_class
+    install_discovery(monkeypatch, {}, wheel, path_class=path_class)
+    expected_core, expected_thread = (str(path_class("/wheel") / entry) for entry in wheel)
     ready, calls, initialized = [False], [], []
     def initialize():
         initialized.append(True)
@@ -113,8 +118,8 @@ def test_wheel_initialization_retries_only_the_same_failed_library_pair(loader, 
     assert details["main_source"] == details["thread_source"] == "wheel"
     assert details["thread_runtime"] == "openmp"
     assert details["failures"] == {"main_load_failed" if failure_at == "core" else "thread_load_failed": 1}
-    assert all(core == "/wheel/" + wheel[0] for core, thread, count in calls)
-    assert all(thread in (None, "/wheel/" + wheel[1]) for core, thread, count in calls)
+    assert all(core == expected_core for core, thread, count in calls)
+    assert all(thread in (None, expected_thread) for core, thread, count in calls)
     assert calls[0] == calls[1] if failure_at == "core" else calls[1] == calls[2]
     assert "PRIVATE" not in json.dumps(details)
 
@@ -157,9 +162,12 @@ def test_explicit_success_does_not_discover_system_or_wheel(loader, monkeypatch)
     assert result.threading_diagnostics["thread_runtime"] == "integrated"
 
 
-def test_core_and_thread_families_do_not_cross(loader, monkeypatch):
+@pytest.mark.parametrize("path_class", [PurePosixPath, PureWindowsPath], ids=["posix", "windows"])
+def test_core_and_thread_families_do_not_cross(loader, monkeypatch, path_class):
+    loader["Path"] = path_class
+    wheel = ("libs/libfftw3-core.so", "libs/libfftw3_omp-companion.so")
     install_discovery(monkeypatch, {"fftw3": "system-core", "fftw3_threads": "system-threads"},
-                      ("libs/libfftw3-core.so", "libs/libfftw3_omp-companion.so"))
+                      wheel, path_class=path_class)
     calls = []
     def load(core, thread, count):
         calls.append((core, thread, count))
@@ -168,8 +176,9 @@ def test_core_and_thread_families_do_not_cross(loader, monkeypatch):
         return SimpleNamespace(threads=count)
     result = loader["_load_fftw"](SimpleNamespace(FFTWLibrary=load), 2)
     assert result.threading_diagnostics["main_source"] == "wheel"
-    assert not any(core == "system-core" and thread and thread.startswith("/wheel")
-                   or core.startswith("/wheel") and thread == "system-threads" for core, thread, count in calls)
+    wheel_paths = {str(path_class("/wheel") / entry) for entry in wheel}
+    assert not any(core == "system-core" and thread in wheel_paths
+                   or core in wheel_paths and thread == "system-threads" for core, thread, count in calls)
 
 
 def test_duplicate_wheel_entries_do_not_repeat_attempts(loader, monkeypatch):

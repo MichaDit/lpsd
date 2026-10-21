@@ -85,8 +85,12 @@ def environment(resources):
             versions[name] = metadata.version(name)
         except metadata.PackageNotFoundError:
             pass
+    # The affinity/quota-limited capacity is independent of --threads. Keep
+    # the requested worker cap in settings.threads; this is not a count of
+    # physical cores. A fractional quota still permits one serial worker.
     return {"os": system, "process_arch": process_arch, "host_arch": host_arch,
-            "logical_cpus_available": resources.threads, "cpu_quota": resources.cpu_capacity,
+            "logical_cpus_available": max(1, math.floor(resources.cpu_capacity)),
+            "cpu_quota": resources.cpu_capacity,
             "ram_total_mib": resources.total_ram // MIB, "versions": versions}
 
 
