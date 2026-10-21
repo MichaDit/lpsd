@@ -283,10 +283,13 @@ GitHub Actions. Keep other CPU benchmarks stopped during these runs.
 
 ## Remaining physical checks
 
-The [fast.11 device rerun guide](device-rerun-fast11.md) keeps the next physical
-checks explicit. Windows, the ARM64 SBC and the ARM64 instrument need fresh
-fast.11 reports to determine their actual startup savings, worker scaling,
-FFTW runtime selection and outcomes of the previously incomplete cases.
+The [21 October physical results](device-tests-fast11-20261021.md) now provide
+fresh Windows and ARM64 instrument evidence, including completed instrument
+30M cases, all dedicated 1/2/4-worker comparisons and two unresolved Windows
+discovery-test failures. These are single observations, not a controlled
+physical startup experiment or universal speedup claim. The Raspberry Pi was
+excluded from that run; its historical incomplete checks remain separate.
+The [fast.11 device rerun guide](device-rerun-fast11.md) retains the commands.
 There is no new physical macOS result. Existing memory and disk ceilings
 continue to apply, and the previously unexplained Windows billion-sample
 restart remains a separate unresolved case. Neither this local matrix nor

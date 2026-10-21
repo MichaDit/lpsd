@@ -7,6 +7,12 @@ See the [fast.11 changes and local validation](performance-fast11.md) and the
 [fast.10 campaign](device-tests-fast10-20261013.md) retains its original source,
 failures, skips and measurements.
 
+The subsequent [21 October fast.11 results](device-tests-fast11-20261021.md)
+record Windows and prepared ARM64 instrument runs on source
+`3d4c9e948d0563cdc0e03339f7f3a44d8609e986`. They include final regression counts,
+the retained Windows discovery failures, completed instrument 30M and worker
+cases, and private supervision/collection adjustments. The Pi was excluded.
+
 ## 1. Regression validation and the existing budgets
 
 From a complete checkout of the pinned source, with the test dependencies and

@@ -1,0 +1,263 @@
+{
+  "schema": "lpsd-physical-campaign-v1",
+  "source_commit": "3d4c9e948d0563cdc0e03339f7f3a44d8609e986",
+  "native_version": "1.0.6+fast.11",
+  "statistics": "corrected",
+  "synthetic_input_only": true,
+  "reports": [
+    {
+      "file": "windows-x64-smoke.json",
+      "sha256": "fff88ddae62cd6c601271c6dc176bd4c3885324e385d8154499a4db62df97b0a",
+      "device_class": "windows-x64",
+      "section": "smoke",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 12,
+      "recorded": 12,
+      "statuses": {
+        "completed": 12
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 12
+      }
+    },
+    {
+      "file": "windows-x64-main.json",
+      "sha256": "2c8c60093b3e69687d33bda9b169819ee4b1f302001f39c58229d99f0fe59b60",
+      "device_class": "windows-x64",
+      "section": "main",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 36,
+      "recorded": 36,
+      "statuses": {
+        "completed": 36
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 36
+      }
+    },
+    {
+      "file": "windows-x64-packed-real.json",
+      "sha256": "0142ff3b41600522c64c06536016ba707837e826c0c20d82b8fee9e4572b5739",
+      "device_class": "windows-x64",
+      "section": "packed-real",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 16,
+      "recorded": 16,
+      "statuses": {
+        "completed": 16
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 16
+      }
+    },
+    {
+      "file": "windows-x64-workers-1.json",
+      "sha256": "50cb17fea18ad65a75c7b8c455247f96b78e787e3a280bdb25712569f729958f",
+      "device_class": "windows-x64",
+      "section": "workers-1",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "windows-x64-workers-2.json",
+      "sha256": "26080415c6d84a212718ea0400c94929a069b6923ab0cd2f02e046542b9718c8",
+      "device_class": "windows-x64",
+      "section": "workers-2",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "windows-x64-workers-4.json",
+      "sha256": "f09525b9a3f770d4e12c5f9fccd2bd5573eb175346177fa96a26b2ce341a04ec",
+      "device_class": "windows-x64",
+      "section": "workers-4",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-smoke.json",
+      "sha256": "d56dbf752e7d7c5c2d054233ba7dba2a3165dbd14cb4e7afbda0d2043f8537c8",
+      "device_class": "arm64-instrument",
+      "section": "smoke",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 12,
+      "recorded": 12,
+      "statuses": {
+        "completed": 12
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 12
+      }
+    },
+    {
+      "file": "arm64-instrument-main.json",
+      "sha256": "4a831926f7e5b2db7fd5abb530d0b8cb788d8441594219d5d1785d8e57c3848d",
+      "device_class": "arm64-instrument",
+      "section": "main",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 24,
+      "recorded": 24,
+      "statuses": {
+        "completed": 24
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 24
+      }
+    },
+    {
+      "file": "arm64-instrument-packed-real.json",
+      "sha256": "c0f6fafad3b94f53e42776fd8ea05b42fb476ea988aff236f53d1ef697c75492",
+      "device_class": "arm64-instrument",
+      "section": "packed-real",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 16,
+      "recorded": 16,
+      "statuses": {
+        "completed": 16
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 16
+      }
+    },
+    {
+      "file": "arm64-instrument-workers-1.json",
+      "sha256": "1274fb40bc6c26fc4224e46a82d7f5a0e14a49f94a310014f3cbd7b90fb54885",
+      "device_class": "arm64-instrument",
+      "section": "workers-1",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-workers-2.json",
+      "sha256": "73419dd7a52c4aa8472844d25315629fe08876f6d0d146a110f3065604c6be29",
+      "device_class": "arm64-instrument",
+      "section": "workers-2",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-workers-4.json",
+      "sha256": "26dc7b142060b5e400f7f77f56603edcbf760619b47358567958794d6741bd50",
+      "device_class": "arm64-instrument",
+      "section": "workers-4",
+      "attempt": "final",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 6,
+      "recorded": 6,
+      "statuses": {
+        "completed": 6
+      },
+      "reasons": {},
+      "roles": {
+        "calibration": 3,
+        "comparison": 3
+      }
+    },
+    {
+      "file": "arm64-instrument-initial-smoke.json",
+      "sha256": "93e22c392502991904d65aad5c37a5a8fb07b60c9a856812b3f3d99fa2bbbcf7",
+      "device_class": "arm64-instrument",
+      "section": "initial-smoke",
+      "attempt": "initial",
+      "report_state": "completed",
+      "coverage": "recorded",
+      "expected_records": 12,
+      "recorded": 12,
+      "statuses": {
+        "completed": 12
+      },
+      "reasons": {},
+      "roles": {
+        "comparison": 12
+      }
+    }
+  ],
+  "final_attempt_records": 152,
+  "initial_attempt_records": 12,
+  "calibration_records": 18,
+  "initial_attempt": {
+    "device_class": "arm64-instrument",
+    "state": "interrupted_by_operator",
+    "reason": "private_supervisor_policy_adjustment",
+    "full_regression_result": false,
+    "final_attempt_reused_fresh_native_builds": true
+  },
+  "regression_summary": {
+    "file": "regressions.json",
+    "sha256": "54a73e2d6dac4e230a53c2120f1b0e34fe4655087b3d5d5b129b0c6cde9e69e2"
+  }
+}

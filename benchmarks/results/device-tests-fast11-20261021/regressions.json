@@ -1,0 +1,149 @@
+{
+  "schema": "lpsd-physical-regressions-v1",
+  "source_commit": "3d4c9e948d0563cdc0e03339f7f3a44d8609e986",
+  "statistics": "corrected",
+  "suites": [
+    {
+      "device_class": "windows-x64",
+      "suite": "fast",
+      "counts": {
+        "tests": 2868,
+        "passed": 2820,
+        "failed": 2,
+        "errors": 0,
+        "skipped": 45,
+        "xfail": 1
+      },
+      "nonpassing_test_ids": {
+        "failed": [
+          "test_fast/test_fftw_discovery.py::test_wheel_initialization_retries_only_the_same_failed_library_pair[core]",
+          "test_fast/test_fftw_discovery.py::test_wheel_initialization_retries_only_the_same_failed_library_pair[thread]"
+        ],
+        "errors": [],
+        "skipped": [
+          "test_fast/test_benchmark_memory_measurement.py::test_real_macos_owned_child_memory_probe",
+          "test_fast/test_benchmark_owned_file_counter.py::test_owned_names_do_not_follow_links[False]",
+          "test_fast/test_benchmark_owned_file_counter.py::test_owned_names_do_not_follow_links[True]",
+          "test_fast/test_bootstrap.py::test_deadline_stops_subprocess_group",
+          "test_fast/test_bootstrap.py::test_shell_help_and_invalid_revision_are_offline",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[123 kB-1-S-123]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[0 kB-1-S-0]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[None-1-S-None]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[-1 kB-1-S-None]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[bad kB-1-S-None]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[123 unknown-1-S-None]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[None-1-Z-0]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[None-2-Z-None]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_linux_probe_rejects_missing_live_memory[None-0-Z-None]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_probe_ignores_foreign_exit_but_requires_readable_target[False]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_probe_ignores_foreign_exit_but_requires_readable_target[True]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_guard_stops_live_installer_when_probe_is_unknown[return 1]",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_guard_stops_live_installer_when_probe_is_unknown[printf '\\\\n']",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_guard_stops_live_installer_when_probe_is_unknown[printf '1\\\\n']",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_guard_stops_live_installer_when_probe_is_unknown[printf '3000 1\\\\n']",
+          "test_fast/test_bootstrap_memory_tree.py::test_pre_python_guard_rechecks_only_its_verified_visible_pid",
+          "test_fast/test_bootstrap_memory_tree.py::test_real_setup_live_child_counter_cannot_disappear_from_sum[False]",
+          "test_fast/test_bootstrap_memory_tree.py::test_real_setup_live_child_counter_cannot_disappear_from_sum[True]",
+          "test_fast/test_case_disk_budget.py::test_counter_rejects_links_without_following_them[root_file]",
+          "test_fast/test_case_disk_budget.py::test_counter_rejects_links_without_following_them[nested_file]",
+          "test_fast/test_case_disk_budget.py::test_counter_rejects_links_without_following_them[fft_directory]",
+          "test_fast/test_direct_log_power.py::test_native_rejects_non_nearest_rounding_and_restores_environment",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-4]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-4]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-4]",
+          "test_fast/test_fftw_discovery.py::test_real_elf_missing_companion_dependency_is_retried",
+          "test_fast/test_fftw_large_n_reporting.py::test_linux_trim_still_uses_real_libc",
+          "test_fast/test_inline_mean.py::test_native_inline_dots_match_original_residual_vectors_bitwise",
+          "test_fast/test_linux_memory_tree.py::test_real_live_grandchild_is_counted_and_unreadable_status_fails_closed",
+          "test_fast/test_linux_smaps_fallback.py::test_real_old_status_guard_distinguishes_mappings_from_anonymous_limit[disk-16-completed]",
+          "test_fast/test_linux_smaps_fallback.py::test_real_old_status_guard_distinguishes_mappings_from_anonymous_limit[disk-128-failed]",
+          "test_fast/test_linux_smaps_fallback.py::test_real_old_status_guard_distinguishes_mappings_from_anonymous_limit[ram-16-failed]",
+          "test_fast/test_portable_benchmark.py::test_linux_memory_guard_stops_real_child_allocation",
+          "test_fast/test_portable_benchmark.py::test_timeout_also_stops_grandchild"
+        ],
+        "xfail": [
+          "test_fast/test_known_limits.py::test_known_offbin_tone_uniform_relative_accuracy"
+        ]
+      }
+    },
+    {
+      "device_class": "windows-x64",
+      "suite": "upstream",
+      "counts": {
+        "tests": 18,
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xfail": 0
+      },
+      "nonpassing_test_ids": {
+        "failed": [],
+        "errors": [],
+        "skipped": [],
+        "xfail": []
+      }
+    },
+    {
+      "device_class": "arm64-instrument",
+      "suite": "fast",
+      "counts": {
+        "tests": 2672,
+        "passed": 2655,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 16,
+        "xfail": 1
+      },
+      "nonpassing_test_ids": {
+        "failed": [],
+        "errors": [],
+        "skipped": [
+          "test_fast/test_cuda_experiment.py",
+          "test_fast/test_cuda_packed.py",
+          "test_fast/test_benchmark_memory_measurement.py::test_real_macos_owned_child_memory_probe",
+          "test_fast/test_bootstrap.py::test_powershell_watchdog_keeps_budgets_when_installer_children_disappear",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[64-4]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4096-4]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-1]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-2]",
+          "test_fast/test_fftw_discovery.py::test_actual_fftw_transform_with_selected_runtime[4099-4]",
+          "test_fast/test_fftw_discovery.py::test_real_elf_missing_companion_dependency_is_retried",
+          "test_fast/test_inline_mean.py::test_native_inline_dots_match_original_residual_vectors_bitwise",
+          "test_fast/test_platform_memory.py::test_native_platform_available_memory_query_succeeds"
+        ],
+        "xfail": [
+          "test_fast/test_known_limits.py::test_known_offbin_tone_uniform_relative_accuracy"
+        ]
+      }
+    },
+    {
+      "device_class": "arm64-instrument",
+      "suite": "upstream",
+      "counts": {
+        "tests": 18,
+        "passed": 18,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xfail": 0
+      },
+      "nonpassing_test_ids": {
+        "failed": [],
+        "errors": [],
+        "skipped": [],
+        "xfail": []
+      }
+    }
+  ]
+}

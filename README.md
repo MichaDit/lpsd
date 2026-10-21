@@ -18,9 +18,10 @@ are now isolated per loaded core library, and portable runtime forecasts no
 longer scale all process setup with the numerical exponent. See the
 [fast.11 measurements and local qualification](docs/performance-fast11.md),
 [physical-campaign analysis](docs/platform-followup-20261020.md), and
-[targeted device rerun](docs/device-rerun-fast11.md). New physical-platform
-speedups require those device measurements; the retained campaign is not
-relabelled as a fast.11 run.
+[targeted device rerun](docs/device-rerun-fast11.md). The separate
+[21 October physical results](docs/device-tests-fast11-20261021.md) retain
+the completed instrument checks, two Windows regression failures and actual
+worker observations. Historical measurements keep their original revisions.
 
 Version **fast.10** corrects the segment mean and variance in `lpsd_fast`.
 The default `statistics="corrected"` includes every actual segment; an explicit
